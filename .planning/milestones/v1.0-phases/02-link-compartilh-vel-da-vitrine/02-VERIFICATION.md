@@ -46,7 +46,7 @@ human_verification:
 |----------|----------|--------|---------|
 | `src/lib/slug/slugify.ts` | Diacritic-folding slugify() | ✓ VERIFIED | NFD normalize + combining-mark strip BEFORE non-alnum→hyphen replace, matches D-01 exactly |
 | `src/lib/slug/validation.ts` | slugSchema (Zod, D-02) | ✓ VERIFIED | 3–30 chars, `[a-z0-9-]` charset, no leading/trailing hyphen, exact UI-SPEC error copy, `SlugInput` type exported |
-| `src/lib/slug/store-url.ts` | buildStoreUrl() | ✓ VERIFIED | Reads `NEXT_PUBLIC_SITE_URL`, falls back to `https://vitrino.app`, strips trailing slash |
+| `src/lib/slug/store-url.ts` | buildStoreUrl() | ✓ VERIFIED | Reads `NEXT_PUBLIC_SITE_URL`, falls back to `https://vitrinoo.app`, strips trailing slash |
 | `src/lib/hooks/use-debounce.ts` | useDebouncedValue hook | ✓ VERIFIED | Client-only, useState+useEffect+setTimeout, consumed by slug-editor.tsx |
 | `supabase/migrations/0002_slug_availability_rpc.sql` | is_slug_available RPC | ✓ VERIFIED | SECURITY DEFINER, `search_path` pinned, boolean-only via `not exists`, granted only to `authenticated`. Confirmed live on remote DB via `database.types.ts` |
 | `src/lib/settings/actions.ts` | checkSlugAvailability/updateStoreSlug/saveStoreSettings | ✓ VERIFIED | All three Server Actions present, owner-scoped, 23505→friendly-message translation, integration-tested against real DB |

@@ -1,13 +1,13 @@
-# Prompt — Redesign de Identidade Visual do Vitrino
+# Prompt — Redesign de Identidade Visual do Vitrinoo
 
 > Cole este prompt para um modelo de IA (Claude, Gemini, ChatGPT) ou um designer.
 > Objetivo: elevar a identidade visual do painel admin e da vitrine pública sem alterar fluxos, funcionalidades ou a cor de marca.
 
 ---
 
-## Quem é o Vitrino
+## Quem é o Vitrinoo
 
-O Vitrino é um micro-SaaS brasileiro para revendedores de calçados importados (principalmente chuteiras). O revendedor cadastra produtos no painel administrativo e compartilha um link da sua vitrine pública pelo WhatsApp ou Instagram. O cliente final — sempre no celular — escolhe o produto, seleciona o tamanho e dispara um pedido pronto direto no WhatsApp do revendedor. Sem cadastro. Sem fricção.
+O Vitrinoo é um micro-SaaS brasileiro para revendedores de calçados importados (principalmente chuteiras). O revendedor cadastra produtos no painel administrativo e compartilha um link da sua vitrine pública pelo WhatsApp ou Instagram. O cliente final — sempre no celular — escolhe o produto, seleciona o tamanho e dispara um pedido pronto direto no WhatsApp do revendedor. Sem cadastro. Sem fricção.
 
 O produto existe em dois mundos visuais:
 1. **Painel admin** — onde o revendedor gerencia sua loja (dashboard, produtos, configurações)
@@ -22,7 +22,7 @@ Analisei o app diretamente no browser e descrevo exatamente o que vejo em cada t
 ### Tela de Login (split-screen)
 A estrutura é boa — lado esquerdo branco com o formulário, lado direito azul `#0D21A1` com texto. Mas o lado direito está completamente vazio de identidade: só dois parágrafos de texto sobre fundo liso azul. Parece uma apresentação de PowerPoint, não um produto. Não há nenhuma imagem, mockup, ilustração ou elemento visual que mostre ao usuário o que ele vai criar.
 
-O logotipo é um quadrado azul sólido sem nenhum conteúdo — literalmente um placeholder de 28×28px preenchido com a cor de marca. Ao lado do nome "Vitrino" em preto, a impressão é de inacabado.
+O logotipo é um quadrado azul sólido sem nenhum conteúdo — literalmente um placeholder de 28×28px preenchido com a cor de marca. Ao lado do nome "Vitrinoo" em preto, a impressão é de inacabado.
 
 ### Dashboard (painel admin)
 O fundo da tela tem um efeito de borda azul desbotada nas extremidades. O efeito existe mas parece acidental, não intencional. Ou deveria ser mais pronunciado e bonito, ou não deveria estar lá.
@@ -99,10 +99,10 @@ Cada card precisa de uma cor semântica própria — não só no ícone, mas no 
 
 ## Tom visual desejado
 
-Referências de mercado que comunicam o que o Vitrino precisa ser:
+Referências de mercado que comunicam o que o Vitrinoo precisa ser:
 - **Linear** — limpeza, precisão, dark sidebar, premium
 - **Stripe** — sofisticação, tipografia forte, dados bem apresentados
 - **Shopify** — tom comercial, acolhedor, feito para vendedores
 - **Nuvemshop** — mercado brasileiro, vendas, cores vivas com profissionalismo
 
-O Vitrino não é um banco. Não é um ERP. É uma **vitrine** — precisa brilhar.
+O Vitrinoo não é um banco. Não é um ERP. É uma **vitrine** — precisa brilhar.

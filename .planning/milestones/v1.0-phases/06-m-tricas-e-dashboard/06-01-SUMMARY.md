@@ -107,7 +107,7 @@ Each task was committed atomically:
 **2. [Environment setup, não uma deviation de código] `.env.local` e `node_modules` ausentes no worktree**
 - **Found during:** Antes da Task 1 (tentativa de rodar `npx vitest`)
 - **Issue:** O worktree nasceu sem `node_modules` (não instalado) e sem `.env.local` (gitignored) — sem eles, nem os testes nem o CLI do Supabase têm como rodar.
-- **Fix:** Symlink de `node_modules` a partir do checkout principal (`/Users/ryanlucas/Downloads/VITRINO/node_modules`, mesmo `package-lock.json`, confirmado idêntico via diff) e `cp` de `.env.local` do checkout principal — nenhum dos dois é versionado/commitável.
+- **Fix:** Symlink de `node_modules` a partir do checkout principal (`/Users/ryanlucas/Downloads/VITRINOO/node_modules`, mesmo `package-lock.json`, confirmado idêntico via diff) e `cp` de `.env.local` do checkout principal — nenhum dos dois é versionado/commitável.
 - **Files modified:** nenhum arquivo versionado (gitignored)
 - **Verification:** `npx vitest run` passou a executar; testes conectaram ao Supabase real
 

@@ -32,7 +32,7 @@ import { signOutAction, signUpAction } from "@/lib/auth/actions";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 
 describe("signOutAction", () => {
-  const email = `vitrino.signout.${Date.now()}.${Math.random().toString(36).slice(2)}@gmail.com`;
+  const email = `vitrinoo.signout.${Date.now()}.${Math.random().toString(36).slice(2)}@gmail.com`;
   const password = "SenhaForte123!";
 
   beforeAll(async () => {

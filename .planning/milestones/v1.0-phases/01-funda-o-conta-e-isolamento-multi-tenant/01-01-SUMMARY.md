@@ -126,7 +126,7 @@ _Nota: Task 3 seguiu o ciclo TDD completo (RED com teste falhando por módulo in
 - `vitest.config.ts` - ambiente `node`, include `tests/**/*.test.ts`, alias `@/*`
 - `.env.local.example` - documenta `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `.gitignore` - gerado pelo scaffold + correção para não ignorar `.env*.example`
-- `src/app/layout.tsx` - metadata atualizada para "Vitrino"
+- `src/app/layout.tsx` - metadata atualizada para "Vitrinoo"
 - `src/app/globals.css`, `src/app/page.tsx`, `src/app/favicon.ico`, `public/*.svg`, `AGENTS.md` - artefatos padrão do scaffold
 - `src/lib/supabase/server.ts` - `createClient()` server via `createServerClient` + `cookies()` (next/headers)
 - `src/lib/supabase/client.ts` - `createClient()` browser via `createBrowserClient`
@@ -136,8 +136,8 @@ _Nota: Task 3 seguiu o ciclo TDD completo (RED com teste falhando por módulo in
 - `tests/middleware/matcher.test.ts` - 6 asserções sobre o matcher
 
 ## Decisions Made
-- Scaffold gerado em `/tmp/vitrino-scaffold` via `create-next-app@latest` e mesclado manualmente na raiz do projeto, porque `create-next-app` recusa rodar em diretório não-vazio (o projeto já tinha `.git/`, `.claude/`, `.planning/`) — nenhuma perda de arquivos de planejamento.
-- `package.json`/`package-lock.json` renomeados de `vitrino-scaffold` para `vitrino` para refletir o nome real do projeto.
+- Scaffold gerado em `/tmp/vitrinoo-scaffold` via `create-next-app@latest` e mesclado manualmente na raiz do projeto, porque `create-next-app` recusa rodar em diretório não-vazio (o projeto já tinha `.git/`, `.claude/`, `.planning/`) — nenhuma perda de arquivos de planejamento.
+- `package.json`/`package-lock.json` renomeados de `vitrinoo-scaffold` para `vitrinoo` para refletir o nome real do projeto.
 - Node.js confirmado em v26.3.0 (>= 20.9 exigido pelo Next 16) antes do scaffold.
 
 ## Deviations from Plan

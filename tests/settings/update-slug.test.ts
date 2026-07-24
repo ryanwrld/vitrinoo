@@ -29,7 +29,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 function uniqueEmail(label: string): string {
-  return `vitrino.updateslug.${label}.${Date.now()}.${Math.random().toString(36).slice(2)}@gmail.com`;
+  return `vitrinoo.updateslug.${label}.${Date.now()}.${Math.random().toString(36).slice(2)}@gmail.com`;
 }
 
 async function signUpLojaA(label: string): Promise<{ email: string; password: string }> {

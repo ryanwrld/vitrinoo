@@ -1,4 +1,4 @@
-# Roadmap: Vitrino
+# Roadmap: Vitrinoo
 
 ## Milestones
 

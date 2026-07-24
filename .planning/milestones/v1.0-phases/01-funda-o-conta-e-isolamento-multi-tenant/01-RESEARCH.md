@@ -580,5 +580,5 @@ export function normalizeWhatsAppBR(input: string): { e164Digits: string } | { e
 **Válida até:** 2026-08-10 (30 dias — stack estável, mas Supabase Auth/GoTrue e Next.js middleware têm histórico de mudanças de comportamento entre versões menores; revalidar se a fase for replanejada após esse prazo)
 
 ---
-*Pesquisa de fase para: Vitrino — Fase 1: Fundação, Conta e Isolamento Multi-Tenant*
+*Pesquisa de fase para: Vitrinoo — Fase 1: Fundação, Conta e Isolamento Multi-Tenant*
 *Pesquisado em: 2026-07-10*

@@ -1,12 +1,12 @@
-# Prompt: Design System completo do Vitrino
+# Prompt: Design System completo do Vitrinoo
 
-Prompt pronto para colar num gerador de design (Claude), pedindo um design system moderno e completo para o Vitrino, mantendo a cor de marca e listando explicitamente o que não deve ser feito. Gerado em 2026-07-16, a partir do contexto consolidado das auditorias de UI/UX desta sessão.
+Prompt pronto para colar num gerador de design (Claude), pedindo um design system moderno e completo para o Vitrinoo, mantendo a cor de marca e listando explicitamente o que não deve ser feito. Gerado em 2026-07-16, a partir do contexto consolidado das auditorias de UI/UX desta sessão.
 
 ---
 
 ## Contexto do produto
 
-Você vai desenhar o design system completo do **Vitrino**, um micro-SaaS que transforma o catálogo informal de um revendedor de chuteiras importadas (hoje espalhado em Yupoo, pastas do Drive ou fotos soltas no WhatsApp) em uma vitrine online profissional. O revendedor cadastra produtos — fotos, tamanhos disponíveis, preço em reais — num painel administrativo. O cliente final navega a vitrine pública, quase sempre a partir de um link compartilhado no WhatsApp ou no Instagram, em um celular. Ele escolhe um modelo e um tamanho e dispara uma mensagem de pedido já pronta direto no WhatsApp do revendedor — sem cadastro, sem fricção, sem precisar o revendedor estar online no momento.
+Você vai desenhar o design system completo do **Vitrinoo**, um micro-SaaS que transforma o catálogo informal de um revendedor de chuteiras importadas (hoje espalhado em Yupoo, pastas do Drive ou fotos soltas no WhatsApp) em uma vitrine online profissional. O revendedor cadastra produtos — fotos, tamanhos disponíveis, preço em reais — num painel administrativo. O cliente final navega a vitrine pública, quase sempre a partir de um link compartilhado no WhatsApp ou no Instagram, em um celular. Ele escolhe um modelo e um tamanho e dispara uma mensagem de pedido já pronta direto no WhatsApp do revendedor — sem cadastro, sem fricção, sem precisar o revendedor estar online no momento.
 
 ## Objetivo deste pedido
 

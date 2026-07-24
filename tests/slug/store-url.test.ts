@@ -8,12 +8,12 @@ describe("buildStoreUrl", () => {
 
   it("returns the default origin + /loja/<slug> when NEXT_PUBLIC_SITE_URL is unset", () => {
     vi.stubEnv("NEXT_PUBLIC_SITE_URL", "");
-    expect(buildStoreUrl("minha-loja")).toBe("https://vitrino.app/loja/minha-loja");
+    expect(buildStoreUrl("minha-loja")).toBe("https://vitrinoo.app/loja/minha-loja");
   });
 
   it("trims a trailing slash from the configured base so the result never contains '//loja'", () => {
-    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://vitrino.app/");
-    expect(buildStoreUrl("minha-loja")).toBe("https://vitrino.app/loja/minha-loja");
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://vitrinoo.app/");
+    expect(buildStoreUrl("minha-loja")).toBe("https://vitrinoo.app/loja/minha-loja");
     expect(buildStoreUrl("minha-loja")).not.toContain("//loja");
   });
 

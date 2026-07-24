@@ -5,11 +5,11 @@
   <img src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
 </p>
 
-# Vitrino
+# Vitrinoo
 
 Revendedor de chuteiras importadas geralmente vende o catálogo espalhado em pastas do Google Drive, fotos soltas no WhatsApp ou num álbum do Yupoo em mandarim — nada disso passa confiança pro cliente final, e cada pedido vira uma troca manual de mensagens perguntando tamanho, preço e disponibilidade.
 
-**Vitrino** transforma esse catálogo informal num catálogo inteligente em português: produtos com fotos, tamanhos disponíveis, preços em BRL, e um botão que já abre o WhatsApp do revendedor com o pedido pronto — modelo, tamanho e preço inclusos. O cliente escolhe e manda a mensagem. Sem cadastro, sem app, sem o revendedor precisar estar online pra fechar a venda.
+**Vitrinoo** transforma esse catálogo informal num catálogo inteligente em português: produtos com fotos, tamanhos disponíveis, preços em BRL, e um botão que já abre o WhatsApp do revendedor com o pedido pronto — modelo, tamanho e preço inclusos. O cliente escolhe e manda a mensagem. Sem cadastro, sem app, sem o revendedor precisar estar online pra fechar a venda.
 
 ## Como funciona
 

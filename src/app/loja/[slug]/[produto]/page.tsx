@@ -63,7 +63,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const coverPhoto = detail.photos[0];
   const coverUrl = coverPhoto ? getProductImagePublicUrl(supabase, coverPhoto.storage_path) : null;
   const title = detail.line ? `${detail.name} - ${detail.line}` : detail.name;
-  const description = `${formatBRLPrice(detail.price)} — disponível no Vitrino`;
+  const description = `${formatBRLPrice(detail.price)} — disponível no Vitrinoo`;
 
   return {
     title,

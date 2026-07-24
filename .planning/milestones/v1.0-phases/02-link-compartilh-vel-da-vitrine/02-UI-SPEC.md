@@ -123,7 +123,7 @@ Additional interaction copy specific to this phase (not in the template's fixed 
 - **Page structure:** single scrolling page, three stacked sections in this order: Loja → WhatsApp → Link e QR Code — no tabs (D-06).
 - **Loja + WhatsApp section:** one shared form, one shared "Salvar alterações" button at the bottom of that form only. Reuses Zod schemas from `src/lib/validation/onboarding.ts` and `normalizeWhatsAppBR`, but the form component itself is written fresh for this screen, not an import of `onboarding-wizard.tsx` (D-07).
 - **Link e QR Code section:** contains three elements grouped visually together (D-11, D-13):
-  1. A readonly text field showing the full public URL (e.g. `vitrino.app/loja/nome-da-loja`) next to a "Copiar" button.
+  1. A readonly text field showing the full public URL (e.g. `vitrinoo.app/loja/nome-da-loja`) next to a "Copiar" button.
   2. The slug edit input itself (slugify-as-you-type, 3–30 chars, live availability check) with its own dedicated "Salvar novo link" button and confirmation dialog — entirely separate from the Loja/WhatsApp save action (D-01–D-04, D-08).
   3. A QR code preview (rendered on page load) with a "Baixar PNG" button beside it (D-09–D-11).
 - **Slug input behavior:** auto-slugify on every keystroke (lowercase, strip accents, spaces→hyphens); debounce ~400ms before firing the uniqueness check; show inline status (checking/available/taken) directly under the input, per the copy table above (D-01–D-03).

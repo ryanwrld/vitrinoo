@@ -254,5 +254,5 @@ Deliberadamente sem dependência de servidor entre "tamanho selecionado" e "What
 - Restrições específicas do projeto e catálogo de bugs conhecidos: `.planning/PROJECT.md` (este repositório)
 
 ---
-*Pesquisa de arquitetura para: catálogo/vitrine de revendedor multi-tenant (Vitrino)*
+*Pesquisa de arquitetura para: catálogo/vitrine de revendedor multi-tenant (Vitrinoo)*
 *Pesquisado em: 2026-07-10*

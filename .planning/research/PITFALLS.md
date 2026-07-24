@@ -342,5 +342,5 @@ Fase de dashboard admin/CRUD (qualquer fase com formulários) — estabelecer um
 - [Eliminating Mobile Upload Bugs: EXIF Rotations & Transparency in Pillow — aldianfazrihady.com](https://www.aldianfazrihady.com/en/blog/bec707c5-a0df-4b20-94cf-dc71f980338a/mobile-upload-bugs-exif-rotations-transparency-pillow/)
 
 ---
-*Pesquisa de armadilhas para: Vitrino — micro-SaaS de catálogo/vitrine + link profundo WhatsApp*
+*Pesquisa de armadilhas para: Vitrinoo — micro-SaaS de catálogo/vitrine + link profundo WhatsApp*
 *Pesquisado em: 2026-07-10*

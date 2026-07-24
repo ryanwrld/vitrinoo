@@ -35,7 +35,7 @@ key-files:
 
 key-decisions:
   - "generateStoreSlug passou a delegar para slugify() compartilhado — elimina o segundo algoritmo divergente que 02-CONTEXT.md proibia explicitamente"
-  - "buildStoreUrl usa https://vitrino.app como origin padrão hardcoded (não há deploy/remote ainda — ver memória do projeto) até NEXT_PUBLIC_SITE_URL ser configurado"
+  - "buildStoreUrl usa https://vitrinoo.app como origin padrão hardcoded (não há deploy/remote ainda — ver memória do projeto) até NEXT_PUBLIC_SITE_URL ser configurado"
 
 patterns-established:
   - "Pattern de slug compartilhado: qualquer normalização/validação/URL de slug futura (editor de slug do plan 02-05, RPC do plan 02-03) importa de src/lib/slug/*, nunca reimplementa"
@@ -124,14 +124,14 @@ _Nota: cada task deste plano seguiu o ciclo test → feat (RED → GREEN); nenhu
 ## Files Created/Modified
 - `src/lib/slug/slugify.ts` - `slugify(input): string`, fold NFD de diacríticos antes do replace não-alfanumérico
 - `src/lib/slug/validation.ts` - `slugSchema` (Zod) + `type SlugInput`
-- `src/lib/slug/store-url.ts` - `buildStoreUrl(slug): string`, usa `NEXT_PUBLIC_SITE_URL` com fallback para `https://vitrino.app`
+- `src/lib/slug/store-url.ts` - `buildStoreUrl(slug): string`, usa `NEXT_PUBLIC_SITE_URL` com fallback para `https://vitrinoo.app`
 - `src/lib/hooks/use-debounce.ts` - `useDebouncedValue<T>(value, delayMs): T`, primeiro hook de debounce do projeto
 - `src/lib/auth/actions.ts` - `generateStoreSlug` refatorado para chamar `slugify()` compartilhado (regex inline removida)
 - `tests/slug/slugify.test.ts`, `tests/slug/validation.test.ts`, `tests/slug/store-url.test.ts` - cobertura unitária das 3 tasks
 
 ## Decisions Made
 - `generateStoreSlug` delega 100% para `slugify()` — nenhuma lógica de normalização duplicada permanece em `src/lib/auth/actions.ts` (mitiga T-02-02 do threat_model do plano)
-- `buildStoreUrl` usa o literal `https://vitrino.app` como origin padrão (não há deploy/remote configurado ainda — ver memória do projeto `project_no_github_remote`); `NEXT_PUBLIC_SITE_URL` é opcional e sobrescreve quando o app for hospedado
+- `buildStoreUrl` usa o literal `https://vitrinoo.app` como origin padrão (não há deploy/remote configurado ainda — ver memória do projeto `project_no_github_remote`); `NEXT_PUBLIC_SITE_URL` é opcional e sobrescreve quando o app for hospedado
 
 ## Deviations from Plan
 

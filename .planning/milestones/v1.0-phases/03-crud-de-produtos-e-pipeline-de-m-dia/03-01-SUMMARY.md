@@ -136,7 +136,7 @@ Each task was committed atomically:
 
 ## User Setup Required
 
-None - nenhuma configuração externa manual necessária. O push da migration e o typegen já foram executados nesta sessão contra o projeto Supabase remoto real (`yuyprdjzeslanxbgcemj` / VITRINO).
+None - nenhuma configuração externa manual necessária. O push da migration e o typegen já foram executados nesta sessão contra o projeto Supabase remoto real (`yuyprdjzeslanxbgcemj` / VITRINOO).
 
 ## Next Phase Readiness
 - Fundação de dados completa: as três tabelas + bucket estão prontos para os Server Actions de CRUD (Plan 03-02) e pipeline de upload/reordenação de fotos (Plans 03-03/03-04).

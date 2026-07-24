@@ -72,7 +72,7 @@ export function OnboardingWizard() {
         {/* Logo no topo do card */}
         <div className="flex items-center gap-2">
           <LogoMark size={28} />
-          <span className="font-display text-lg font-extrabold text-gray-900">Vitrino</span>
+          <span className="font-display text-lg font-extrabold text-gray-900">Vitrinoo</span>
         </div>
 
         <div>

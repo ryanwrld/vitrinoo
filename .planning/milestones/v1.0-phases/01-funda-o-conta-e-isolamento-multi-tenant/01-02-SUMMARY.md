@@ -24,7 +24,7 @@ tech-stack:
   patterns:
     - "RLS habilitado na MESMA migration que cria a tabela — nunca separar em migration posterior (Armadilha 4)"
     - "Teste de isolamento multi-tenant usa clients autenticados via signUp/signInWithPassword reais, nunca service_role/SQL Editor"
-    - "Emails de teste com sufixo timestamp+random (`vitrino.rls.<label>.<ts>.<rand>@gmail.com`) para evitar colisão/rate-limit entre execuções"
+    - "Emails de teste com sufixo timestamp+random (`vitrinoo.rls.<label>.<ts>.<rand>@gmail.com`) para evitar colisão/rate-limit entre execuções"
     - "onboarding_completed_at como coluna dedicada, não inferida via NULL checks (Pergunta em Aberto #1)"
 
 key-files:

@@ -1,4 +1,4 @@
-# Walking Skeleton — Vitrino
+# Walking Skeleton — Vitrinoo
 
 **Phase:** 1
 **Generated:** 2026-07-10

@@ -27,7 +27,7 @@ export function AuthLayout({
           {/* Logo */}
           <div className="flex items-center gap-2">
             <LogoMark size={30} />
-            <span className="font-display text-lg font-extrabold text-gray-900">Vitrino</span>
+            <span className="font-display text-lg font-extrabold text-gray-900">Vitrinoo</span>
           </div>
 
           <div className="flex flex-col gap-1.5">

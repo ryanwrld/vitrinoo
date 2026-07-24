@@ -41,7 +41,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Claude Code / GSD — arquivos internos da ferramenta, não do app Vitrino
+# Claude Code / GSD — arquivos internos da ferramenta, não do app Vitrinoo
 /.agents/
 /.claude/agents/
 /.claude/commands/

@@ -44,7 +44,7 @@ None — discussion stayed within phase scope.
 
 | ID | Description | Research Support |
 |----|-------------|------------------|
-| LOJA-02 | Revendedor pode definir um slug personalizado (vitrino.app/loja/[slug]) com validação de unicidade em tempo real | See "Critical Finding: RLS Blocks Cross-Tenant Slug Checks" (Pitfall 1) and "Architecture Patterns → Pattern 1" — requires a new `SECURITY DEFINER` RPC function, not a direct table query |
+| LOJA-02 | Revendedor pode definir um slug personalizado (vitrinoo.app/loja/[slug]) com validação de unicidade em tempo real | See "Critical Finding: RLS Blocks Cross-Tenant Slug Checks" (Pitfall 1) and "Architecture Patterns → Pattern 1" — requires a new `SECURITY DEFINER` RPC function, not a direct table query |
 | LOJA-03 | Revendedor pode gerar e baixar QR Code do link da vitrine | See "Code Examples → QR Code preview + download" and Package Legitimacy Audit for `qrcode` |
 | LOJA-04 | Revendedor pode copiar o link da vitrine com um clique | See "Code Examples → Copy-to-clipboard" — standard Clipboard API + `sonner` toast, no new library needed |
 </phase_requirements>

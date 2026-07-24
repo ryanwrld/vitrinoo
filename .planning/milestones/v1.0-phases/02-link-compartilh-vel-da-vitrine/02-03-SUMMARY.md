@@ -32,7 +32,7 @@ key-files:
     - src/lib/database.types.ts
 
 key-decisions:
-  - "Migration aplicada ao projeto Supabase remoto real (VITRINO, ref yuyprdjzeslanxbgcemj) via npx supabase db push, com SUPABASE_ACCESS_TOKEN fornecido pelo usuário durante a execução — confirmado explicitamente pelo usuário antes do push (ação em banco ao vivo)"
+  - "Migration aplicada ao projeto Supabase remoto real (VITRINOO, ref yuyprdjzeslanxbgcemj) via npx supabase db push, com SUPABASE_ACCESS_TOKEN fornecido pelo usuário durante a execução — confirmado explicitamente pelo usuário antes do push (ação em banco ao vivo)"
   - "Lógica de validação de logo (magic bytes) duplicada em src/lib/settings/actions.ts em vez de importada de src/lib/onboarding/actions.ts, porque validateLogoFile não é exportada e este plano não lista src/lib/onboarding/actions.ts em files_modified — evita expandir o escopo de arquivos tocados"
   - "getOwnedStore() extraído como helper privado (não estava no pattern map literal, que mostra o bloco repetido 3x) para não triplicar o mesmo código nas 3 actions — comportamento idêntico ao padrão"
 
@@ -110,7 +110,7 @@ status: complete
 
 ## Accomplishments
 - `supabase/migrations/0002_slug_availability_rpc.sql`: função `is_slug_available(candidate_slug text) returns boolean`, `SECURITY DEFINER`, `search_path` fixado (`public, pg_temp`), grant restrito a `authenticated` — nenhuma policy RLS existente foi enfraquecida
-- Migration aplicada ao projeto Supabase remoto real (VITRINO) via `npx supabase db push`, com confirmação explícita do usuário antes da operação em banco ao vivo
+- Migration aplicada ao projeto Supabase remoto real (VITRINOO) via `npx supabase db push`, com confirmação explícita do usuário antes da operação em banco ao vivo
 - `src/lib/database.types.ts` regenerado via `npx supabase gen types typescript --linked` — agora inclui `is_slug_available` sob `public.Functions`
 - `src/lib/settings/actions.ts`: três Server Actions (`checkSlugAvailability`, `updateStoreSlug`, `saveStoreSettings`) seguindo o padrão "getUser() → localizar loja por owner_id → operar por store.id" de `saveOnboarding`
 - Regressão cross-tenant crítica provada: `checkSlugAvailability` retorna `available: false` para um slug pertencente a outro revendedor, mesmo sob a RLS restritiva de `stores`

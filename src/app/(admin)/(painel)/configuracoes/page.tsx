@@ -44,7 +44,7 @@ export default async function ConfiguracoesContaPage() {
           <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <span className="block font-medium text-gray-900 dark:text-gray-50">Tema</span>
-              <span className="text-sm text-gray-500 dark:text-gray-400">Escolha como a plataforma Vitrino será exibida.</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">Escolha como a plataforma Vitrinoo será exibida.</span>
             </div>
             <ThemeToggle />
           </div>

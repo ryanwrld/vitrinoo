@@ -1,8 +1,8 @@
-# Vitrino
+# Vitrinoo
 
 ## What This Is
 
-Vitrino é um micro-SaaS que transforma o catálogo informal de um revendedor de chuteiras importadas (hoje espalhado em Yupoo em mandarim, pastas do Drive ou fotos soltas no WhatsApp) em uma página de catálogo profissional em português — com produtos, tamanhos disponíveis, preços em BRL e botão de pedido direto no WhatsApp do revendedor. O cliente final escolhe modelo e tamanho na vitrine pública e manda mensagem já pronta, sem o revendedor precisar estar online.
+Vitrinoo é um micro-SaaS que transforma o catálogo informal de um revendedor de chuteiras importadas (hoje espalhado em Yupoo em mandarim, pastas do Drive ou fotos soltas no WhatsApp) em uma página de catálogo profissional em português — com produtos, tamanhos disponíveis, preços em BRL e botão de pedido direto no WhatsApp do revendedor. O cliente final escolhe modelo e tamanho na vitrine pública e manda mensagem já pronta, sem o revendedor precisar estar online.
 
 ## Core Value
 

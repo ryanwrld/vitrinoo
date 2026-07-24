@@ -1,4 +1,4 @@
-const DEFAULT_SITE_ORIGIN = "https://vitrino.app";
+const DEFAULT_SITE_ORIGIN = "https://vitrinoo.app";
 
 /**
  * Constrói a URL pública completa da vitrine a partir do slug da loja.

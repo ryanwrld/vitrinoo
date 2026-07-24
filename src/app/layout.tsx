@@ -19,7 +19,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Vitrino",
+  title: "Vitrinoo",
   description:
     "Seu catálogo de chuteiras em português, funcionando 24h.",
 };

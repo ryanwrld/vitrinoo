@@ -18,7 +18,7 @@
 - **D-04:** Tamanhos esgotados seguem o Success Criteria #2 do ROADMAP: visual riscado + `pointer-events: none`, com revalidação no momento do clique (incluindo clique rápido/duplo e Enter no teclado) — nenhuma decisão nova aqui além do que já está travado no ROADMAP.
 
 **Limitação técnica crítica: foto do produto na mensagem**
-- **D-05 (constraint técnica, não decisão de produto):** O link `wa.me` só aceita texto — é tecnicamente impossível anexar uma imagem automaticamente via deep link, em qualquer plataforma. Limitação da API do WhatsApp, não do código do Vitrino.
+- **D-05 (constraint técnica, não decisão de produto):** O link `wa.me` só aceita texto — é tecnicamente impossível anexar uma imagem automaticamente via deep link, em qualquer plataforma. Limitação da API do WhatsApp, não do código do Vitrinoo.
 - **D-06:** A mensagem de texto inclui a **URL direta da foto de capa** (ex: `Foto: https://.../produto.jpg`). O WhatsApp gera preview automático a partir do link. Resolve a ambiguidade de variação exata do produto (cor/edição) quando múltiplos produtos compartilham nome de modelo.
 - **D-07:** O botão "Copiar mensagem" (fallback) copia o **mesmo texto** que seria enviado via wa.me — incluindo a URL da foto — com toast "Mensagem copiada!". Não copia número de telefone separadamente. Não tenta copiar a imagem binária via Clipboard API.
 - **D-08:** O botão "Copiar mensagem" é **sempre visível** ao lado/abaixo do "Pedir agora" — não é fallback condicional detectando falha do wa.me.

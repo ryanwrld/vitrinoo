@@ -30,7 +30,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 function uniqueEmail(label: string): string {
-  return `vitrino.reset.${label}.${Date.now()}.${Math.random().toString(36).slice(2)}@gmail.com`;
+  return `vitrinoo.reset.${label}.${Date.now()}.${Math.random().toString(36).slice(2)}@gmail.com`;
 }
 
 describe("requestPasswordReset", () => {

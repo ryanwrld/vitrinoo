@@ -1,4 +1,4 @@
-# Requirements: Vitrino — v1.1 Dashboard de Tendência
+# Requirements: Vitrinoo — v1.1 Dashboard de Tendência
 
 **Defined:** 2026-07-21
 **Core Value:** O cliente final consegue escolher um modelo e tamanho na vitrine e disparar uma mensagem de pedido pronta no WhatsApp do revendedor — sem fricção, sem cadastro, sem o revendedor precisar estar online.

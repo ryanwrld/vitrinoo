@@ -34,7 +34,7 @@ Escopo fixo (LOJA-02, LOJA-03, LOJA-04, mais a edição pós-onboarding de LOJA-
 
 ### Copiar Link
 - **D-12:** Feedback de cópia via toast "Link copiado!" — consistente com o padrão de feedback (`sonner`) já estabelecido no projeto desde a Fase 1.
-- **D-13:** O link completo da vitrine aparece visível como texto na tela (campo readonly, ex: `vitrino.app/loja/nome-da-loja`) ao lado do botão "Copiar" — revendedor consegue ler/conferir antes de compartilhar. Mesmo bloco visual do QR Code.
+- **D-13:** O link completo da vitrine aparece visível como texto na tela (campo readonly, ex: `vitrinoo.app/loja/nome-da-loja`) ao lado do botão "Copiar" — revendedor consegue ler/conferir antes de compartilhar. Mesmo bloco visual do QR Code.
 
 ### Claude's Discretion
 - Geração do QR Code client-side vs. via Route Handler no servidor — decisão técnica, não de UX; ambas atendidas pela lib `qrcode`.

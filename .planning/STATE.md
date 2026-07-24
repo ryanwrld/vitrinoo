@@ -81,7 +81,7 @@ Nenhum ainda.
 |---|-------------|------|--------|-----------|
 | 260715-du7 | Rebrand de cores: paleta verde → azul (Vivid Royal #0D21A1, Alice Blue #E7F2FD, preto #000000) em src/ e UI-SPECs | 2026-07-15 | 03e664e | [260715-du7-rebrand-de-cores-substituir-a-paleta-ver](./quick/260715-du7-rebrand-de-cores-substituir-a-paleta-ver/) |
 | 260715-odl | Criar README.md de apresentação do projeto para o GitHub | 2026-07-15 | a74432b | [260715-odl-criar-readme-md-de-apresenta-o-do-projet](./quick/260715-odl-criar-readme-md-de-apresenta-o-do-projet/) |
-| 260716-fl8 | Aplicar novo design system visual ao Vitrino (tokens, cores, tipografia, espaçamento, raio, sombra, motion) a partir do pacote em `# Vitrino Design System/` — migração puramente de estilo | 2026-07-16 | ef39414 | [260716-fl8-aplicar-novo-design-system-visual-ao-vit](./quick/260716-fl8-aplicar-novo-design-system-visual-ao-vit/) |
+| 260716-fl8 | Aplicar novo design system visual ao Vitrinoo (tokens, cores, tipografia, espaçamento, raio, sombra, motion) a partir do pacote em `# Vitrinoo Design System/` — migração puramente de estilo | 2026-07-16 | ef39414 | [260716-fl8-aplicar-novo-design-system-visual-ao-vit](./quick/260716-fl8-aplicar-novo-design-system-visual-ao-vit/) |
 
 ## Itens Adiados
 

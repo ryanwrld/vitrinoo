@@ -63,7 +63,7 @@ metrics:
 status: complete
 ---
 
-# Phase quick-260716-fl8 Plan 1: Aplicar novo Design System visual ao Vitrino Summary
+# Phase quick-260716-fl8 Plan 1: Aplicar novo Design System visual ao Vitrinoo Summary
 
 Migração puramente visual do painel admin e da vitrine pública para o novo Design System (tokens `@theme` de cor/raio/sombra/motion, fontes Manrope+Inter), sem alterar nenhuma lógica, prop, Server Action, query, RLS ou copy.
 

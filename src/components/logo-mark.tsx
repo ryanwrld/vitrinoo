@@ -1,5 +1,5 @@
 /**
- * LogoMark — símbolo SVG do Vitrino.
+ * LogoMark — símbolo SVG do Vitrinoo.
  * Conceito: vitrine de loja — um "V" formado por duas prateleiras em perspectiva
  * leve dentro de um quadrado arredondado azul de marca.
  * Funciona em todos os tamanhos (sidebar 28px, auth 30px, etc).
@@ -51,7 +51,7 @@ export function LogoFull({ size = 28 }: { size?: number }) {
     <div className="flex items-center gap-2">
       <LogoMark size={size} />
       <span className="font-display text-lg font-extrabold text-gray-900">
-        Vitrino
+        Vitrinoo
       </span>
     </div>
   );

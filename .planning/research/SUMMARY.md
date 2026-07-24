@@ -1,6 +1,6 @@
 # Resumo da Pesquisa do Projeto
 
-**Projeto:** Vitrino — micro-SaaS brasileiro de catálogo/vitrine para revendedores de chuteiras de futebol importadas
+**Projeto:** Vitrinoo — micro-SaaS brasileiro de catálogo/vitrine para revendedores de chuteiras de futebol importadas
 **Domínio:** SaaS mobile-first de dois lados (painel admin + vitrine pública sem login) com repasse de pedido via WhatsApp
 **Pesquisado em:** 2026-07-10
 **Confiança:** MÉDIA (ALTA em fatos de tecnologia, MÉDIA em padrões de funcionalidades/arquitetura, MÉDIA-ALTA em armadilhas baseado em pesquisa competitiva + melhores práticas de UX)
@@ -9,7 +9,7 @@
 
 ## Resumo Executivo
 
-Vitrino é uma ferramenta de coordenação de mercado para revendedores não-técnicos no nicho competitivo de revenda de chuteiras de futebol no Brasil. O sucesso depende inteiramente de um momento de conversão: um cliente chegando em um link de vitrine (compartilhado via Instagram/WhatsApp), selecionando um tamanho, e tocando em "pedir agora" para abrir o WhatsApp com uma mensagem pré-preenchida. Qualquer atrito nesse fluxo mata o produto — e a pesquisa confirma três riscos sobrepostos que devem guiar o sequenciamento inicial das fases: (1) o link profundo do WhatsApp é surpreendentemente frágil (formatação de telefone, codificação, compatibilidade com navegador in-app), (2) o isolamento multi-tenant via RLS é poderoso mas silencioso quando quebrado, e (3) a vitrine pública nunca deve ser bloqueada por middleware de auth, o que é uma garantia estrutural no Next.js apenas se aplicado no nível de roteamento, não no código.
+Vitrinoo é uma ferramenta de coordenação de mercado para revendedores não-técnicos no nicho competitivo de revenda de chuteiras de futebol no Brasil. O sucesso depende inteiramente de um momento de conversão: um cliente chegando em um link de vitrine (compartilhado via Instagram/WhatsApp), selecionando um tamanho, e tocando em "pedir agora" para abrir o WhatsApp com uma mensagem pré-preenchida. Qualquer atrito nesse fluxo mata o produto — e a pesquisa confirma três riscos sobrepostos que devem guiar o sequenciamento inicial das fases: (1) o link profundo do WhatsApp é surpreendentemente frágil (formatação de telefone, codificação, compatibilidade com navegador in-app), (2) o isolamento multi-tenant via RLS é poderoso mas silencioso quando quebrado, e (3) a vitrine pública nunca deve ser bloqueada por middleware de auth, o que é uma garantia estrutural no Next.js apenas se aplicado no nível de roteamento, não no código.
 
 A stack recomendada (Next.js 16 + Supabase + Vercel Pro, **não** a v14 + Hobby originalmente sugerida) é moderna, apropriada em custo para a escala de lançamento de "dezenas", e alinha-se com como concorrentes maduros nesta categoria (Gopage, Vendizap) fizeram bootstrap. O escopo de funcionalidades está bem validado contra concorrentes e não está nem super nem sub-escopado para o MVP. A arquitetura segue padrões multi-tenant comprovados mas impõe restrições estruturais rígidas (isolamento de rotas, modelo de dados RLS-first, construção de link no lado do cliente) que devem ser embutidas durante as fases de fundação, não retrofitadas.
 
@@ -25,7 +25,7 @@ Comece com **Next.js 16.2.x + React 19.2.x + Tailwind CSS 4.x + Supabase + Verce
 
 O escopo original recomendava Next.js 14, que está duas majors atrás (versão estável atual: 16.2.10 na data desta pesquisa). Começar na 14 significa herdar imediatamente APIs depreciadas e migrá-las dentro de poucos meses. Mais criticamente: o modelo **Cache Components** do Next 16 (cache opt-in via diretiva `"use cache"`) torna a vitrine pública dinâmica por padrão, o que é perfeito para o requisito crítico do projeto (frescor de estoque em segundos, nunca minutos). Com a 14, o modelo de cache implícito trabalha contra esse requisito.
 
-O escopo original usava o Vercel Hobby (gratuito), que viola os próprios termos de uso justo da Vercel para produtos comerciais (Vitrino é orientado a receita mesmo pré-monetização). Isso deve ser sinalizado: o Vercel Pro ($20/mês) é o tier de produção correto desde o primeiro dia.
+O escopo original usava o Vercel Hobby (gratuito), que viola os próprios termos de uso justo da Vercel para produtos comerciais (Vitrinoo é orientado a receita mesmo pré-monetização). Isso deve ser sinalizado: o Vercel Pro ($20/mês) é o tier de produção correto desde o primeiro dia.
 
 **Tecnologias core com justificativa:**
 
@@ -41,7 +41,7 @@ Ver STACK.md para versões detalhadas de bibliotecas, instruções de instalaç�
 
 ### Funcionalidades Esperadas
 
-As funcionalidades estão bem escopadas e validadas contra três categorias de referência sobrepostas: ferramentas de catálogo BR (Gopage, Vendizap, Vou Pedir), ferramentas globais de comércio social (Catlog, Catálogo Business do WhatsApp), e ferramentas de link-in-bio (Linktree, Beacons). A análise de concorrentes confirma que o nicho convergiu para "catálogo + botão do WhatsApp, sem pagamento, sem carrinho" no tier de entrada — exatamente onde o MVP do Vitrino se posiciona.
+As funcionalidades estão bem escopadas e validadas contra três categorias de referência sobrepostas: ferramentas de catálogo BR (Gopage, Vendizap, Vou Pedir), ferramentas globais de comércio social (Catlog, Catálogo Business do WhatsApp), e ferramentas de link-in-bio (Linktree, Beacons). A análise de concorrentes confirma que o nicho convergiu para "catálogo + botão do WhatsApp, sem pagamento, sem carrinho" no tier de entrada — exatamente onde o MVP do Vitrinoo se posiciona.
 
 **Requisitos básicos (usuários esperam isso — a ausência de qualquer um mata a viabilidade do produto):**
 

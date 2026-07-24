@@ -9,7 +9,7 @@
 A sugestão do autor — **Next.js 14 + Tailwind CSS + Supabase (auth/Postgres/storage) + Vercel** — está correta na direção e deve ser mantida como o formato da arquitetura (um framework, um BaaS, um host). Duas coisas precisam ser atualizadas antes de começar:
 
 1. **Next.js 14 está duas majors atrás.** A versão estável atual é **Next.js 16.2.x** (a 16 foi lançada em out/2025; 16.2.10 é a mais recente no npm na data desta pesquisa). Começar um projeto greenfield na 14 em meados de 2026 significa herdar imediatamente APIs depreciadas (`middleware.ts`, `params`/`cookies()` síncronos) que precisariam ser migradas em poucos meses. Comece na 16.
-2. **O Vercel Hobby (o plano gratuito) é contratualmente não-comercial.** Vitrino é um SaaS orientado a receita (freemium, monetização adiada mas o produto em si é comercial) — isso tecnicamente exige o **Vercel Pro ($20/mês)** para o deploy de produção, conforme os próprios termos de uso justo da Vercel, mesmo com $0 em cobrança real hoje. Isso muda a suposição de "roda a $0/mês" nas Key Decisions do PROJECT.md e deve ser sinalizado explicitamente ao usuário (ver O Que NÃO Usar / Avaliação de Confiança abaixo).
+2. **O Vercel Hobby (o plano gratuito) é contratualmente não-comercial.** Vitrinoo é um SaaS orientado a receita (freemium, monetização adiada mas o produto em si é comercial) — isso tecnicamente exige o **Vercel Pro ($20/mês)** para o deploy de produção, conforme os próprios termos de uso justo da Vercel, mesmo com $0 em cobrança real hoje. Isso muda a suposição de "roda a $0/mês" nas Key Decisions do PROJECT.md e deve ser sinalizado explicitamente ao usuário (ver O Que NÃO Usar / Avaliação de Confiança abaixo).
 
 Todo o restante da sugestão (Tailwind, Supabase para auth+DB+storage, provedor único de hospedagem) se sustenta bem contra as alternativas de 2026 e está confirmado abaixo.
 
@@ -52,7 +52,7 @@ Todo o restante da sugestão (Tailwind, Supabase para auth+DB+storage, provedor 
 
 ```bash
 # Scaffold (padrão Next 16: App Router, TS, Tailwind v4, ESLint config flat)
-npx create-next-app@latest vitrino --typescript --tailwind --eslint --app
+npx create-next-app@latest vitrinoo --typescript --tailwind --eslint --app
 
 # Supabase
 npm install @supabase/supabase-js @supabase/ssr
@@ -75,7 +75,7 @@ npm install -D sharp   # apenas se adicionar recodificação server-side como se
 | Recomendado | Alternativa | Quando Usar a Alternativa |
 |-------------|-------------|--------------------------|
 | Supabase (auth+DB+storage empacotados) | Neon (Postgres puro) + Clerk (auth) + Vercel Blob (storage) | Se você especificamente quer o melhor branching de Postgres serverless da categoria (scale-to-zero, branches de DB instantâneos por PR) e está disposto a integrar 2-3 fornecedores em vez de um. Adiciona área de integração sem benefício para o MVP aqui — rejeitar para este projeto. |
-| Supabase | Firebase | Apenas se este fosse um app NoSQL-friendly, mobile-nativo. Os dados do Vitrino (produtos, tamanhos, preços, slugs, catálogos multi-tenant escopados por RLS) são inerentemente relacionais — o modelo de documentos do Firestore seria um encaixe pior e brigaria com você nos filtros/joins de marca/solado/modalidade da vitrine. |
+| Supabase | Firebase | Apenas se este fosse um app NoSQL-friendly, mobile-nativo. Os dados do Vitrinoo (produtos, tamanhos, preços, slugs, catálogos multi-tenant escopados por RLS) são inerentemente relacionais — o modelo de documentos do Firestore seria um encaixe pior e brigaria com você nos filtros/joins de marca/solado/modalidade da vitrine. |
 | Vercel | Netlify / Cloudflare Pages | Apenas se a restrição de uso comercial do tier Hobby for um bloqueador rígido e o usuário quiser ficar em $0 literal por mais tempo — o tier gratuito do Cloudflare Pages tem uma política de uso comercial mais permissiva, ao custo de perder a integração zero-config da Vercel com Next.js (ISR, ergonomia de ISR exigem trabalho extra de adaptador fora da Vercel). Não recomendado como padrão; revisitar apenas se o orçamento for realmente $0 inegociável. |
 | Compressão de imagem no lado do cliente com `browser-image-compression` | Transformações de imagem do Supabase Storage (lado do servidor) | Apenas no Supabase Pro ($25/mês) — o recurso de transform/Smart CDN **não está incluído no tier gratuito** do Supabase (100 imagens de origem grátis, depois medido). Não desenhe o MVP assumindo que isso está disponível. |
 | Renderização dinâmica (sem cache) da vitrine para frescor de estoque | Supabase Realtime (websockets do Postgres Changes) | Adicionar depois como um aprimoramento progressivo se você quiser que as pílulas de estoque atualizem ao vivo em uma aba que um cliente já tem aberta por minutos. Não é necessário para satisfazer o requisito "segundos, nunca minutos", que uma renderização dinâmica simples a cada carregamento/navegação de página já satisfaz com muito menos código. |
@@ -157,5 +157,5 @@ function buildWhatsAppLink(phoneE164Digits: string, message: string): string {
 - Busca na web (múltiplos resultados independentes cruzados, confiança MÉDIA): comparações Supabase vs Neon vs Firebase em 2026; preços de storage/transformação de imagem no tier gratuito do Supabase; melhores práticas de compressão de imagem no lado do cliente; orientação de construção e codificação de links wa.me; documentação do Supabase Realtime Postgres Changes; bug e data de correção do repasse wa.me no navegador in-app do Instagram
 
 ---
-*Pesquisa de stack para: Vitrino — micro-SaaS brasileiro de catálogo/vitrine para revendedores*
+*Pesquisa de stack para: Vitrinoo — micro-SaaS brasileiro de catálogo/vitrine para revendedores*
 *Pesquisado em: 2026-07-10*
