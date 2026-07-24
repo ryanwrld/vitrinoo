@@ -275,6 +275,37 @@ input:autofill {
   animation: ping 1.2s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
+/*
+ * Highlight direcional (glossy) na borda do popup de notificações — não é
+ * um utility genérico de glass pra qualquer card, é o efeito específico do
+ * NotificationBell simulando luz batendo no topo/canto superior direito da
+ * superfície de vidro (referência visual do usuário), esmaecendo pro resto
+ * da borda. `border-image` não respeita `border-radius`, então a técnica é
+ * gradiente mascarado: o pseudo-elemento herda o raio do host via
+ * `border-radius: inherit`, e `mask-composite: exclude` corta o miolo,
+ * deixando só o anel de 1px (mesma espessura do `border` que substitui).
+ */
+.notification-glow-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background:
+    radial-gradient(65% 60% at 50% -18%, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0) 50%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0.15) 40%, rgba(255, 255, 255, 0.3) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.dark .admin-scope .notification-glow-border::before {
+  background:
+    radial-gradient(65% 60% at 50% -18%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.02) 30%, rgba(255, 255, 255, 0.05) 100%);
+}
+
 /* Reduced motion — respeita preferência do sistema operacional */
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in,
