@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeWhatsAppBR } from "@/lib/phone/normalize-br";
 import { onboardingSchema } from "@/lib/validation/onboarding";
@@ -208,8 +209,13 @@ export async function saveStoreSettings(formData: FormData): Promise<SettingsAct
       return { error: "Não foi possível enviar o logo. Tente novamente." };
     }
 
+    // `upsert: true` grava sempre no mesmo caminho, então a URL pública
+    // nunca muda de um upload pro outro — sem um cache-buster o navegador
+    // (e o CDN da Vercel/Supabase) continuam servindo a logo antiga em
+    // cache mesmo depois da troca. `Date.now()` aqui é só um valor opaco
+    // pra invalidar cache, nunca comparado/persistido como timestamp real.
     const { data: publicUrlData } = owned.supabase.storage.from("store-assets").getPublicUrl(path);
-    logoUrl = publicUrlData.publicUrl;
+    logoUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
   }
 
   const { error: storeUpdateError } = await owned.supabase
@@ -253,6 +259,13 @@ export async function saveStoreSettings(formData: FormData): Promise<SettingsAct
   if (settingsUpdateError) {
     return { error: "Não foi possível salvar a configuração de WhatsApp. Tente novamente." };
   }
+
+  // O layout do painel (src/app/(admin)/(painel)/layout.tsx) busca
+  // name/slug/logo_url uma vez por navegação e passa pra AdminSidebar (props)
+  // e pro StoreIdentityProvider (contexto usado por HeaderActions em cada
+  // página) — sem revalidar, o avatar fica preso nos dados antigos até uma
+  // navegação completa, mesmo com o save OK.
+  revalidatePath("/", "layout");
 
   return { success: true };
 }

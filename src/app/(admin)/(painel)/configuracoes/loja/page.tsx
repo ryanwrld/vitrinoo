@@ -55,6 +55,7 @@ export default async function ConfiguracoesPage() {
       <SettingsForm
         store={{
           name: store.name,
+          logoUrl: store.logo_url,
           accentColor: store.accent_color,
           tagline: store.tagline,
           hideSoldOutDefault: store.hide_sold_out_default,

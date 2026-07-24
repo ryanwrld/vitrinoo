@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -23,6 +23,7 @@ import { saveStoreSettings } from "@/lib/settings/actions";
 export type SettingsFormProps = {
   store: {
     name: string;
+    logoUrl: string | null;
     accentColor: string | null;
     tagline: string | null;
     hideSoldOutDefault: boolean;
@@ -36,6 +37,8 @@ export type SettingsFormProps = {
 export function SettingsForm({ store, settings }: SettingsFormProps) {
   const [isPending, startTransition] = useTransition();
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const {
     register,
     handleSubmit,
@@ -52,6 +55,15 @@ export function SettingsForm({ store, settings }: SettingsFormProps) {
       hideSoldOutDefault: store.hideSoldOutDefault ? "true" : "false",
     },
   });
+
+  // Prévia local do arquivo escolhido (object URL) — revoga a anterior antes
+  // de criar uma nova para não vazar memória a cada troca de arquivo.
+  useEffect(() => {
+    if (!logoFile) return;
+    const objectUrl = URL.createObjectURL(logoFile);
+    setLogoPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [logoFile]);
 
   const whatsappValue = watch("whatsapp");
   const formattedPreview = whatsappValue ? new AsYouType("BR").input(whatsappValue) : "";
@@ -104,13 +116,43 @@ export function SettingsForm({ store, settings }: SettingsFormProps) {
           <label htmlFor="logo" className="text-sm font-medium text-gray-700 dark:text-gray-300">
             Logo (opcional)
           </label>
-          <input
-            id="logo"
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            onChange={(event) => setLogoFile(event.target.files?.[0] ?? null)}
-            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:focus:ring-blue-400/20"
-          />
+          <div className="flex items-center gap-3">
+            {(logoPreviewUrl ?? store.logoUrl) ? (
+              // eslint-disable-next-line @next/next/no-img-element -- prévia local (object URL) e logo já salva, sem necessidade de otimização do next/image aqui
+              <img
+                src={logoPreviewUrl ?? store.logoUrl ?? undefined}
+                alt="Logo atual da loja"
+                className="h-12 w-12 shrink-0 rounded-full border border-gray-200 object-cover dark:border-gray-800"
+              />
+            ) : (
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-dashed border-gray-300 text-[10px] text-gray-400 dark:border-gray-700 dark:text-gray-600">
+                Sem logo
+              </div>
+            )}
+            <div className="flex flex-1 flex-col gap-1">
+              {/* Input nativo escondido — o texto padrão do navegador
+                  ("Nenhum arquivo escolhido") não reflete se já existe uma
+                  logo salva, então trocamos por um botão + legenda próprios. */}
+              <input
+                id="logo"
+                ref={logoInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={(event) => setLogoFile(event.target.files?.[0] ?? null)}
+                className="sr-only"
+              />
+              <button
+                type="button"
+                onClick={() => logoInputRef.current?.click()}
+                className="self-start rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none transition-colors duration-150 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+              >
+                {store.logoUrl ? "Trocar logo" : "Escolher logo"}
+              </button>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {logoFile ? logoFile.name : "PNG, JPG ou WEBP"}
+              </span>
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-col gap-1">
