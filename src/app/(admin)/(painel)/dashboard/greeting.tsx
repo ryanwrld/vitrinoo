@@ -35,6 +35,6 @@ export function Greeting() {
   }, []);
 
   return (
-    <h1 className="font-display text-2xl font-extrabold text-gray-900 dark:text-gray-50">{text ?? "Dashboard"}</h1>
+    <h1 className="font-display text-2xl leading-tight font-extrabold text-gray-900 dark:text-gray-50">{text ?? "Dashboard"}</h1>
   );
 }

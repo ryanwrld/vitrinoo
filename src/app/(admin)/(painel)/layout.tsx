@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { AdminSidebar } from "@/components/admin-sidebar";
-import { AdminHeader } from "@/components/admin-header";
 import { createClient } from "@/lib/supabase/server";
+import { StoreIdentityProvider } from "@/lib/store-identity/context";
 
 /**
  * Layout do grupo de rotas aninhado `(painel)` — isola a sidebar às páginas
@@ -22,22 +22,30 @@ export default async function PainelLayout({ children }: { children: ReactNode }
 
   let storeName: string | null = null;
   let storeSlug: string | null = null;
+  let storeLogoUrl: string | null = null;
   if (userData.user) {
     const { data: store } = await supabase
       .from("stores")
-      .select("name, slug")
+      .select("name, slug, logo_url")
       .eq("owner_id", userData.user.id)
       .single();
     storeName = store?.name ?? null;
     storeSlug = store?.slug ?? null;
+    storeLogoUrl = store?.logo_url ?? null;
   }
 
   return (
     <div className="admin-scope flex min-h-dvh flex-col md:flex-row">
-      <AdminSidebar storeName={storeName} storeSlug={storeSlug} />
-      <main className="flex min-h-dvh flex-1 flex-col bg-gray-50 dark:bg-gray-925">
-        <AdminHeader storeName={storeName} />
-        {children}
+      <AdminSidebar storeName={storeName} storeSlug={storeSlug} storeLogoUrl={storeLogoUrl} />
+      {/* justify-center: quando o conteúdo da página é mais curto que a
+          viewport (poucos dados no Dashboard, formulários curtos), ele fica
+          centralizado no meio do `<main>` em vez de grudado no topo com um
+          respiro vazio embaixo. Páginas mais altas que a viewport continuam
+          normais — `justify-center` não afeta o scroll do fluxo do documento. */}
+      <main className="flex min-h-dvh flex-1 flex-col justify-center bg-gray-50 dark:bg-gray-925">
+        <StoreIdentityProvider storeName={storeName} storeLogoUrl={storeLogoUrl}>
+          {children}
+        </StoreIdentityProvider>
       </main>
     </div>
   );

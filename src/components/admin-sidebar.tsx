@@ -3,9 +3,10 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Home, List, Settings, LogOut, ExternalLink, Bell } from "lucide-react";
+import { Menu, X, Home, List, Settings, LogOut, ExternalLink, Bell, ChevronDown } from "lucide-react";
 import { signOutAction } from "@/lib/auth/actions";
 import { LogoMark } from "@/components/logo-mark";
+import { StoreAvatar } from "@/components/store-avatar";
 
 /**
  * Itens de navegação do painel (D-07, copy verbatim): Dashboard, Produtos,
@@ -56,13 +57,17 @@ function NavLinks({ pathname }: { pathname: string }) {
 }
 
 /**
- * Cabeçalho de logo — usa o SVG real do LogoMark + wordmark "Vitrino".
+ * Cabeçalho de logo — usa o SVG real do LogoMark + wordmark "Vitrinoo".
  */
 function LogoHeader() {
+  // -translate-x-1: centralização matemática de um lockup ícone+texto tende
+  // a "puxar" o olho pra direita (o texto pesa visualmente mais que o
+  // ícone) — pequeno ajuste ótico pra a dupla ficar equilibrada no centro
+  // da sidebar.
   return (
-    <div className="flex items-center gap-2 px-3">
+    <div className="flex -translate-x-1 items-center justify-center gap-2 px-3">
       <LogoMark size={28} />
-      <span className="font-display text-lg font-extrabold text-gray-900 dark:text-gray-50">Vitrino</span>
+      <span className="font-display text-lg font-extrabold text-gray-900 dark:text-gray-50">Vitrinoo</span>
     </div>
   );
 }
@@ -117,21 +122,14 @@ function AccountBlock({
 export function AdminSidebar({
   storeName,
   storeSlug,
+  storeLogoUrl,
 }: {
   storeName: string | null;
   storeSlug?: string | null;
+  storeLogoUrl?: string | null;
 }) {
   const pathname = usePathname();
   const dialogRef = useRef<HTMLDialogElement>(null);
-
-  const initials = storeName
-    ? storeName
-        .trim()
-        .split(/\s+/)
-        .slice(0, 2)
-        .map((word) => word[0]?.toUpperCase())
-        .join("")
-    : "?";
 
   function closeDrawer() {
     dialogRef.current?.close();
@@ -156,7 +154,7 @@ export function AdminSidebar({
   return (
     <>
       {/* Desktop: sidebar fixa, sempre no DOM, só visível >= md */}
-      <aside className="sticky top-0 hidden h-dvh w-[232px] shrink-0 flex-col gap-6 border-r border-gray-200 bg-gray-50 p-3 py-5 md:flex dark:border-gray-800 dark:bg-gray-925">
+      <aside className="sticky top-0 hidden h-dvh w-[232px] shrink-0 flex-col gap-6 border-r border-gray-200 bg-white p-3 py-5 md:flex dark:border-gray-800 dark:bg-gray-900">
         <LogoHeader />
         <nav className="flex flex-col gap-0.5">
           <NavLinks pathname={pathname} />
@@ -167,7 +165,7 @@ export function AdminSidebar({
       </aside>
 
       {/* Mobile: barra de topo com o hambúrguer e perfil (D-06 / UI-SPEC linha 132) — só visível < md */}
-      <div className="flex h-14 shrink-0 items-center justify-between border-b border-gray-200 bg-gray-50 px-4 md:hidden dark:border-gray-800 dark:bg-gray-925">
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 md:hidden dark:border-gray-800 dark:bg-gray-900">
         <button
           type="button"
           onClick={() => dialogRef.current?.showModal()}
@@ -177,35 +175,32 @@ export function AdminSidebar({
           <Menu className="h-6 w-6" aria-hidden="true" />
         </button>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <Link
             href="/dashboard/atividade"
             aria-label="Ver notificações"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-gray-500 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-50"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors duration-150 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
           >
             <Bell className="h-5 w-5" aria-hidden="true" />
           </Link>
           <Link
             href="/configuracoes/loja"
-            className={`flex items-center gap-2.5 rounded-md transition-colors duration-150`}
+            aria-label={storeName ? `Configurações de ${storeName}` : "Configurações da loja"}
+            className={`flex h-10 items-center gap-1.5 rounded-full pl-1 pr-2.5 transition-colors duration-150 ${
+              pathname === "/configuracoes/loja"
+                ? "bg-gray-200 dark:bg-gray-700"
+                : "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+            }`}
           >
-            <div className="flex min-w-0 flex-col leading-tight text-right">
-              <span className="truncate text-sm font-semibold text-gray-900 dark:text-gray-50">{storeName ?? "Sua loja"}</span>
-              <span className="text-xs text-gray-500 dark:text-gray-400">revendedor</span>
-            </div>
-            <div
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-              style={{ backgroundColor: "#0D21A1" }}
-            >
-              {initials}
-            </div>
+            <StoreAvatar storeName={storeName} logoUrl={storeLogoUrl} />
+            <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" aria-hidden="true" />
           </Link>
         </div>
       </div>
       <dialog
         ref={dialogRef}
         aria-label="Menu de navegação"
-        className="m-0 h-dvh max-h-none w-64 max-w-none bg-gray-50 p-4 backdrop:bg-black/45 backdrop:backdrop-blur-[2px] dark:bg-gray-925"
+        className="m-0 h-dvh max-h-none w-64 max-w-none bg-white p-4 backdrop:bg-black/45 backdrop:backdrop-blur-[2px] dark:bg-gray-900"
         onCancel={closeDrawer}
       >
         <div className="flex h-full flex-col gap-6 animate-scale-in">

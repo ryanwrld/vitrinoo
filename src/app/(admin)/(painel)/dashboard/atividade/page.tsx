@@ -5,10 +5,11 @@ import { requireCompletedOnboarding } from "@/lib/auth/onboarding-guard";
 import { createClient } from "@/lib/supabase/server";
 import { queryRecentActivity, type ActivityFeedItem } from "@/lib/dashboard/metrics";
 import { formatRelativeTime } from "@/lib/dashboard/format-relative-time";
+import { HeaderActions } from "@/components/header-actions";
 
 /**
  * Histórico completo de atividade — a "escape valve" do sino no cabeçalho
- * do painel (AdminHeader/AdminSidebar). O feed embutido no dashboard tem
+ * do painel (HeaderActions/AdminSidebar). O feed embutido no dashboard tem
  * teto de propósito (MAX_FEED_LIMIT, ver dashboard/page.tsx) porque o
  * dashboard é atalho de acesso rápido, não histórico; quem quiser
  * vasculhar tudo vem pra cá — página própria, paginação real por offset
@@ -50,13 +51,16 @@ export default async function AtividadePage({
   const feedIcon = (item: ActivityFeedItem) => (item.type === "click" ? MessageCircle : Eye);
 
   return (
-    <div className="flex min-h-dvh w-full flex-col gap-6 px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
-      <div>
-        <Link href="/dashboard" className="flex w-fit items-center gap-1 text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50">
-          <ChevronLeft className="h-4 w-4" aria-hidden="true" /> Dashboard
-        </Link>
-        <h1 className="mt-2 font-display text-2xl font-extrabold text-gray-900 dark:text-gray-50">Atividade</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Histórico completo de visualizações e cliques em &quot;Pedir agora&quot;.</p>
+    <div className="flex w-full flex-col gap-6 px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <Link href="/dashboard" className="flex w-fit items-center gap-1 text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50">
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" /> Dashboard
+          </Link>
+          <h1 className="mt-2 font-display text-2xl font-extrabold text-gray-900 dark:text-gray-50">Atividade</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Histórico completo de visualizações e cliques em &quot;Pedir agora&quot;.</p>
+        </div>
+        <HeaderActions />
       </div>
 
       <section className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">

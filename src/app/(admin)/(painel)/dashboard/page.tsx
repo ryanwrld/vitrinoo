@@ -22,6 +22,7 @@ import {
 } from "@/lib/dashboard/metrics";
 import { formatBRLPrice } from "@/lib/currency/brl";
 import { formatRelativeTime } from "@/lib/dashboard/format-relative-time";
+import { HeaderActions } from "@/components/header-actions";
 import { DashboardAutoRefresh } from "./dashboard-auto-refresh";
 import { Greeting } from "./greeting";
 
@@ -214,10 +215,13 @@ export default async function DashboardPage({
 
   if (produtos.length === 0) {
     return (
-      <div className="flex min-h-dvh w-full flex-col gap-6 px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
-        <div>
-          <h1 className="font-display text-2xl font-extrabold text-gray-900 dark:text-gray-50">Dashboard</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Visão geral da sua vitrine.</p>
+      <div className="flex w-full flex-col gap-6 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="font-display text-2xl leading-tight font-extrabold text-gray-900 dark:text-gray-50">Dashboard</h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Visão geral da sua vitrine.</p>
+          </div>
+          <HeaderActions />
         </div>
         <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-gray-300 px-6 py-16 text-center dark:border-gray-700">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-subtle dark:bg-blue-400/15">
@@ -260,9 +264,12 @@ export default async function DashboardPage({
   const feedIcon = (item: ActivityFeedItem) => (item.type === "click" ? MessageCircle : Eye);
 
   return (
-    <div className="flex min-h-dvh w-full flex-col gap-6 px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
+    <div className="flex w-full flex-col gap-6 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
       <DashboardAutoRefresh />
-      <Greeting />
+      <div className="flex items-center justify-between gap-3">
+        <Greeting />
+        <HeaderActions activityFeed={feed.items} />
+      </div>
 
       {/* MTR-03: placar do dia — sempre hoje, nunca acumulado */}
       <div className="grid grid-cols-1 divide-y divide-gray-200 overflow-hidden rounded-lg border border-gray-200 bg-white dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-900 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
