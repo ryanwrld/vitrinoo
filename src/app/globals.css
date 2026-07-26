@@ -160,6 +160,28 @@ body:has(.admin-scope) {
 }
 
 /*
+ * Scrollbar nativa escondida no painel admin em telas estreitas (< md,
+ * mesmo breakpoint do resto da UI mobile/desktop do painel) — a barra
+ * sólida do navegador (visível em simuladores de device/Chrome DevTools e
+ * em alguns navegadores mobile reais) não bate com a estética do app; o
+ * scroll em si continua funcionando normal por toque, só o indicador
+ * visual some. Mesmo truque (`scrollbar-width` + `-ms-overflow-style` +
+ * `::-webkit-scrollbar`) já usado nas listas internas (feed de atividade,
+ * popup de notificações) — aqui aplicado ao documento inteiro.
+ */
+@media (max-width: 767px) {
+  html:has(.admin-scope),
+  body:has(.admin-scope) {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  html:has(.admin-scope)::-webkit-scrollbar,
+  body:has(.admin-scope)::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/*
  * Autofill do navegador (credencial salva, ex.: login/e-mail) pinta o
  * próprio fundo do <input> por cima de qualquer `background-color` do site
  * — nenhum `bg-white`/`dark:bg-gray-900` sozinho vence essa pintura nativa
