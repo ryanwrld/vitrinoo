@@ -9,7 +9,7 @@
 
 Um revendedor de chuteiras importadas geralmente apresenta os seu produtos ao lead em um catálogo com pastas espalhadas do Google Drive, fotos soltas no WhatsApp ou num álbum do Yupoo em chinês (mandarim) — nada disso passa confiança e clareza dos produtos ao cliente final, e cada pedido vira uma troca manual de mensagens perguntando tamanho, preço e disponibilidade, afetando também seu processo de vendas, tornando-o mais lento e amador.
 
-O **Vitrinoo** transforma esse catálogo informal num catálogo organizado e claro, priorizando a experiencia do seu cliente final: produtos com fotos, tamanhos disponíveis, preços em BRL, e um botão que já abre o WhatsApp do revendedor com o pedido pronto — modelo, tamanho e preço inclusos. O cliente escolhe e manda a mensagem. Sem cadastro, sem app, sem o revendedor precisar estar online pra fechar a venda.
+O **Vitrinoo** transforma esse catálogo informal num catálogo organizado e claro, priorizando a experiencia do seu cliente final: produtos com fotos, tamanhos disponíveis, preços em BRL, e um botão que já abre o WhatsApp do revendedor com o pedido pronto — modelo, tamanho e preço inclusos. O cliente escolhe e manda a mensagem. Sem cadastro, sem app, sem o lojista precisar estar online pra apresentar o produto, usando vitrino, você só confirma no Whatsapp o interesse e dados de endereço do cliente, E FECHA A VENDA.
 
 ## Como funciona
 
