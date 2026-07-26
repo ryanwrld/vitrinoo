@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Home, List, Settings, LogOut, ExternalLink, Bell, ChevronDown } from "lucide-react";
-import { signOutAction } from "@/lib/auth/actions";
+import { Menu, X, Home, List, Settings, ExternalLink, Bell, ChevronDown, Headset, LogOut } from "lucide-react";
 import { LogoMark } from "@/components/logo-mark";
 import { StoreAvatar } from "@/components/store-avatar";
+import { ThemeMenuItem } from "@/components/theme-toggle-button";
+import { signOutAction } from "@/lib/auth/actions";
 
 /**
  * Itens de navegação do painel (D-07, copy verbatim): Dashboard, Produtos,
@@ -58,18 +59,38 @@ function NavLinks({ pathname }: { pathname: string }) {
 
 /**
  * Cabeçalho de logo — usa o SVG real do LogoMark + wordmark "Vitrinoo".
+ * `align="left"` na sidebar desktop (pedido explícito do usuário, volta ao
+ * alinhamento original); drawer mobile mantém centralizado com o ajuste
+ * ótico de `-translate-x-1` (lockup ícone+texto "puxa" o olho pra direita
+ * quando centralizado, o texto pesa visualmente mais que o ícone).
  */
-function LogoHeader() {
-  // -translate-x-1: centralização matemática de um lockup ícone+texto tende
-  // a "puxar" o olho pra direita (o texto pesa visualmente mais que o
-  // ícone) — pequeno ajuste ótico pra a dupla ficar equilibrada no centro
-  // da sidebar.
+function LogoHeader({ align = "center" }: { align?: "left" | "center" }) {
   return (
-    <div className="flex -translate-x-1 items-center justify-center gap-2 px-3">
+    <div className={`flex items-center gap-2 px-3 ${align === "center" ? "-translate-x-1 justify-center" : ""}`}>
       <LogoMark size={28} />
       <span className="font-display text-lg font-extrabold text-gray-900 dark:text-gray-50">Vitrinoo</span>
     </div>
   );
+}
+
+/**
+ * CTA de suporte — mesma regra do CTA "Pedir agora" da vitrine pública
+ * (CLAUDE.md): monta a mensagem completa primeiro, `encodeURIComponent`
+ * uma única vez sobre ela inteira, nunca por campo. `<a>` real (não
+ * onClick/window.open) pelo mesmo motivo de confiabilidade em webview.
+ *
+ * Mensagem interpolada com o nome da loja (já disponível aqui via prop) —
+ * sem isso toda conversa de suporte começa com "oi, qual é sua loja?" antes
+ * de chegar no problema de verdade. Termina em "..." (não um placeholder
+ * tipo "[descreva aqui]") de propósito: é WhatsApp, não formulário — o
+ * lojista manda essa mensagem e complementa com uma segunda descrevendo o
+ * problema, comportamento normal de chat; "..." sinaliza continuação sem
+ * parecer campo de formulário fora de lugar numa conversa.
+ */
+function buildSupportWhatsAppHref(storeName: string | null): string {
+  const identification = storeName ? `Sou da loja ${storeName}` : "Sou um lojista";
+  const message = `Olá! ${identification} e estou usando o Vitrinoo. Preciso de uma ajuda sua...`;
+  return `https://wa.me/5595984129576?text=${encodeURIComponent(message)}`;
 }
 
 /**
@@ -99,16 +120,16 @@ function AccountBlock({
         </a>
       )}
 
-      {/* Sair da conta */}
-      <form action={signOutAction}>
-        <button
-          type="submit"
-          className="flex min-h-10 w-full items-center gap-2.5 rounded-md px-2 text-sm font-medium text-gray-500 transition-colors duration-150 hover:bg-error-bg hover:text-error-fg dark:text-gray-400 dark:hover:bg-error-solid/15"
-        >
-          <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
-          Sair da conta
-        </button>
-      </form>
+      {/* Falar com suporte — abre o WhatsApp com mensagem pronta */}
+      <a
+        href={buildSupportWhatsAppHref(storeName)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex min-h-10 items-center gap-2.5 rounded-md px-2 text-sm font-medium text-gray-500 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-50"
+      >
+        <Headset className="h-4 w-4 shrink-0" aria-hidden="true" />
+        Falar com suporte
+      </a>
     </div>
   );
 }
@@ -130,10 +151,37 @@ export function AdminSidebar({
 }) {
   const pathname = usePathname();
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
 
   function closeDrawer() {
     dialogRef.current?.close();
   }
+
+  // Mesmo padrão de clique-fora/Esc do menu de conta do header desktop
+  // (header-actions.tsx) — duplicado aqui em vez de extraído porque o
+  // acionador mobile (barra de topo) e o desktop (HeaderActions) vivem em
+  // componentes diferentes sem um pai client comum próximo o bastante pra
+  // justificar um hook compartilhado só por isso.
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
+        setAccountMenuOpen(false);
+      }
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setAccountMenuOpen(false);
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [accountMenuOpen]);
 
   // Fecha o drawer se a viewport cruzar para desktop (>= md) enquanto ele
   // está aberto — sem isso, o <dialog> continua aberto (e visualmente
@@ -155,7 +203,7 @@ export function AdminSidebar({
     <>
       {/* Desktop: sidebar fixa, sempre no DOM, só visível >= md */}
       <aside className="sticky top-0 hidden h-dvh w-[232px] shrink-0 flex-col gap-6 border-r border-gray-200 bg-white p-3 py-5 md:flex dark:border-gray-800 dark:bg-gray-900">
-        <LogoHeader />
+        <LogoHeader align="left" />
         <nav className="flex flex-col gap-0.5">
           <NavLinks pathname={pathname} />
         </nav>
@@ -177,24 +225,51 @@ export function AdminSidebar({
 
         <div className="flex items-center gap-2">
           <Link
-            href="/dashboard/atividade"
+            href="/dashboard/notificacoes"
             aria-label="Ver notificações"
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors duration-150 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
           >
             <Bell className="h-5 w-5" aria-hidden="true" />
           </Link>
-          <Link
-            href="/configuracoes/loja"
-            aria-label={storeName ? `Configurações de ${storeName}` : "Configurações da loja"}
-            className={`flex h-10 items-center gap-1.5 rounded-full pl-1 pr-2.5 transition-colors duration-150 ${
-              pathname === "/configuracoes/loja"
-                ? "bg-gray-200 dark:bg-gray-700"
-                : "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
-            }`}
-          >
-            <StoreAvatar storeName={storeName} logoUrl={storeLogoUrl} />
-            <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" aria-hidden="true" />
-          </Link>
+          {/* Mesmo mecanismo do avatar+seta do header desktop
+              (header-actions.tsx): pill inteiro é um único alvo de clique
+              que abre o menu de conta (Sair) — não navega mais direto pra
+              /configuracoes/loja. */}
+          <div ref={accountMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setAccountMenuOpen((value) => !value)}
+              aria-label="Menu da conta"
+              aria-expanded={accountMenuOpen}
+              className={`flex h-10 items-center gap-1.5 rounded-full pl-1 pr-2.5 text-gray-500 transition-colors duration-150 dark:text-gray-400 ${
+                accountMenuOpen ? "bg-gray-200 dark:bg-gray-700" : "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+              }`}
+            >
+              <StoreAvatar storeName={storeName} logoUrl={storeLogoUrl} />
+              <ChevronDown className="h-4 w-4" aria-hidden="true" />
+            </button>
+
+            {accountMenuOpen && (
+              <div
+                className="animate-scale-in absolute right-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-lg border border-gray-200 bg-white p-1 shadow-md dark:border-gray-800 dark:bg-gray-900"
+                style={{ transformOrigin: "top right" }}
+              >
+                <form action={signOutAction}>
+                  <button
+                    type="submit"
+                    className="flex min-h-9 w-full items-center gap-2.5 rounded-md px-2 text-sm font-medium text-gray-600 transition-colors duration-150 hover:bg-error-bg hover:text-error-fg dark:text-gray-300 dark:hover:bg-error-solid/15"
+                  >
+                    <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    Sair da conta
+                  </button>
+                </form>
+                {/* Só existe aqui — no mobile/tablet não tem o círculo
+                    isolado de tema que o header desktop tem, então esse
+                    dropdown é o único jeito de trocar tema por lá. */}
+                <ThemeMenuItem />
+              </div>
+            )}
+          </div>
         </div>
       </div>
       <dialog
