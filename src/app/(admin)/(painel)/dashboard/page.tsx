@@ -437,9 +437,9 @@ export default async function DashboardPage({
           (bg-gray-100/800) fica "recuado" dentro do card branco/gray-900,
           mesmo princípio de profundidade já usado no avatar de produto. */}
       <div className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3">
           <h2 className="font-display font-bold text-gray-900 dark:text-gray-50">Ranking de tendência</h2>
-          <div className="inline-flex w-fit gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
+          <div className="inline-flex w-fit shrink-0 gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
             {VALID_PERIODS.map((d) => (
               <Link
                 key={d}
