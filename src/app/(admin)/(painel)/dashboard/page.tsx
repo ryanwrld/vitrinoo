@@ -8,6 +8,7 @@ import {
   ImageOff,
   MessageCircle,
   PackagePlus,
+  SportShoe,
   XCircle,
 } from "lucide-react";
 import { requireCompletedOnboarding } from "@/lib/auth/onboarding-guard";
@@ -15,6 +16,7 @@ import { createClient } from "@/lib/supabase/server";
 import { queryProducts } from "@/lib/products/list";
 import {
   queryRecentActivity,
+  querySizeDemand,
   queryTodayStats,
   queryTrendRanking,
   type ActivityFeedItem,
@@ -58,7 +60,7 @@ function parsePeriod(raw: string | undefined): Period {
  * `[&::-webkit-scrollbar]:hidden`) — rola por toque/roda do mouse
  * normalmente, só não expõe o indicador visual. Quem quiser o histórico
  * completo sem teto usa o sino de notificações no cabeçalho
- * (`/dashboard/atividade`, paginação real por offset).
+ * (`/dashboard/notificacoes`, paginação real por offset).
  */
 const ACTIVITY_FEED_LIMIT = 15;
 
@@ -245,12 +247,14 @@ export default async function DashboardPage({
     );
   }
 
-  const [today, feed, maisVisualizados, cliquesWhatsapp] = await Promise.all([
+  const [today, feed, maisVisualizados, cliquesWhatsapp, sizeDemand] = await Promise.all([
     queryTodayStats(supabase, store.id),
     queryRecentActivity(supabase, store.id, ACTIVITY_FEED_LIMIT),
     queryTrendRanking(supabase, store.id, "views", periodo),
     queryTrendRanking(supabase, store.id, "clicks", periodo),
+    querySizeDemand(supabase, store.id, periodo),
   ]);
+  const maxSizeDemand = Math.max(...sizeDemand.map((item) => item.count), 1);
 
   const disponiveis = produtos.filter((product) => product.disponivel).length;
   const esgotados = produtos.length - disponiveis;
@@ -289,29 +293,51 @@ export default async function DashboardPage({
 
       {/* Grid assimétrico (2/3 + 1/3, referência de layout tipo bento) —
           feed de atividade é o widget mais alto/denso, então fica na
-          coluna larga; Disponíveis/Esgotados são só contadores, cabem
-          empilhados na coluna estreita ao lado, sem disputar espaço com
-          os rankings abaixo. Colapsa pra 1 coluna abaixo de lg (mobile-first). */}
+          coluna larga; Disponíveis/Esgotados/Tamanhos cabem empilhados na
+          coluna estreita ao lado, sem disputar espaço com os rankings
+          abaixo. Colapsa pra 1 coluna abaixo de lg (mobile-first).
+          `lg:items-start`: por padrão o grid estica os 2 itens da linha pra
+          bater a altura do mais alto — qualquer lado que crescer (novo card
+          na coluna estreita, mais itens no feed) faz o OUTRO esticar e
+          sobrar vão vazio dentro dele. `items-start` tira essa dependência
+          nos dois sentidos, sem precisar de `self-start` por item nem tocar
+          no conteúdo de nenhum dos dois widgets. */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* MTR-04: feed de atividade recente, com teto + "Ver mais"/"Ver menos" */}
+        {/* MTR-04: feed de atividade recente, com teto + "Ver mais"/"Ver menos".
+            Volta a esticar igual sempre esticou (sem self-start) — em vez de
+            deixar vão vazio quando a coluna ao lado for mais alta, a lista
+            (`flex-1`) preenche a altura disponível. `justify-center` SÓ quando
+            os itens cabem sem scroll (≤4 nos 14rem): centralizado, distribui
+            e some o vão embaixo. Com mais que isso volta a top-align — se
+            centralizasse com overflow, o primeiro item ficaria cortado no
+            topo (fora do alcance do scroll). */}
         <section className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 lg:col-span-2">
           <h2 className="font-display font-bold text-gray-900 dark:text-gray-50">Atividade recente</h2>
           {feed.items.length > 0 ? (
-            <ul className="flex max-h-[14rem] flex-col gap-1 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            // Wrapper `relative lg:flex-1`: no desktop preenche a altura que
+            // sobra na section (que por sua vez é esticada pela coluna dos 3
+            // cards ao lado via grid), e a <ul> vira `lg:absolute inset-0` —
+            // fora do fluxo, então NÃO empurra a altura da caixa pra fora
+            // conforme entram mais itens. Resultado: a caixa fica exatamente
+            // do tamanho da coluna irmã (as duas terminam na mesma linha) e a
+            // lista rola por dentro. No mobile (sem coluna irmã) a <ul> volta
+            // ao fluxo normal com teto de 14rem.
+            <div className="relative min-h-0 lg:flex-1">
+            <ul className="flex max-h-[14rem] flex-col gap-1 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:absolute lg:inset-0 lg:max-h-none">
                 {feed.items.map((item, index) => {
                   const Icon = feedIcon(item);
                   return (
-                    <li key={`${item.type}-${item.productId}-${item.createdAt}-${index}`} className="flex items-start gap-3 border-b border-gray-100 py-2 last:border-none dark:border-gray-800">
+                    <li key={`${item.type}-${item.productId}-${item.createdAt}-${index}`} className="flex items-start gap-3.5 border-b border-gray-100 py-3 last:border-none dark:border-gray-800">
                       <span
-                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
                           item.type === "click"
                             ? "bg-success-bg text-success-fg dark:bg-success-solid/15"
                             : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
                         }`}
                       >
-                        <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+                        <Icon className="h-4 w-4" aria-hidden="true" />
                       </span>
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                      <span className="text-base text-gray-700 dark:text-gray-300">
                         {item.type === "click" ? (
                           <>
                             Alguém clicou em <b className="font-semibold text-gray-900 dark:text-gray-50">&quot;Pedir agora&quot;</b> — {item.productName}
@@ -321,44 +347,82 @@ export default async function DashboardPage({
                             <b className="font-semibold text-gray-900 dark:text-gray-50">{item.count} visualizaç{item.count > 1 ? "ões" : "ão"}</b> nova{item.count > 1 ? "s" : ""} — {item.productName}
                           </>
                         )}
-                        <span className="block text-xs text-gray-400 dark:text-gray-500">{formatRelativeTime(item.createdAt)}</span>
+                        <span className="mt-0.5 block text-sm text-gray-400 dark:text-gray-500">{formatRelativeTime(item.createdAt)}</span>
                       </span>
                     </li>
                   );
                 })}
             </ul>
+            </div>
           ) : (
-            <div className="flex flex-col gap-1 rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center dark:border-gray-700">
+            <div className="flex flex-1 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center dark:border-gray-700">
               <span className="font-medium text-gray-900 dark:text-gray-50">Ainda sem atividade</span>
               <span className="text-sm text-gray-500 dark:text-gray-400">Assim que sua vitrine receber acessos ou pedidos, eles aparecem aqui.</span>
             </div>
           )}
         </section>
 
-        {/* MTR-05: Disponíveis/Esgotados — sem "Total"/"Acessos" all-time.
-            Empilhados na coluna estreita (não 2 colunas lado a lado como
+        {/* MTR-05: Disponíveis/Esgotados/Tamanhos — sem "Total"/"Acessos"
+            all-time. Empilhados na coluna estreita (não lado a lado como
             antes) pra caber ao lado do feed sem espremer. `lg:content-start`
-            impede o grid de esticar os dois cards pra preencher a altura da
-            linha inteira (que agora acompanha a coluna do feed) — sem isso
-            cada card virava um retângulo vazio gigante. */}
+            empacota os cards no topo das próprias tracks; o alinhamento
+            entre essa coluna e "Atividade recente" (nenhum dos dois estica
+            pra acompanhar o outro) é resolvido no grid pai via
+            `lg:items-start`, não aqui. */}
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-1 lg:content-start lg:gap-4">
           <div className="flex flex-col gap-2 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-success-bg dark:bg-success-solid/15">
-              <CheckCircle2 className="h-5 w-5 text-success-fg" aria-hidden="true" />
-            </div>
-            <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-success-bg dark:bg-success-solid/15">
+                <CheckCircle2 className="h-5 w-5 text-success-fg" aria-hidden="true" />
+              </div>
               <span className="font-display text-2xl font-extrabold text-gray-900 dark:text-gray-50">{disponiveis}</span>
-              <span className="text-xs text-gray-500 dark:text-gray-400">Produtos disponíveis</span>
             </div>
+            <span className="text-xs text-gray-500 dark:text-gray-400">Produtos disponíveis</span>
           </div>
           <div className="flex flex-col gap-2 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-error-bg dark:bg-error-solid/15">
-              <XCircle className="h-5 w-5 text-error-fg" aria-hidden="true" />
-            </div>
-            <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-error-bg dark:bg-error-solid/15">
+                <XCircle className="h-5 w-5 text-error-fg" aria-hidden="true" />
+              </div>
               <span className={`font-display text-2xl font-extrabold ${esgotados > 0 ? "text-error-fg" : "text-gray-900 dark:text-gray-50"}`}>{esgotados}</span>
-              <span className="text-xs text-gray-500 dark:text-gray-400">Produtos esgotados</span>
             </div>
+            <span className="text-xs text-gray-500 dark:text-gray-400">Produtos esgotados</span>
+          </div>
+
+          {/* Tamanhos mais pedidos — cruza order_clicks.size de todos os
+              produtos, dado que existia mas nunca era mostrado consolidado.
+              col-span-2 no mobile (linha própria, cheia) pra não sobrar meia
+              coluna vazia ao lado; segue o mesmo filtro periodo do Ranking
+              de tendência, sem seletor próprio. */}
+          <div className="col-span-2 flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900 lg:col-span-1">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-subtle dark:bg-blue-400/15">
+                <SportShoe className="h-5 w-5 text-primary dark:text-blue-300" aria-hidden="true" />
+              </div>
+              <span className="font-display text-base font-bold text-gray-900 dark:text-gray-50">Tamanhos mais pedidos</span>
+            </div>
+            {sizeDemand.length > 0 ? (
+              <ul className="flex flex-col gap-3">
+                {sizeDemand.slice(0, 3).map((item) => (
+                  <li key={item.size} className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                      {item.size}
+                    </span>
+                    <div className="h-3 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+                      <div
+                        className="h-full rounded-full bg-primary dark:bg-blue-400"
+                        style={{ width: `${Math.max(8, Math.round((item.count / maxSizeDemand) * 100))}%` }}
+                      />
+                    </div>
+                    <span className="w-6 shrink-0 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">{item.count}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                Nenhum pedido &quot;Pedir agora&quot; registrado nesse período ainda.
+              </span>
+            )}
           </div>
         </div>
       </div>

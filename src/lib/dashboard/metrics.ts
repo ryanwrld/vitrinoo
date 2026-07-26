@@ -457,3 +457,40 @@ export async function queryTrendRanking(
     ];
   });
 }
+
+export type SizeDemandItem = {
+  size: number;
+  count: number;
+};
+
+/**
+ * Demanda por tamanho, cruzando todos os produtos da loja — `order_clicks.size`
+ * é gravado em todo pedido (`order-clicks-actions.ts`) mas nunca lido em
+ * nenhuma métrica hoje. É o padrão que o revendedor sente ("o 42 sempre
+ * falta") mas nunca viu consolidado, porque o dado fica só por produto,
+ * nunca agregado pela loja inteira. `days` reaproveita o MESMO filtro
+ * 7d/15d/30d do Ranking de tendência (mesmo `periodo` do searchParam) — sem
+ * seletor de período próprio, pra não duplicar controle na mesma tela.
+ */
+export async function querySizeDemand(
+  supabase: SupabaseClient<Database>,
+  storeId: string,
+  days = 30
+): Promise<SizeDemandItem[]> {
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+  const { data } = await supabase
+    .from("order_clicks")
+    .select("size")
+    .eq("store_id", storeId)
+    .gte("created_at", cutoff);
+
+  const counts = new Map<number, number>();
+  for (const row of data ?? []) {
+    counts.set(row.size, (counts.get(row.size) ?? 0) + 1);
+  }
+
+  return Array.from(counts.entries())
+    .map(([size, count]) => ({ size, count }))
+    .sort((a, b) => b.count - a.count);
+}
