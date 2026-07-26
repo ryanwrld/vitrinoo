@@ -7,13 +7,13 @@
 
 # Vitrinoo
 
-Revendedor de chuteiras importadas geralmente vende o catálogo espalhado em pastas do Google Drive, fotos soltas no WhatsApp ou num álbum do Yupoo em mandarim — nada disso passa confiança pro cliente final, e cada pedido vira uma troca manual de mensagens perguntando tamanho, preço e disponibilidade.
+Revendedor de chuteiras importadas geralmente apresenta os seu produtos ao lead em um catálogo com pastas espalhadas do Google Drive, fotos soltas no WhatsApp ou num álbum do Yupoo em chinês (mandarim) — nada disso passa confiança e clareza dos produtos ao cliente final, e cada pedido vira uma troca manual de mensagens perguntando tamanho, preço e disponibilidade, afetando também seu processo de vendas, tornando-o mais lento e amador.
 
 **Vitrinoo** transforma esse catálogo informal num catálogo inteligente em português: produtos com fotos, tamanhos disponíveis, preços em BRL, e um botão que já abre o WhatsApp do revendedor com o pedido pronto — modelo, tamanho e preço inclusos. O cliente escolhe e manda a mensagem. Sem cadastro, sem app, sem o revendedor precisar estar online pra fechar a venda.
 
 ## Como funciona
 
-**Revendedor** cria conta, monta a identidade da loja (nome, logo, cor) e cadastra os produtos — fotos comprimidas automaticamente, tamanhos, preço, marca. Recebe um link único do seu catálogo, com QR Code pra divulgar no Instagram, WhatsApp Status ou onde for. No painel, acompanha um dashboard de tendência (acessos, produtos mais vistos, cliques em "Pedir agora", ranking por período, tamanhos mais pedidos), recebe notificações de atividade e encontra qualquer produto ou página do painel numa busca global com atalho de teclado — tudo com suporte a modo escuro e uso confortável no celular.
+**Revendedor** cria conta, monta a identidade da loja (nome, logo, cor) e cadastra os produtos — fotos comprimidas automaticamente, tamanhos, preço, marca. Recebe um link único do seu catálogo, com QR Code pra divulgar no Instagram, WhatsApp Status ou onde for. No painel, acompanha métricas muito importantes de tendências do produto (quantidade de acessos por produto, produtos mais vistos, cliques em "Pedir agora", tamanhos mais escolhidos), recebe notificações das atividades recentes dos seus clientes e encontra qualquer produto ou página do painel numa busca global com atalho, na barra de pesquisa, facilitando a experiência e navegação pro usuario lojista — tudo com suporte a modo escuro e uso confortável no celular.
 
 **Cliente final** abre o link, filtra por marca/solado/modalidade, escolhe o tamanho de um produto disponível e clica em pedir — o WhatsApp abre com a mensagem já formatada, pronta pra enviar. Sem cadastro, sem app.
 
@@ -43,4 +43,4 @@ Revendedor de chuteiras importadas geralmente vende o catálogo espalhado em pas
 
 ## Status
 
-Projeto de validação — o fluxo essencial de ponta a ponta (cadastro do revendedor até o pedido no WhatsApp do cliente final) está completo e funcional desde o MVP, e o painel do revendedor segue evoluindo desde então: dashboard de tendência, notificações, busca global, redesign visual com modo escuro e correções de segurança/auth. Cobrança/pagamento, OAuth e importação de catálogo (planilha/Yupoo) seguem deliberadamente fora do escopo por enquanto.
+Projeto de validação — o fluxo essencial de ponta a ponta (cadastro do revendedor até o pedido no WhatsApp do cliente final) está completo e funcional desde o MVP, e o painel do revendedor segue evoluindo desde então: dashboard de tendência, notificações, busca global, redesign da identidade visual com modo escuro e correções de segurança/auth. Cobrança/pagamento, OAuth e importação de catálogo (planilha/Yupoo) seguem deliberadamente fora do escopo por enquanto.
