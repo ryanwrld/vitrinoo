@@ -7,7 +7,9 @@ import { Menu, X, Home, List, Settings, ExternalLink, Bell, ChevronDown, Headset
 import { LogoMark } from "@/components/logo-mark";
 import { StoreAvatar } from "@/components/store-avatar";
 import { ThemeMenuItem } from "@/components/theme-toggle-button";
+import { SearchTriggerButton, SearchModal } from "@/components/sidebar-search";
 import { signOutAction } from "@/lib/auth/actions";
+import { buildSupportWhatsAppHref } from "@/lib/support/whatsapp";
 
 /**
  * Itens de navegação do painel (D-07, copy verbatim): Dashboard, Produtos,
@@ -74,26 +76,6 @@ function LogoHeader({ align = "center" }: { align?: "left" | "center" }) {
 }
 
 /**
- * CTA de suporte — mesma regra do CTA "Pedir agora" da vitrine pública
- * (CLAUDE.md): monta a mensagem completa primeiro, `encodeURIComponent`
- * uma única vez sobre ela inteira, nunca por campo. `<a>` real (não
- * onClick/window.open) pelo mesmo motivo de confiabilidade em webview.
- *
- * Mensagem interpolada com o nome da loja (já disponível aqui via prop) —
- * sem isso toda conversa de suporte começa com "oi, qual é sua loja?" antes
- * de chegar no problema de verdade. Termina em "..." (não um placeholder
- * tipo "[descreva aqui]") de propósito: é WhatsApp, não formulário — o
- * lojista manda essa mensagem e complementa com uma segunda descrevendo o
- * problema, comportamento normal de chat; "..." sinaliza continuação sem
- * parecer campo de formulário fora de lugar numa conversa.
- */
-function buildSupportWhatsAppHref(storeName: string | null): string {
-  const identification = storeName ? `Sou da loja ${storeName}` : "Sou um lojista";
-  const message = `Olá! ${identification} e estou usando o Vitrinoo. Preciso de uma ajuda sua...`;
-  return `https://wa.me/5595984129576?text=${encodeURIComponent(message)}`;
-}
-
-/**
  * Bloco de conta no rodapé da sidebar (iniciais + nome da loja + rótulo
  * "revendedor"), conforme `AdminShell.jsx`. `storeName` vem de uma query já
  * existente no layout do painel — puramente exibição, sem mutação nova.
@@ -153,6 +135,10 @@ export function AdminSidebar({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
+  // Estado da busca mora AQUI (não no SidebarSearch) pra o gatilho desktop (no
+  // aside) e o do drawer mobile abrirem o MESMO modal — uma instância só, um
+  // atalho ⌘K só. Ver sidebar-search.tsx.
+  const [searchOpen, setSearchOpen] = useState(false);
 
   function closeDrawer() {
     dialogRef.current?.close();
@@ -183,6 +169,18 @@ export function AdminSidebar({
     };
   }, [accountMenuOpen]);
 
+  // Atalho global ⌘K / Ctrl+K pra abrir a busca (funciona em Mac e Windows).
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setSearchOpen(true);
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
   // Fecha o drawer se a viewport cruzar para desktop (>= md) enquanto ele
   // está aberto — sem isso, o <dialog> continua aberto (e visualmente
   // sobreposto ao layout desktop) quando o usuário redimensiona a janela
@@ -202,8 +200,9 @@ export function AdminSidebar({
   return (
     <>
       {/* Desktop: sidebar fixa, sempre no DOM, só visível >= md */}
-      <aside className="sticky top-0 hidden h-dvh w-[232px] shrink-0 flex-col gap-6 border-r border-gray-200 bg-white p-3 py-5 md:flex dark:border-gray-800 dark:bg-gray-900">
+      <aside className="sticky top-0 hidden h-dvh w-[232px] shrink-0 flex-col gap-4 border-r border-gray-200 bg-white p-3 py-5 md:flex dark:border-gray-800 dark:bg-gray-900">
         <LogoHeader align="left" />
+        <SearchTriggerButton onClick={() => setSearchOpen(true)} />
         <nav className="flex flex-col gap-0.5">
           <NavLinks pathname={pathname} />
         </nav>
@@ -290,6 +289,16 @@ export function AdminSidebar({
               <X className="h-6 w-6" aria-hidden="true" />
             </button>
           </div>
+          {/* Busca no drawer — FECHA o drawer antes de abrir a busca: o
+              <dialog> aberto por showModal() fica na top layer do navegador,
+              acima de qualquer z-index (inclusive do modal portalizado), então
+              abrir a busca com o drawer aberto a deixaria escondida atrás. */}
+          <SearchTriggerButton
+            onClick={() => {
+              closeDrawer();
+              setSearchOpen(true);
+            }}
+          />
           <nav className="flex flex-col gap-0.5" onClick={(e) => {
             if ((e.target as HTMLElement).closest("a")) {
               closeDrawer();
@@ -302,6 +311,15 @@ export function AdminSidebar({
           </div>
         </div>
       </dialog>
+
+      {/* Modal de busca — instância ÚNICA, aberta tanto pelo gatilho do aside
+          (desktop) quanto pelo do drawer (mobile) e pelo ⌘K. */}
+      <SearchModal
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        storeName={storeName}
+        storeSlug={storeSlug}
+      />
     </>
   );
 }
