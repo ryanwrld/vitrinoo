@@ -13,19 +13,26 @@ Revendedor de chuteiras importadas geralmente vende o catálogo espalhado em pas
 
 ## Como funciona
 
-**Revendedor** cria conta, cadastra os produtos (fotos comprimidas automaticamente, tamanhos, preço, marca) e recebe um link único do seu catálogo — com QR Code pra divulgar no Instagram, WhatsApp Status ou onde for. Também acompanha métricas básicas: acessos, produtos mais vistos e cliques em "Pedir agora".
+**Revendedor** cria conta, monta a identidade da loja (nome, logo, cor) e cadastra os produtos — fotos comprimidas automaticamente, tamanhos, preço, marca. Recebe um link único do seu catálogo, com QR Code pra divulgar no Instagram, WhatsApp Status ou onde for. No painel, acompanha um dashboard de tendência (acessos, produtos mais vistos, cliques em "Pedir agora", ranking por período, tamanhos mais pedidos), recebe notificações de atividade e encontra qualquer produto ou página do painel numa busca global com atalho de teclado — tudo com suporte a modo escuro e uso confortável no celular.
 
-**Cliente final** abre o link, filtra por marca/solado/modalidade, escolhe o tamanho de um produto disponível e clica em pedir — o WhatsApp abre com a mensagem já formatada, pronta pra enviar.
+**Cliente final** abre o link, filtra por marca/solado/modalidade, escolhe o tamanho de um produto disponível e clica em pedir — o WhatsApp abre com a mensagem já formatada, pronta pra enviar. Sem cadastro, sem app.
 
-## O que já está pronto (v1.0 — MVP)
+## Funcionalidades
 
+**Painel do revendedor**
 - Conta multi-tenant com isolamento por Row-Level Security (cada revendedor só vê os próprios dados)
-- Onboarding: identidade da loja (nome, logo, cor) e configuração do WhatsApp
+- Onboarding de loja (nome, logo com prévia local, cor da marca) e configuração do WhatsApp
+- CRUD completo de produtos: até 5 fotos por produto com compressão automática, galeria, controle de tamanho/estoque
 - Link personalizável (slug) + QR Code pra download
-- CRUD completo de produtos: até 5 fotos por produto com compressão automática, controle de tamanho/estoque
-- Catálogo público sem login, com filtros por marca/solado/modalidade e paginação
+- Dashboard de tendência: acessos, produtos mais vistos, cliques em "Pedir agora", ranking por período (7/15/30 dias), tamanhos mais pedidos e feed de atividade recente
+- Central de notificações com contador e "marcar como lido"
+- Busca global (command palette) com atalho ⌘K/Ctrl+K — encontra produtos e qualquer página do painel, com histórico de buscas recentes
+- Modo escuro em todo o painel e suporte via WhatsApp direto pelo menu de conta
+
+**Vitrine pública**
+- Catálogo sem login, com filtros por marca/solado/modalidade e paginação
 - Fluxo de pedido no WhatsApp — testado numa matriz de dispositivos e navegadores, incluindo os webviews do Instagram e do próprio WhatsApp
-- Dashboard com métricas de acessos, produtos mais vistos e cliques em "Pedir agora"
+- Estoque sempre atualizado (sem cache) e isolado dos acessos do próprio revendedor testando a loja
 
 ## Stack
 
@@ -36,4 +43,4 @@ Revendedor de chuteiras importadas geralmente vende o catálogo espalhado em pas
 
 ## Status
 
-Projeto de validação — o MVP (v1.0) está completo e funcional, cobrindo o fluxo essencial de ponta a ponta: cadastro do revendedor até o pedido no WhatsApp do cliente final. Cobrança/pagamento, OAuth e importação de catálogo (planilha/Yupoo) ficaram deliberadamente fora do escopo desta fase.
+Projeto de validação — o fluxo essencial de ponta a ponta (cadastro do revendedor até o pedido no WhatsApp do cliente final) está completo e funcional desde o MVP, e o painel do revendedor segue evoluindo desde então: dashboard de tendência, notificações, busca global, redesign visual com modo escuro e correções de segurança/auth. Cobrança/pagamento, OAuth e importação de catálogo (planilha/Yupoo) seguem deliberadamente fora do escopo por enquanto.
