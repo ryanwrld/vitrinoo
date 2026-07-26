@@ -57,8 +57,7 @@ export default async function AtividadePage({
           <Link href="/dashboard" className="flex w-fit items-center gap-1 text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50">
             <ChevronLeft className="h-4 w-4" aria-hidden="true" /> Dashboard
           </Link>
-          <h1 className="mt-2 font-display text-2xl font-extrabold text-gray-900 dark:text-gray-50">Atividade</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Histórico completo de visualizações e cliques em &quot;Pedir agora&quot;.</p>
+          <h1 className="mt-2 font-display text-2xl font-extrabold text-gray-900 dark:text-gray-50">Notificações</h1>
         </div>
         <HeaderActions />
       </div>
@@ -107,14 +106,14 @@ export default async function AtividadePage({
         {(pagina > 1 || feed.hasMore) && (
           <div className="flex items-center justify-between border-t border-gray-100 pt-3 text-sm font-semibold dark:border-gray-800">
             {pagina > 1 ? (
-              <Link href={`/dashboard/atividade?pagina=${pagina - 1}`} className="flex items-center gap-1 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50">
+              <Link href={`/dashboard/notificacoes?pagina=${pagina - 1}`} className="flex items-center gap-1 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50">
                 <ChevronLeft className="h-4 w-4" aria-hidden="true" /> Anterior
               </Link>
             ) : (
               <span />
             )}
             {feed.hasMore && (
-              <Link href={`/dashboard/atividade?pagina=${pagina + 1}`} className="flex items-center gap-1 text-primary dark:text-blue-300">
+              <Link href={`/dashboard/notificacoes?pagina=${pagina + 1}`} className="flex items-center gap-1 text-primary dark:text-blue-300">
                 Próxima <ChevronRight className="h-4 w-4" aria-hidden="true" />
               </Link>
             )}

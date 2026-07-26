@@ -1,4 +1,4 @@
-/** Extraído de `dashboard/page.tsx` pra ser reaproveitado por `/dashboard/atividade` — mesmo formato, uma única fonte de verdade. */
+/** Extraído de `dashboard/page.tsx` pra ser reaproveitado por `/dashboard/notificacoes` — mesmo formato, uma única fonte de verdade. */
 export function formatRelativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(diffMs / 60000);

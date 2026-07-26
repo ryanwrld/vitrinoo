@@ -36,7 +36,7 @@ describe("middleware config.matcher", () => {
     expect(isCovered("/redefinir-senha")).toBe(true);
     expect(isCovered("/onboarding")).toBe(true);
     expect(isCovered("/dashboard")).toBe(true);
-    expect(isCovered("/dashboard/atividade")).toBe(true);
+    expect(isCovered("/dashboard/notificacoes")).toBe(true);
     expect(isCovered("/produtos")).toBe(true);
     expect(isCovered("/produtos/novo")).toBe(true);
     expect(isCovered("/produtos/123/editar")).toBe(true);

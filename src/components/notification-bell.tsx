@@ -40,7 +40,7 @@ function getReadAtServerSnapshot() {
  * notificações) — abre um painel flutuante ancorado no próprio botão,
  * ocupando o canto superior direito por cima do conteúdo do Dashboard
  * (referência visual do usuário: painel a partir do sino, alinhado à
- * direita, com scroll interno). `/dashboard/atividade` (histórico completo
+ * direita, com scroll interno). `/dashboard/notificacoes` (histórico completo
  * paginado) continua existindo como "Ver histórico completo" no rodapé do
  * painel, pra quem quiser vasculhar além do que cabe aqui.
  *
@@ -62,6 +62,7 @@ export function NotificationBell({ items }: { items: ActivityFeedItem[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const unreadCount = readAt ? items.filter((item) => new Date(item.createdAt) > new Date(readAt)).length : items.length;
+  const unreadCountLabel = unreadCount > 99 ? "99+" : String(unreadCount);
 
   function handleMarkAllRead() {
     const now = new Date().toISOString();
@@ -114,10 +115,10 @@ export function NotificationBell({ items }: { items: ActivityFeedItem[] }) {
         >
           <div className="flex items-center justify-between px-4 pb-3 pt-4">
               <div className="flex items-center gap-2">
-                <h2 className="font-display text-[15px] font-bold text-gray-900 dark:text-gray-50">Atividade</h2>
+                <h2 className="font-display text-[15px] font-bold text-gray-900 dark:text-gray-50">Notificações</h2>
                 {unreadCount > 0 && (
                   <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary dark:bg-blue-400/10 dark:text-blue-300">
-                    {unreadCount}
+                    {unreadCountLabel}
                   </span>
                 )}
               </div>
@@ -127,7 +128,7 @@ export function NotificationBell({ items }: { items: ActivityFeedItem[] }) {
                   onClick={handleMarkAllRead}
                   className="text-xs font-semibold text-primary transition-colors duration-150 hover:text-primary-hover dark:text-blue-300 dark:hover:text-blue-200"
                 >
-                  Marcar tudo como lido
+                  Marcar como lido
                 </button>
               )}
             </div>
@@ -176,7 +177,7 @@ export function NotificationBell({ items }: { items: ActivityFeedItem[] }) {
 
             <div className="relative mx-4 h-px bg-gradient-to-r from-transparent via-gray-900/10 to-transparent dark:via-white/10" />
             <Link
-              href="/dashboard/atividade"
+              href="/dashboard/notificacoes"
               onClick={() => setOpen(false)}
               className="relative px-4 py-3 text-center text-sm font-semibold text-primary transition-colors duration-150 hover:bg-gray-900/[.04] dark:text-blue-300 dark:hover:bg-white/[.06]"
             >
