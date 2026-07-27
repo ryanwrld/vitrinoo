@@ -1,1 +1,0 @@
-{"content":"wa.me links require URL-encoded text; accented/UTF-8 chars must be percent-encoded via encodeURIComponent, phone numbers must have no +, spaces, dashes or brackets.","source":"web","provider":"websearch","confidence":"MEDIUM","fetched_at":"2026-07-10T21:14:15.530Z","ttl":86400000,"kind":"web"}

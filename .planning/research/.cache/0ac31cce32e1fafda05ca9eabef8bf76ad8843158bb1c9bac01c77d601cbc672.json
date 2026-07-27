@@ -1,1 +1,0 @@
-{"content":"Samsung Internet browser does not support Android intent:// links the way Chrome does; wa.me still generally works as a universal link but intent-based fallbacks can fail on Samsung Internet unless 'open links in other apps' is enabled.","source":"web","provider":"websearch","confidence":"LOW","fetched_at":"2026-07-10T21:14:15.999Z","ttl":86400000,"kind":"web"}

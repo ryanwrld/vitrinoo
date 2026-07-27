@@ -1,4 +1,3 @@
-<!-- GSD:project-start source:PROJECT.md -->
 
 ## Project
 
@@ -10,7 +9,7 @@ Vitrinoo é um micro-SaaS que transforma o catálogo informal de um revendedor d
 
 ### Constraints
 
-- **Tech stack (validado pela pesquisa)**: Next.js 16 (não 14 — versão atual traz Cache Components, que resolve o requisito de estoque sempre atualizado sem esforço extra) + Tailwind CSS, Supabase (auth + banco + storage), Vercel (hospedagem). Ver `.planning/research/STACK.md` para detalhes e versões exatas
+- **Tech stack (validado pela pesquisa)**: Next.js 16 (não 14 — versão atual traz Cache Components, que resolve o requisito de estoque sempre atualizado sem esforço extra) + Tailwind CSS, Supabase (auth + banco + storage), Vercel (hospedagem). Ver a seção **Technology Stack** abaixo para detalhes e versões exatas
 - **Hospedagem MVP**: Vercel Hobby (grátis) no MVP, mesmo com a restrição de uso não-comercial do Vercel Hobby nos termos de serviço — risco aceito conscientemente pelo usuário para validação de baixa visibilidade. Migração planejada para Hostinger (pago) quando o produto precisar expandir
 - **Mobile-first**: Cliente final acessa quase sempre via link compartilhado no WhatsApp/Instagram — qualquer feature que quebre no mobile não vai para produção
 - **Rota pública sem auth**: A vitrine (`/loja/[slug]`) não pode ter nenhum middleware de autenticação
@@ -18,9 +17,7 @@ Vitrinoo é um micro-SaaS que transforma o catálogo informal de um revendedor d
 - **Performance de imagem**: Upload limitado a 5MB, compressão automática no servidor, fallback visual sempre presente
 - **Sem cobrança no MVP**: Nenhuma integração de pagamento é necessária nesta fase — ver Business Context
 
-<!-- GSD:project-end -->
 
-<!-- GSD:stack-start source:research/STACK.md -->
 
 ## Technology Stack
 
@@ -137,53 +134,21 @@ Vitrinoo é um micro-SaaS que transforma o catálogo informal de um revendedor d
 - [Documentação do Plano Hobby da Vercel](https://vercel.com/docs/plans/hobby) — oficial, obtida diretamente; confirma a restrição não-comercial do Hobby e os limites do tier gratuito (confiança MÉDIA, cruzada com resultados de busca na web)
 - Busca na web (múltiplos resultados independentes cruzados, confiança MÉDIA): comparações Supabase vs Neon vs Firebase em 2026; preços de storage/transformação de imagem no tier gratuito do Supabase; melhores práticas de compressão de imagem no lado do cliente; orientação de construção e codificação de links wa.me; documentação do Supabase Realtime Postgres Changes; bug e data de correção do repasse wa.me no navegador in-app do Instagram
 
-<!-- GSD:stack-end -->
 
-<!-- GSD:conventions-start source:CONVENTIONS.md -->
 
 ## Conventions
 
 Conventions not yet established. Will populate as patterns emerge during development.
 
-<!-- GSD:conventions-end -->
 
-<!-- GSD:architecture-start source:ARCHITECTURE.md -->
 
 ## Architecture
 
 Architecture not yet mapped. Follow existing patterns found in the codebase.
 
-<!-- GSD:architecture-end -->
 
-<!-- GSD:skills-start source:skills/ -->
 
 ## Project Skills
 
 No project skills found. Add skills to any of: `.claude/skills/`, `.agents/skills/`, `.cursor/skills/`, `.github/skills/`, or `.codex/skills/` with a `SKILL.md` index file.
 
-<!-- GSD:skills-end -->
-
-<!-- GSD:workflow-start source:GSD defaults -->
-
-## GSD Workflow Enforcement
-
-Before using Edit, Write, or other file-changing tools, start work through a GSD command so planning artifacts and execution context stay in sync.
-
-Use these entry points:
-
-- `/gsd-quick` for small fixes, doc updates, and ad-hoc tasks
-- `/gsd-debug` for investigation and bug fixing
-- `/gsd-execute-phase` for planned phase work
-
-Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
-
-<!-- GSD:workflow-end -->
-
-<!-- GSD:profile-start -->
-
-## Developer Profile
-
-> Profile not yet configured. Run `/gsd-profile-user` to generate your developer profile.
-> This section is managed by `generate-claude-profile` -- do not edit manually.
-
-<!-- GSD:profile-end -->

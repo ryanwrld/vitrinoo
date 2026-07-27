@@ -1,1 +1,0 @@
-{"content":"In-app browsers (Instagram/Facebook webview) and iOS Safari can fail to hand off wa.me links to the native WhatsApp app, sometimes routing to App Store instead; behavior is inconsistent across iOS versions.","source":"web","provider":"websearch","confidence":"LOW","fetched_at":"2026-07-10T21:14:15.725Z","ttl":86400000,"kind":"web"}
