@@ -5,7 +5,7 @@
 
 ## Contexto e objetivo
 
-O painel admin do Vitrinoo tem uma sidebar com 3 itens de menu (Dashboard, Produtos, Configurações) e um punhado de sub-rotas. O usuário-alvo é um revendedor não-técnico de chuteiras importadas que gerencia o catálogo no painel. Conforme o catálogo cresce (80+ produtos), achar um produto específico exige rolar a lista de `/produtos` ou filtrar manualmente.
+O painel admin do Vitrinoo tem uma sidebar com 3 itens de menu (Dashboard, Produtos, Configurações) e um punhado de sub-rotas.
 
 Objetivo: um campo de busca na sidebar (entre o logo e "Dashboard") que abre um **command palette central** (modal) servindo como atalho pra:
 
