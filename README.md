@@ -13,9 +13,9 @@ O **Vitrinoo** transforma esse catálogo informal num catálogo organizado e cla
 
 ## Como funciona
 
-**Revendedor** cria conta, monta a identidade da loja (nome, logo, cor) e cadastra os produtos — fotos comprimidas automaticamente, tamanhos, preço, marca. Recebe um link único do seu catálogo, com QR Code pra divulgar no Instagram, WhatsApp Status ou onde for. No painel, acompanha métricas muito importantes de tendências do produto (quantidade de acessos por produto, produtos mais vistos, cliques em "Pedir agora", tamanhos mais escolhidos), recebe notificações das atividades recentes dos seus clientes e encontra qualquer produto ou página do painel numa busca global com atalho, na barra de pesquisa, facilitando a experiência e navegação pro usuario lojista — tudo com suporte a modo escuro e uso confortável no celular.
+**Revendedor** cria conta, monta a identidade básica da loja (nome, logo, cor) e cadastra os produtos — fotos comprimidas automaticamente, tamanhos, preço, marca. Recebe um link único do seu catálogo podendo customizar o subdomínio (ex:vitrinoo.app/loja/"nome-escolhido"), com QR Code pra divulgar no Instagram, WhatsApp Status ou onde for. No painel, acompanha métricas muito importantes como tendências do produto: (quantidade de acessos por produto, produtos mais vistos, cliques em "Pedir agora", tamanhos mais escolhidos), recebe notificações das atividades recentes dos seus clientes e encontra qualquer produto ou página do painel numa busca global com atalho, na barra de pesquisa, facilitando a experiência e navegação pro usuario lojista — tudo com suporte a modo escuro e uso confortável no celular.
 
-**Cliente final** abre o link, filtra por marca/solado/modalidade, escolhe o tamanho de um produto disponível e clica em pedir — o WhatsApp abre com a mensagem já formatada, pronta pra enviar. Sem cadastro, sem app.
+**Cliente final** abre o link da loja no vitrinoo, filtra por marca/solado/sob encomenda ou pronta entrega, escolhe o tamanho de um produto disponível e clica em pedir — o WhatsApp abre com a mensagem já formatada, pronta pra enviar. Sem cadastro, sem app.
 
 ## Funcionalidades
 
@@ -30,7 +30,7 @@ O **Vitrinoo** transforma esse catálogo informal num catálogo organizado e cla
 - Modo escuro em todo o painel e suporte via WhatsApp direto pelo menu de conta
 
 **Vitrine pública**
-- Catálogo sem login, com filtros por marca/solado/modalidade e paginação
+- Catálogo sem login, com filtros por marca/solado/modalidade (pronta entrega ou sob encomenda) e paginação
 - Fluxo de pedido no WhatsApp — testado numa matriz de dispositivos e navegadores, incluindo os webviews do Instagram e do próprio WhatsApp
 - Estoque sempre atualizado (sem cache) e isolado dos acessos do próprio revendedor testando a loja
 
