@@ -8,7 +8,7 @@ import {
   ImageOff,
   MessageCircle,
   PackagePlus,
-  SportShoe,
+  Share2,
   XCircle,
 } from "lucide-react";
 import { requireCompletedOnboarding } from "@/lib/auth/onboarding-guard";
@@ -64,6 +64,55 @@ function parsePeriod(raw: string | undefined): Period {
  */
 const ACTIVITY_FEED_LIMIT = 15;
 
+/**
+ * Teto de itens REAIS (últimas 24h) mostrados no widget "Atividades
+ * recentes" antes de cair no scroll interno original da lista (que já
+ * existia antes desta feature — ver `<ul className="... overflow-y-auto ...">`
+ * mais abaixo). Faz parte da mecânica de preenchimento do vão: ver
+ * `buildActivityGapFill`.
+ */
+const ACTIVITY_DISPLAY_CAP = 5;
+
+/**
+ * Particiona o feed de atividade em "últimas 24h" (recent) e "antes disso"
+ * (older) — janela deslizante a partir de agora (o instante é o mesmo real
+ * pro usuário, então independe de fuso). Usado SÓ pelo widget "Atividades
+ * recentes" do dashboard; o histórico completo (/dashboard/notificacoes) e
+ * o sino de notificações seguem sem esse corte. `Date.now()` isolado aqui
+ * (não no corpo do Server Component) pela regra de pureza do lint — mesmo
+ * padrão de `startOfTodayBR`. Comparação numérica pra não depender do
+ * formato exato do timestamp do banco.
+ */
+function partitionActivityLast24h(items: ActivityFeedItem[]): { recent: ActivityFeedItem[]; older: ActivityFeedItem[] } {
+  const cutoffMs = Date.now() - 24 * 60 * 60 * 1000;
+  const recent: ActivityFeedItem[] = [];
+  const older: ActivityFeedItem[] = [];
+  for (const item of items) {
+    (new Date(item.createdAt).getTime() >= cutoffMs ? recent : older).push(item);
+  }
+  return { recent, older };
+}
+
+/**
+ * Mecânica de preenchimento do vão do widget (spec validada no mockup de
+ * design — 3 estágios, baseados em quantos itens reais já existem):
+ *   ① 1 item real → mostra 1 item "antes das últimas 24h" ao lado do CTA de
+ *      compartilhar (o que cabe sem sobrar vão).
+ *   ② 2-3 itens reais → o histórico já some (o real ocupa espaço sozinho);
+ *      o CTA continua.
+ *   ③ 4 itens reais → o CTA também some (o real toma esse espaço também).
+ *   Em `ACTIVITY_DISPLAY_CAP` (5) reais, nem histórico nem CTA aparecem —
+ *   só a lista, com o scroll interno que já existia antes desta feature.
+ *   0 itens reais é tratado à parte no componente (CTA sozinho, centralizado).
+ */
+function buildActivityGapFill(recentCount: number, olderItems: ActivityFeedItem[]) {
+  const showHistorical = recentCount === 1 && olderItems.length > 0;
+  const historicalItems = showHistorical ? olderItems.slice(0, 1) : [];
+  const showShareCta = recentCount >= 1 && recentCount < 4;
+  const useCompactLayout = recentCount >= 1 && recentCount < ACTIVITY_DISPLAY_CAP;
+  return { historicalItems, showShareCta, useCompactLayout };
+}
+
 /** Sparkline inline via SVG puro — sem lib de gráfico, sem client JS. Trecho
  * final do período (~20% dos dias) ganha destaque em `text-primary`; o
  * resto fica em tom neutro (`text-gray-300`/`dark:text-gray-700`), seguindo
@@ -97,29 +146,67 @@ function Sparkline({ values, days }: { values: number[]; days: number }) {
   );
 }
 
+/** No ranking de tendência o nome do produto tem a PRIMEIRA palavra (a marca,
+ *  ex.: "Nike") removida — encurta e vai direto ao modelo, ganhando espaço.
+ *  Escopo: só este widget. Nome de uma palavra só fica intacto (não zera). */
+function stripBrandWord(name: string): string {
+  const trimmed = name.trim();
+  const firstSpace = trimmed.indexOf(" ");
+  return firstSpace === -1 ? trimmed : trimmed.slice(firstSpace + 1);
+}
+
 function RankingList({
   title,
   items,
   metricLabel,
+  metricLabelMobile = metricLabel,
   MetricIcon,
   days,
 }: {
   title: string;
   items: (TrendRankingItem & { coverUrl: string | null })[];
   metricLabel: string;
+  /** Rótulo curto usado só no mobile (ex.: "Views" no lugar de "visualizações").
+   *  Omitido → cai no metricLabel normal (mesmo texto nos dois breakpoints). */
+  metricLabelMobile?: string;
   MetricIcon: typeof Eye;
   days: number;
 }) {
   return (
     <div className="flex flex-col gap-3">
-      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{title}</h3>
+      <h3 className="text-sm font-normal text-gray-700 dark:text-gray-300">{title}</h3>
       {items.length > 0 ? (
         <ul className="flex flex-col gap-2">
           {items.map((item) => {
             const urgent = !item.disponivel && (item.isNew || (item.deltaPct ?? 0) > 0);
+            // Métrica (contagem + selo de "porcentagem de tendência": Novo / +% / −%)
+            // reusada em dois lugares por breakpoint: inline na coluna de texto no
+            // mobile (pro nome não disputar espaço com uma coluna à direita) e na
+            // coluna à direita no desktop (sm+).
+            const metricContent = (
+              <>
+                <span className="flex items-center gap-1 text-sm font-medium text-gray-900 dark:text-gray-50">
+                  <MetricIcon className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" aria-hidden="true" />
+                  {item.current}{" "}
+                  <span className="sm:hidden">{metricLabelMobile}</span>
+                  <span className="hidden sm:inline">{metricLabel}</span>
+                </span>
+                <span
+                  className={`shrink-0 rounded-full px-2 py-px text-[10px] font-bold ${
+                    item.isNew
+                      ? "bg-primary-subtle text-primary dark:bg-blue-400/15 dark:text-blue-300"
+                      : (item.deltaPct ?? 0) < 0
+                        ? "bg-error-bg text-error-fg dark:bg-error-solid/15"
+                        : "bg-success-bg text-success-fg dark:bg-success-solid/15"
+                  }`}
+                >
+                  {item.isNew ? "Novo" : `${(item.deltaPct ?? 0) >= 0 ? "+" : ""}${item.deltaPct}%`}
+                </span>
+              </>
+            );
             return (
               <li key={item.productId} className="rounded-lg border border-gray-200 dark:border-gray-800">
-                <div className={`flex min-h-11 flex-wrap items-center gap-3 rounded-lg p-3 ${urgent ? "bg-warning-bg dark:bg-warning-solid/15" : "bg-white dark:bg-gray-900"}`}>
+                <div className={`flex min-h-11 flex-wrap items-start gap-3 rounded-lg p-3 sm:items-center ${urgent ? "bg-warning-bg dark:bg-warning-solid/15" : "bg-white dark:bg-gray-900"}`}>
                   <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
                     {item.coverUrl ? (
                       <Image src={item.coverUrl} alt={item.name} fill sizes="48px" className="object-cover" />
@@ -131,7 +218,7 @@ function RankingList({
                   </div>
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <div className="flex items-center gap-2">
-                      <span className="truncate font-display text-sm font-medium text-gray-900 dark:text-gray-50">{item.name}</span>
+                      <span className="truncate font-display text-sm font-medium text-gray-900 dark:text-gray-50">{stripBrandWord(item.name)}</span>
                       <span
                         className={`shrink-0 rounded-full px-1.5 py-px text-[10px] font-bold ${
                           item.disponivel
@@ -142,28 +229,26 @@ function RankingList({
                         {item.disponivel ? "Disponível" : "Esgotado"}
                       </span>
                     </div>
-                    <span className="truncate text-xs text-gray-500 dark:text-gray-400">
+                    {/* Subtítulo (marca·modelo·preço) escondido no mobile pra abrir
+                        espaço pro gráfico; volta no desktop (sm+), onde há folga. */}
+                    <span className="hidden truncate text-xs text-gray-500 sm:block dark:text-gray-400">
                       {item.secondary}
                       {item.secondary ? " · " : ""}
                       {formatBRLPrice(item.price)}
                     </span>
+                    {/* Só no mobile: gráfico + métrica numa linha, ocupando o espaço
+                        que era do subtítulo. No desktop os dois vivem nas colunas à direita. */}
+                    <div className="mt-1 flex items-center gap-3 sm:hidden">
+                      <Sparkline values={item.trend} days={days} />
+                      <div className="flex items-center gap-2">{metricContent}</div>
+                    </div>
                   </div>
-                  <Sparkline values={item.trend} days={days} />
-                  <div className="flex shrink-0 flex-col items-end gap-0.5">
-                    <span className="flex items-center gap-1 text-sm font-medium text-gray-900 dark:text-gray-50">
-                      <MetricIcon className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" aria-hidden="true" />
-                      {item.current} {metricLabel}
-                    </span>
-                    <span
-                      className={`rounded-full px-2 py-px text-[10px] font-bold ${
-                        item.isNew
-                          ? "bg-primary-subtle text-primary dark:bg-blue-400/15 dark:text-blue-300"
-                          : "bg-success-bg text-success-fg dark:bg-success-solid/15"
-                      }`}
-                    >
-                      {item.isNew ? "Novo" : `${(item.deltaPct ?? 0) >= 0 ? "+" : ""}${item.deltaPct}%`}
-                    </span>
+                  {/* Sparkline escondido no mobile: naquele tamanho fica minúsculo e
+                      rouba a largura do nome (a info essencial do ranking). */}
+                  <div className="hidden shrink-0 sm:block">
+                    <Sparkline values={item.trend} days={days} />
                   </div>
+                  <div className="hidden shrink-0 flex-col items-end gap-0.5 sm:flex">{metricContent}</div>
                   {urgent && (
                     <div className="flex w-full items-center justify-between gap-2 border-t border-warning-solid/20 pt-2 text-xs font-semibold text-warning-fg">
                       <span className="flex items-center gap-1">
@@ -205,7 +290,7 @@ export default async function DashboardPage({
 
   const { data: store } = await supabase
     .from("stores")
-    .select("id")
+    .select("id, slug")
     .eq("owner_id", userData.user!.id)
     .single();
 
@@ -267,6 +352,70 @@ export default async function DashboardPage({
 
   const feedIcon = (item: ActivityFeedItem) => (item.type === "click" ? MessageCircle : Eye);
 
+  // Uma <li> pra item recente E pra item "antes das últimas 24h" — o `muted`
+  // aplica o tratamento visual esmaecido/menor do histórico (spec do mockup)
+  // sem duplicar a lógica de click-vs-view em dois lugares com risco de desvio.
+  const renderActivityRow = (item: ActivityFeedItem, key: string, muted: boolean) => {
+    const Icon = feedIcon(item);
+    const boldClass = muted ? "font-medium text-gray-500 dark:text-gray-400" : "font-semibold text-gray-900 dark:text-gray-50";
+    return (
+      <li key={key} className={`flex items-start gap-3.5 border-b border-gray-100 last:border-none dark:border-gray-800 ${muted ? "py-2" : "py-3"}`}>
+        <span
+          className={`flex shrink-0 items-center justify-center rounded-full ${muted ? "h-6 w-6" : "h-8 w-8"} ${
+            item.type === "click"
+              ? "bg-success-bg text-success-fg dark:bg-success-solid/15"
+              : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+          }`}
+        >
+          <Icon className={muted ? "h-3.5 w-3.5" : "h-4 w-4"} aria-hidden="true" />
+        </span>
+        <span className={muted ? "text-sm text-gray-400 dark:text-gray-500" : "text-base text-gray-700 dark:text-gray-300"}>
+          {item.type === "click" ? (
+            <>
+              Alguém clicou em <b className={boldClass}>&quot;Pedir agora&quot;</b> — {item.productName}
+            </>
+          ) : (
+            <>
+              <b className={boldClass}>{item.count} visualizaç{item.count > 1 ? "ões" : "ão"}</b>{muted ? "" : ` nova${item.count > 1 ? "s" : ""}`} — {item.productName}
+            </>
+          )}
+          <span className={`mt-0.5 block text-gray-400 dark:text-gray-500 ${muted ? "text-xs" : "text-sm"}`}>{formatRelativeTime(item.createdAt)}</span>
+        </span>
+      </li>
+    );
+  };
+
+  // "Atividades recentes" (só este widget do dashboard) mostra apenas eventos
+  // das últimas 24h + histórico/CTA de preenchimento (buildActivityGapFill);
+  // o sino de notificações continua com o feed completo (`feed.items`).
+  const { recent: recentActivityItems, older: olderActivityItems } = partitionActivityLast24h(feed.items);
+  const { historicalItems, showShareCta, useCompactLayout } = buildActivityGapFill(recentActivityItems.length, olderActivityItems);
+
+  // CTA "compartilhar vitrine" pra preencher o vão do widget "Atividades
+  // recentes" (mockup validado, Proposta 1) — mesmo destino/convenção do
+  // link "Ver minha vitrine" da sidebar (`<a target="_blank">`, não <Link>,
+  // já que é navegação pra fora do grupo de rotas admin).
+  const shareCta = (
+    <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-3 rounded-xl border border-gray-200 bg-primary-subtle/40 px-5 py-8 text-center lg:py-16 dark:border-gray-800 dark:bg-blue-400/[0.06]">
+      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-subtle text-primary dark:bg-blue-400/15 dark:text-blue-300">
+        <Share2 className="h-6 w-6" aria-hidden="true" />
+      </span>
+      <span className="font-display text-lg font-semibold text-gray-900 dark:text-gray-50">Movimento parado nas últimas 24h?</span>
+      <span className="max-w-[34ch] text-sm text-gray-500 dark:text-gray-400">
+        Priorize compartilhar sua vitrine — é a ação que mais gera resultado pra sua loja.
+      </span>
+      <a
+        href={`/loja/${store.slug}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-1 inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-primary-hover active:bg-primary-active"
+      >
+        <Share2 className="h-4 w-4" aria-hidden="true" />
+        Compartilhar vitrine
+      </a>
+    </div>
+  );
+
   return (
     <div className="flex w-full flex-col gap-6 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
       <DashboardAutoRefresh />
@@ -278,16 +427,16 @@ export default async function DashboardPage({
       {/* MTR-03: placar do dia — sempre hoje, nunca acumulado */}
       <div className="grid grid-cols-1 divide-y divide-gray-200 overflow-hidden rounded-lg border border-gray-200 bg-white dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-900 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
         <div className="flex flex-col gap-0.5 p-4">
+          <span className="text-xs text-gray-700 dark:text-gray-300">Visualizações hoje</span>
           <span className="font-display text-2xl font-extrabold text-gray-900 dark:text-gray-50">{today.views}</span>
-          <span className="text-xs text-gray-500 dark:text-gray-400">Visualizações hoje</span>
         </div>
         <div className="flex flex-col gap-0.5 p-4">
+          <span className="text-xs text-gray-700 dark:text-gray-300">Cliques em &quot;Pedir agora&quot; hoje</span>
           <span className="font-display text-2xl font-extrabold text-gray-900 dark:text-gray-50">{today.clicks}</span>
-          <span className="text-xs text-gray-500 dark:text-gray-400">Cliques em &quot;Pedir agora&quot; hoje</span>
         </div>
         <div className="flex flex-col gap-0.5 p-4">
+          <span className="text-xs text-gray-700 dark:text-gray-300">Taxa de conversão (view → clique)</span>
           <span className="font-display text-2xl font-extrabold text-primary dark:text-blue-300">{today.conversionPct}%</span>
-          <span className="text-xs text-gray-500 dark:text-gray-400">Taxa de conversão (view → clique)</span>
         </div>
       </div>
 
@@ -312,52 +461,47 @@ export default async function DashboardPage({
             centralizasse com overflow, o primeiro item ficaria cortado no
             topo (fora do alcance do scroll). */}
         <section className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 lg:col-span-2">
-          <h2 className="font-display font-bold text-gray-900 dark:text-gray-50">Atividade recente</h2>
-          {feed.items.length > 0 ? (
-            // Wrapper `relative lg:flex-1`: no desktop preenche a altura que
-            // sobra na section (que por sua vez é esticada pela coluna dos 3
-            // cards ao lado via grid), e a <ul> vira `lg:absolute inset-0` —
-            // fora do fluxo, então NÃO empurra a altura da caixa pra fora
-            // conforme entram mais itens. Resultado: a caixa fica exatamente
-            // do tamanho da coluna irmã (as duas terminam na mesma linha) e a
-            // lista rola por dentro. No mobile (sem coluna irmã) a <ul> volta
-            // ao fluxo normal com teto de 14rem.
-            <div className="relative min-h-0 lg:flex-1">
-            <ul className="flex max-h-[14rem] flex-col gap-1 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:absolute lg:inset-0 lg:max-h-none">
-                {feed.items.map((item, index) => {
-                  const Icon = feedIcon(item);
-                  return (
-                    <li key={`${item.type}-${item.productId}-${item.createdAt}-${index}`} className="flex items-start gap-3.5 border-b border-gray-100 py-3 last:border-none dark:border-gray-800">
-                      <span
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                          item.type === "click"
-                            ? "bg-success-bg text-success-fg dark:bg-success-solid/15"
-                            : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
-                        }`}
-                      >
-                        <Icon className="h-4 w-4" aria-hidden="true" />
-                      </span>
-                      <span className="text-base text-gray-700 dark:text-gray-300">
-                        {item.type === "click" ? (
-                          <>
-                            Alguém clicou em <b className="font-semibold text-gray-900 dark:text-gray-50">&quot;Pedir agora&quot;</b> — {item.productName}
-                          </>
-                        ) : (
-                          <>
-                            <b className="font-semibold text-gray-900 dark:text-gray-50">{item.count} visualizaç{item.count > 1 ? "ões" : "ão"}</b> nova{item.count > 1 ? "s" : ""} — {item.productName}
-                          </>
-                        )}
-                        <span className="mt-0.5 block text-sm text-gray-400 dark:text-gray-500">{formatRelativeTime(item.createdAt)}</span>
-                      </span>
-                    </li>
-                  );
-                })}
-            </ul>
+          <h2 className="font-display font-bold text-gray-900 dark:text-gray-50">Atividades recentes</h2>
+          {recentActivityItems.length === 0 ? (
+            // 0 eventos nas 24h: só o CTA de compartilhar, centralizado na
+            // vertical (ocupa todo o vão, não fica no rodapé). `flex-col` +
+            // stretch: o card preenche a largura toda do widget (igual ao
+            // mockup e ao estado compacto), não encolhe no conteúdo.
+            <div className="flex min-h-0 flex-1 flex-col justify-center">{shareCta}</div>
+          ) : useCompactLayout ? (
+            // 1-4 itens reais: lista no fluxo normal (sem `lg:absolute`, pra o
+            // conteúdo empurrar de verdade) + preenchimento do vão. `flex-1` +
+            // `mt-auto` no bloco de baixo faz o histórico/CTA grudar no rodapé,
+            // absorvendo só o vão que sobra (mecânica validada no mockup).
+            <div className="flex min-h-0 flex-1 flex-col">
+              <ul className="flex flex-col gap-1">
+                {recentActivityItems.map((item, index) =>
+                  renderActivityRow(item, `${item.type}-${item.productId}-${item.createdAt}-${index}`, false)
+                )}
+              </ul>
+              {historicalItems.length > 0 && (
+                <ul className="flex flex-col gap-1">
+                  <li className="mt-4 mb-0.5 flex items-center gap-2.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                    <span className="shrink-0">Antes das últimas 24h</span>
+                    <span className="h-px flex-1 bg-gray-100 dark:bg-gray-800" aria-hidden="true" />
+                  </li>
+                  {historicalItems.map((item, index) =>
+                    renderActivityRow(item, `old-${item.type}-${item.productId}-${item.createdAt}-${index}`, true)
+                  )}
+                </ul>
+              )}
+              {showShareCta && <div className="mt-auto pt-4">{shareCta}</div>}
             </div>
           ) : (
-            <div className="flex flex-1 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center dark:border-gray-700">
-              <span className="font-medium text-gray-900 dark:text-gray-50">Ainda sem atividade</span>
-              <span className="text-sm text-gray-500 dark:text-gray-400">Assim que sua vitrine receber acessos ou pedidos, eles aparecem aqui.</span>
+            // 5 itens reais (teto): a <ul> volta ao comportamento original —
+            // `lg:absolute inset-0` fora do fluxo + scroll interno que já
+            // existia antes desta feature. Nada de histórico/CTA aqui.
+            <div className="relative min-h-0 lg:flex-1">
+              <ul className="flex max-h-[14rem] flex-col gap-1 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:absolute lg:inset-0 lg:max-h-none">
+                {recentActivityItems.map((item, index) =>
+                  renderActivityRow(item, `${item.type}-${item.productId}-${item.createdAt}-${index}`, false)
+                )}
+              </ul>
             </div>
           )}
         </section>
@@ -371,22 +515,22 @@ export default async function DashboardPage({
             `lg:items-start`, não aqui. */}
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-1 lg:content-start lg:gap-4">
           <div className="flex flex-col gap-2 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+            <span className="text-xs text-gray-700 dark:text-gray-300">Produtos disponíveis</span>
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-success-bg dark:bg-success-solid/15">
-                <CheckCircle2 className="h-5 w-5 text-success-fg" aria-hidden="true" />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center">
+                <CheckCircle2 className="h-6 w-6 text-success-fg" aria-hidden="true" />
               </div>
               <span className="font-display text-2xl font-extrabold text-gray-900 dark:text-gray-50">{disponiveis}</span>
             </div>
-            <span className="text-xs text-gray-500 dark:text-gray-400">Produtos disponíveis</span>
           </div>
           <div className="flex flex-col gap-2 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+            <span className="text-xs text-gray-700 dark:text-gray-300">Produtos esgotados</span>
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-error-bg dark:bg-error-solid/15">
-                <XCircle className="h-5 w-5 text-error-fg" aria-hidden="true" />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center">
+                <XCircle className="h-6 w-6 text-error-fg" aria-hidden="true" />
               </div>
               <span className={`font-display text-2xl font-extrabold ${esgotados > 0 ? "text-error-fg" : "text-gray-900 dark:text-gray-50"}`}>{esgotados}</span>
             </div>
-            <span className="text-xs text-gray-500 dark:text-gray-400">Produtos esgotados</span>
           </div>
 
           {/* Tamanhos mais pedidos — cruza order_clicks.size de todos os
@@ -395,12 +539,7 @@ export default async function DashboardPage({
               coluna vazia ao lado; segue o mesmo filtro periodo do Ranking
               de tendência, sem seletor próprio. */}
           <div className="col-span-2 flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900 lg:col-span-1">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-subtle dark:bg-blue-400/15">
-                <SportShoe className="h-5 w-5 text-primary dark:text-blue-300" aria-hidden="true" />
-              </div>
-              <span className="font-display text-base font-bold text-gray-900 dark:text-gray-50">Tamanhos mais pedidos</span>
-            </div>
+            <span className="font-display text-base font-bold text-gray-900 dark:text-gray-50">Tamanhos mais pedidos</span>
             {sizeDemand.length > 0 ? (
               <ul className="flex flex-col gap-3">
                 {sizeDemand.slice(0, 3).map((item) => (
@@ -438,7 +577,7 @@ export default async function DashboardPage({
           mesmo princípio de profundidade já usado no avatar de produto. */}
       <div className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="font-display font-bold text-gray-900 dark:text-gray-50">Ranking de tendência</h2>
+          <h2 className="font-display font-bold text-gray-900 dark:text-gray-50">Demanda atual</h2>
           <div className="inline-flex w-fit shrink-0 gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
             {VALID_PERIODS.map((d) => (
               <Link
@@ -463,7 +602,7 @@ export default async function DashboardPage({
             mesmo se "Mais visualizados"/"Cliques no WhatsApp" tiverem números
             diferentes de itens. */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr_auto_1fr]">
-          <RankingList title="Mais visualizados" items={maisVisualizadosWithCover} metricLabel="visualizações" MetricIcon={Eye} days={periodo} />
+          <RankingList title="Mais visualizados" items={maisVisualizadosWithCover} metricLabel="visualizações" metricLabelMobile="Views" MetricIcon={Eye} days={periodo} />
           <div className="hidden self-stretch border-l border-gray-200 md:block dark:border-gray-800" aria-hidden="true" />
           <div className="border-t border-gray-200 pt-6 md:border-t-0 md:pt-0 dark:border-gray-800">
             <RankingList title="Cliques no WhatsApp" items={cliquesWhatsappWithCover} metricLabel="cliques" MetricIcon={MessageCircle} days={periodo} />
