@@ -331,14 +331,20 @@ export type TrendRankingItem = {
   disponivel: boolean;
   coverPath: string | null;
   current: number;
-  /** null quando `isNew` — não existe "crescimento de %" sem período anterior pra comparar. */
+  /**
+   * Porcentagem de tendência (o selo do ranking) — compara a janela atual com a
+   * janela anterior de mesmo tamanho. `deltaPct` é a VARIAÇÃO da porcentagem de
+   * tendência (+ subiu, − caiu); fica null quando `isNew`, pois sem período
+   * anterior não há variação pra calcular. `isNew` = teve 0 na janela anterior
+   * e passou a ter movimento agora → o selo mostra "Novo" no lugar do %.
+   */
   deltaPct: number | null;
   isNew: boolean;
   /** Contagem por dia dentro do período atual (length === days) — alimenta o sparkline sem query extra, reaproveitando as linhas já buscadas pro cálculo de tendência. */
   trend: number[];
 };
 
-const TREND_MIN_CURRENT = 2; // corta ruído de número quase zero (evita % enganosa)
+const TREND_MIN_CURRENT = 2; // piso pra entrar no ranking — corta ruído e evita porcentagem de tendência enganosa com número quase zero
 
 /**
  * MTR-06..MTR-10: ranking por TENDÊNCIA (período atual vs. período anterior
@@ -406,7 +412,7 @@ export async function queryTrendRanking(
     return [];
   }
 
-  // Pondera % de crescimento com volume (raiz quadrada) — sem isso, um
+  // Pondera a variação da porcentagem de tendência com volume (raiz quadrada) — sem isso, um
   // produto de 3→6 eventos (+100%) furaria na frente de um de 50→80
   // (+60%), mesmo o segundo sendo objetivamente mais relevante.
   const scored = candidates
