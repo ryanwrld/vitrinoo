@@ -31,11 +31,21 @@ export function StoreAvatar({
   if (logoUrl && !errored) {
     return (
       <div className="relative h-6 w-6 shrink-0 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+        {/* sizes bem maior que o tamanho real exibido (24px) de propósito:
+            força o Next a gerar uma versão de resolução mais alta e deixa o
+            próprio navegador reduzi-la com suavização, em vez de gerar já um
+            arquivo minúsculo — isso evita o aspecto pixelado num avatar tão
+            pequeno. 160px cobre até telas de celular com pixel density alta
+            (3x) sem esforço. quality=100 tira a compressão padrão (75), que
+            ficava visível demais nesse tamanho. A partir daqui o teto é a
+            resolução da foto que o lojista enviou — se a origem já for
+            pequena/baixa qualidade, nenhum ajuste aqui resolve. */}
         <Image
           src={logoUrl}
           alt={storeName ?? "Logo da loja"}
           fill
-          sizes="24px"
+          sizes="160px"
+          quality={100}
           className="object-cover"
           onError={() => setErrored(true)}
         />
