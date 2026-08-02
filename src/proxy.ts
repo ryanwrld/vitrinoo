@@ -18,7 +18,7 @@ import { updateSession } from "@/lib/supabase/middleware";
  * A rota pública `/loja/[slug]` (e qualquer outra fora desta lista) deve
  * ser inalcançável por este middleware por construção, não por exceção.
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   return updateSession(request);
 }
 
