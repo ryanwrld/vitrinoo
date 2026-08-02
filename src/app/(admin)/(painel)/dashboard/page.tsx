@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -8,7 +9,7 @@ import {
   ImageOff,
   MessageCircle,
   PackagePlus,
-  Share2,
+  TrendingDown,
   XCircle,
 } from "lucide-react";
 import { requireCompletedOnboarding } from "@/lib/auth/onboarding-guard";
@@ -24,7 +25,9 @@ import {
 } from "@/lib/dashboard/metrics";
 import { formatBRLPrice } from "@/lib/currency/brl";
 import { formatRelativeTime } from "@/lib/dashboard/format-relative-time";
+import { buildStoreUrl } from "@/lib/slug/store-url";
 import { HeaderActions } from "@/components/header-actions";
+import { ShareVitrineButton } from "@/components/share-vitrine-button";
 import { DashboardAutoRefresh } from "./dashboard-auto-refresh";
 import { Greeting } from "./greeting";
 
@@ -162,6 +165,8 @@ function RankingList({
   metricLabelMobile = metricLabel,
   MetricIcon,
   days,
+  emptyTitle,
+  emptyMessage,
 }: {
   title: string;
   items: (TrendRankingItem & { coverUrl: string | null })[];
@@ -171,6 +176,11 @@ function RankingList({
   metricLabelMobile?: string;
   MetricIcon: typeof Eye;
   days: number;
+  /** Copy do estado vazio — específica por métrica (visitas vs. pedidos são
+   *  causas raiz diferentes: tráfego vs. conversão do catálogo), não um
+   *  texto genérico repetido entre as duas colunas. */
+  emptyTitle: ReactNode;
+  emptyMessage: ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-3">
@@ -267,8 +277,8 @@ function RankingList({
         </ul>
       ) : (
         <div className="flex flex-col gap-1 rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center dark:border-gray-700">
-          <span className="font-medium text-gray-900 dark:text-gray-50">Sem atividade suficiente nesse período</span>
-          <span className="text-sm text-gray-500 dark:text-gray-400">Troque a janela de dias acima ou aguarde mais movimento na vitrine.</span>
+          <span className="font-medium text-gray-900 dark:text-gray-50">{emptyTitle}</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">{emptyMessage}</span>
         </div>
       )}
     </div>
@@ -290,7 +300,7 @@ export default async function DashboardPage({
 
   const { data: store } = await supabase
     .from("stores")
-    .select("id, slug")
+    .select("id, slug, name")
     .eq("owner_id", userData.user!.id)
     .single();
 
@@ -395,24 +405,71 @@ export default async function DashboardPage({
   // recentes" (mockup validado, Proposta 1) — mesmo destino/convenção do
   // link "Ver minha vitrine" da sidebar (`<a target="_blank">`, não <Link>,
   // já que é navegação pra fora do grupo de rotas admin).
+  // Mobile: pilha vertical centralizada (já validada). Desktop: vira uma
+  // linha HORIZONTAL (ícone | texto | botão) — é isso que resolve a raiz do
+  // problema de texto minúsculo: empilhado verticalmente, ícone+título+
+  // subtítulo+botão brigavam pela pouca altura que "Tamanhos mais pedidos"
+  // permite, forçando fonte cada vez menor. Numa linha só, a altura
+  // necessária é só a de UMA linha de texto — cabe folgado em qualquer
+  // altura, com fonte em tamanho normal. `lg:min-h`+`lg:flex-1` (no card)
+  // continuam garantindo que ele cresce até bater a altura do vizinho;
+  // `lg:justify-center` centraliza a linha inteira verticalmente dentro
+  // desse espaço extra.
+  // Versão HORIZONTAL (desktop) — usada só quando o CTA divide o card com a
+  // lista de atividade (1-3 itens): aí ele herda apenas o espaço que sobra
+  // depois da lista, naturalmente menor, e o layout em linha cabe folgado
+  // com fonte em tamanho normal.
   const shareCta = (
-    <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-3 rounded-xl border border-gray-200 bg-primary-subtle/40 px-5 py-8 text-center lg:py-16 dark:border-gray-800 dark:bg-blue-400/[0.06]">
-      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-subtle text-primary dark:bg-blue-400/15 dark:text-blue-300">
-        <Share2 className="h-6 w-6" aria-hidden="true" />
+    <div className="mx-auto flex w-full max-w-2xl flex-col items-center justify-center gap-3 rounded-xl border border-gray-200 bg-primary-subtle/40 px-5 py-8 text-center lg:min-h-40 lg:flex-1 lg:flex-row lg:items-center lg:gap-4 lg:px-6 lg:py-5 lg:text-left dark:border-gray-800 dark:bg-blue-400/[0.06]">
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-primary lg:h-11 lg:w-11 dark:bg-blue-400/15 dark:text-blue-300">
+        <TrendingDown className="h-6 w-6 lg:h-5 lg:w-5" aria-hidden="true" />
+      </span>
+      <div className="flex min-w-0 flex-col items-center gap-1 lg:flex-1 lg:items-start lg:gap-0.5">
+        <span className="font-display text-lg font-semibold text-gray-900 lg:text-base dark:text-gray-50">Movimento parado nas últimas 24h?</span>
+        {/* Quebra manual só no mobile (card estreito, texto centralizado) —
+            no desktop a coluna de texto tem largura própria dentro da linha
+            horizontal e o parágrafo quebra naturalmente, sem precisar de
+            <br> nem cap de ch. */}
+        <span className="max-w-[50ch] text-sm text-gray-500 lg:hidden dark:text-gray-400">
+          Priorize compartilhar sua vitrine — é a ação
+          <br />
+          que mais gera resultado pra sua loja.
+        </span>
+        <span className="hidden text-sm text-gray-500 lg:block dark:text-gray-400">
+          Priorize compartilhar sua vitrine — é a ação que mais gera resultado pra sua loja.
+        </span>
+      </div>
+      <ShareVitrineButton
+        url={buildStoreUrl(store!.slug)}
+        storeName={store!.name}
+        className="mt-1 inline-flex shrink-0 items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-primary-hover active:bg-primary-active disabled:opacity-70 lg:mt-0"
+      />
+    </div>
+  );
+
+  // Versão COMPACTA (0 atividades) — o CTA fica SOZINHO ocupando o card
+  // inteiro, sem lista dividindo o espaço. Em vez de um horizontal menor,
+  // usa o MESMO design vertical do mobile em qualquer largura de tela
+  // (ícone em cima, título, subtítulo, botão empilhados e centralizados) —
+  // só o `lg:min-h-40 lg:flex-1 lg:justify-center` muda por breakpoint, pra
+  // o card continuar crescendo/centralizando conforme a altura do vizinho
+  // ("Tamanhos mais pedidos") muda.
+  const shareCtaCompact = (
+    <div className="mx-auto flex w-full max-w-2xl flex-col items-center justify-center gap-3 rounded-xl border border-gray-200 bg-primary-subtle/40 px-5 py-8 text-center lg:min-h-40 lg:flex-1 dark:border-gray-800 dark:bg-blue-400/[0.06]">
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-primary dark:bg-blue-400/15 dark:text-blue-300">
+        <TrendingDown className="h-6 w-6" aria-hidden="true" />
       </span>
       <span className="font-display text-lg font-semibold text-gray-900 dark:text-gray-50">Movimento parado nas últimas 24h?</span>
-      <span className="max-w-[34ch] text-sm text-gray-500 dark:text-gray-400">
-        Priorize compartilhar sua vitrine — é a ação que mais gera resultado pra sua loja.
+      <span className="max-w-[50ch] text-sm text-gray-500 dark:text-gray-400">
+        Priorize compartilhar sua vitrine — é a ação
+        <br />
+        que mais gera resultado pra sua loja.
       </span>
-      <a
-        href={`/loja/${store.slug}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-1 inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-primary-hover active:bg-primary-active"
-      >
-        <Share2 className="h-4 w-4" aria-hidden="true" />
-        Compartilhar vitrine
-      </a>
+      <ShareVitrineButton
+        url={buildStoreUrl(store!.slug)}
+        storeName={store!.name}
+        className="mt-1 inline-flex shrink-0 items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-primary-hover active:bg-primary-active disabled:opacity-70"
+      />
     </div>
   );
 
@@ -467,7 +524,13 @@ export default async function DashboardPage({
             // vertical (ocupa todo o vão, não fica no rodapé). `flex-col` +
             // stretch: o card preenche a largura toda do widget (igual ao
             // mockup e ao estado compacto), não encolhe no conteúdo.
-            <div className="flex min-h-0 flex-1 flex-col justify-center">{shareCta}</div>
+            // `lg:pt-8` (só desktop): abre um respiro entre o título
+            // "Atividades recentes" e a borda de cima do card — sem tocar no
+            // `shareCta` em si. Usa a variante COMPACTA (shareCtaCompact):
+            // aqui o CTA fica sozinho preenchendo o card inteiro (sem lista
+            // dividindo o espaço), então a escala "normal" ficaria
+            // desproporcional numa área tão maior — ver renderShareCta.
+            <div className="flex min-h-0 flex-1 flex-col justify-center lg:pt-4">{shareCtaCompact}</div>
           ) : useCompactLayout ? (
             // 1-4 itens reais: lista no fluxo normal (sem `lg:absolute`, pra o
             // conteúdo empurrar de verdade) + preenchimento do vão. `flex-1` +
@@ -490,7 +553,7 @@ export default async function DashboardPage({
                   )}
                 </ul>
               )}
-              {showShareCta && <div className="mt-auto pt-4">{shareCta}</div>}
+              {showShareCta && <div className="flex flex-1 flex-col pt-4">{shareCta}</div>}
             </div>
           ) : (
             // 5 itens reais (teto): a <ul> volta ao comportamento original —
@@ -508,12 +571,16 @@ export default async function DashboardPage({
 
         {/* MTR-05: Disponíveis/Esgotados/Tamanhos — sem "Total"/"Acessos"
             all-time. Empilhados na coluna estreita (não lado a lado como
-            antes) pra caber ao lado do feed sem espremer. `lg:content-start`
-            empacota os cards no topo das próprias tracks; o alinhamento
-            entre essa coluna e "Atividade recente" (nenhum dos dois estica
-            pra acompanhar o outro) é resolvido no grid pai via
-            `lg:items-start`, não aqui. */}
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-1 lg:content-start lg:gap-4">
+            antes) pra caber ao lado do feed sem espremer. No desktop a coluna
+            vira flex-col e o card "Tamanhos" leva `lg:flex-1` SÓ no empty
+            state (sizeDemand vazio): aí ele cresce e preenche a altura que o
+            grid pai (items-stretch) reserva pra bater o widget "Atividades
+            recentes" ao lado — some o vão que sobrava abaixo do aviso. Quando
+            há barras de tamanhos, o card volta à altura natural (não estica,
+            pra não deixar vão abaixo das barras). O conteúdo fica sempre no
+            topo; só o espaço de baixo estica. No mobile segue grid-cols-2
+            (Disp./Esg. lado a lado, Tamanhos em linha própria). */}
+        <div className="grid grid-cols-2 gap-3 lg:flex lg:flex-col lg:gap-4">
           <div className="flex flex-col gap-2 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
             <span className="text-xs text-gray-700 dark:text-gray-300">Produtos disponíveis</span>
             <div className="flex items-center gap-3">
@@ -538,7 +605,17 @@ export default async function DashboardPage({
               col-span-2 no mobile (linha própria, cheia) pra não sobrar meia
               coluna vazia ao lado; segue o mesmo filtro periodo do Ranking
               de tendência, sem seletor próprio. */}
-          <div className="col-span-2 flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900 lg:col-span-1">
+          {/* min-h calculado pra bater a altura de quando há 2 tamanhos com
+              dados (título + 2 linhas h-9 + gaps + padding) — o estado vazio
+              ("Nenhum pedido...") não fica mais raso que o estado populado.
+              lg:flex-1 (desktop, incondicional): cresce pra preencher a
+              altura que o Grid pai (items-stretch) reserva pra essa coluna
+              quando "Atividades recentes" for a mais alta — conteúdo
+              continua no topo, só o espaço de baixo estica. Par simétrico do
+              flex-1 do CTA dentro de "Atividades recentes": qualquer que
+              seja o lado mais alto no momento, o outro absorve a diferença
+              crescendo, e as duas bordas de baixo ficam sempre alinhadas. */}
+          <div className="col-span-2 flex min-h-44 flex-col gap-4 rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900 lg:col-span-1 lg:flex-1">
             <span className="font-display text-base font-bold text-gray-900 dark:text-gray-50">Tamanhos mais pedidos</span>
             {sizeDemand.length > 0 ? (
               <ul className="flex flex-col gap-3">
@@ -602,10 +679,48 @@ export default async function DashboardPage({
             mesmo se "Mais visualizados"/"Cliques no WhatsApp" tiverem números
             diferentes de itens. */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr_auto_1fr]">
-          <RankingList title="Mais visualizados" items={maisVisualizadosWithCover} metricLabel="visualizações" metricLabelMobile="Views" MetricIcon={Eye} days={periodo} />
+          <RankingList
+            title="Mais visualizados"
+            items={maisVisualizadosWithCover}
+            metricLabel="visualizações"
+            metricLabelMobile="Views"
+            MetricIcon={Eye}
+            days={periodo}
+            emptyTitle={
+              <>
+                Sem visitas registradas
+                <br className="lg:hidden" /> nesse período
+              </>
+            }
+            emptyMessage={
+              <>
+                Compartilhe o link da sua vitrine
+                <br className="lg:hidden" />
+                <span className="hidden lg:inline"> — </span>é o que traz gente pra ver seus produtos.
+              </>
+            }
+          />
           <div className="hidden self-stretch border-l border-gray-200 md:block dark:border-gray-800" aria-hidden="true" />
           <div className="border-t border-gray-200 pt-6 md:border-t-0 md:pt-0 dark:border-gray-800">
-            <RankingList title="Cliques no WhatsApp" items={cliquesWhatsappWithCover} metricLabel="cliques" MetricIcon={MessageCircle} days={periodo} />
+            <RankingList
+              title="Cliques no WhatsApp"
+              items={cliquesWhatsappWithCover}
+              metricLabel="cliques"
+              MetricIcon={MessageCircle}
+              days={periodo}
+              emptyTitle={
+                <>
+                  Sem pedidos no WhatsApp
+                  <br className="lg:hidden" /> nesse período
+                </>
+              }
+              emptyMessage={
+                <>
+                  Fotos nítidas e preços visíveis
+                  <br className="lg:hidden" /> ajudam a transformar visitas em pedidos.
+                </>
+              }
+            />
           </div>
         </div>
       </div>
