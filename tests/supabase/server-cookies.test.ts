@@ -20,7 +20,13 @@ describe("createClient — setAll cookie write", () => {
     });
 
     const { createClient } = await import("../../src/lib/supabase/server");
-    const options = (await createClient()) as {
+    // Conversão via `unknown` obrigatória: o `vi.mock` de @supabase/ssr acima
+    // faz `createServerClient` devolver o próprio objeto de options, então em
+    // tempo de execução `createClient()` NÃO é um SupabaseClient — é o options.
+    // O TypeScript, que só enxerga a assinatura real, recusa a conversão
+    // direta entre dois formatos sem sobreposição (TS2352) e manda passar por
+    // `unknown` primeiro. Sem isso o typecheck do projeto inteiro quebra.
+    const options = (await createClient()) as unknown as {
       cookies: { setAll: (cookies: { name: string; value: string; options: object }[]) => void };
     };
 
@@ -39,7 +45,13 @@ describe("createClient — setAll cookie write", () => {
     });
 
     const { createClient } = await import("../../src/lib/supabase/server");
-    const options = (await createClient()) as {
+    // Conversão via `unknown` obrigatória: o `vi.mock` de @supabase/ssr acima
+    // faz `createServerClient` devolver o próprio objeto de options, então em
+    // tempo de execução `createClient()` NÃO é um SupabaseClient — é o options.
+    // O TypeScript, que só enxerga a assinatura real, recusa a conversão
+    // direta entre dois formatos sem sobreposição (TS2352) e manda passar por
+    // `unknown` primeiro. Sem isso o typecheck do projeto inteiro quebra.
+    const options = (await createClient()) as unknown as {
       cookies: { setAll: (cookies: { name: string; value: string; options: object }[]) => void };
     };
 

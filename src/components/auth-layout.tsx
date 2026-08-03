@@ -19,8 +19,13 @@ export function AuthLayout({
   children: ReactNode;
   footer?: ReactNode;
 }) {
+  // `bg-white` explícito, não herdado do `body`: as telas de auth ficam FORA
+  // do escopo de dark mode (`.admin-scope`), então precisam declarar o fundo
+  // claro elas mesmas. Depender da herança do body deixa a garantia implícita
+  // e frágil — pintura nativa do navegador reage ao tema do SISTEMA, não ao
+  // CSS do app. Coberto por tests/ui/dark-mode-contrast.test.ts.
   return (
-    <main className="flex min-h-dvh">
+    <main className="flex min-h-dvh bg-white">
       {/* Painel esquerdo — formulário */}
       <div className="flex flex-1 items-center justify-center p-8">
         <div className="flex w-full max-w-sm flex-col gap-6">

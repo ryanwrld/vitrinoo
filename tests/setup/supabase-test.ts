@@ -1,33 +1,11 @@
 import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
-import fs from "node:fs";
-import path from "node:path";
 import type { Database } from "@/lib/database.types";
+import { loadEnvLocal } from "./load-env";
 
-/**
- * Carrega variáveis de `.env.local` (raiz do projeto) para `process.env` caso
- * ainda não estejam definidas. O Next.js faz isso automaticamente para
- * `next dev`/`next build`, mas o Vitest roda fora desse pipeline — sem isso,
- * `TEST_SUPABASE_URL`/`TEST_SUPABASE_ANON_KEY` ficariam vazias ao rodar
- * `npx vitest run` diretamente.
- */
-function loadEnvLocal(): void {
-  const envPath = path.resolve(process.cwd(), ".env.local");
-  if (!fs.existsSync(envPath)) return;
-
-  const content = fs.readFileSync(envPath, "utf8");
-  for (const rawLine of content.split("\n")) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) continue;
-    const separatorIndex = line.indexOf("=");
-    if (separatorIndex === -1) continue;
-    const key = line.slice(0, separatorIndex).trim();
-    const value = line.slice(separatorIndex + 1).trim();
-    if (key && !(key in process.env)) {
-      process.env[key] = value;
-    }
-  }
-}
-
+// Fonte única do carregamento de `.env.local` — a implementação vive em
+// load-env.ts, registrado em `setupFiles` do vitest.config. A chamada
+// explícita aqui é redundante nesse fluxo, mas mantida de propósito para o
+// caso de este módulo ser importado fora do runner (ex.: script avulso).
 loadEnvLocal();
 
 // Deliberadamente um projeto Supabase DEDICADO a testes, isolado do projeto
