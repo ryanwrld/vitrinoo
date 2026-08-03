@@ -192,6 +192,15 @@ export async function saveStoreSettings(formData: FormData): Promise<SettingsAct
       ? previousHideSoldOutDefault
       : parsed.data.hideSoldOutDefault === "true";
 
+  // A logo sobe CRUA, sem compressão/redimensionamento — diferente das fotos
+  // de produto, que passam por `browser-image-compression` no uploader. Isso
+  // é decisão consciente de escopo (confirmada pelo usuário), NÃO um passo
+  // esquecido: só `validateLogoFile` (tipo + teto de 5MB) roda aqui.
+  //
+  // Consequência conhecida e aceita: se o lojista enviar uma imagem de baixa
+  // resolução, o avatar do painel (`StoreAvatar`) aparece pixelado e nenhum
+  // ajuste de exibição resolve — o teto é a resolução da origem. Antes de
+  // "corrigir" isso achando que é bug, confirmar que o escopo mudou.
   let logoUrl: string | undefined;
   const logoFile = formData.get("logo");
   if (logoFile instanceof File && logoFile.size > 0) {
