@@ -116,35 +116,86 @@ function buildActivityGapFill(recentCount: number, olderItems: ActivityFeedItem[
   return { historicalItems, showShareCta, useCompactLayout };
 }
 
-/** Sparkline inline via SVG puro — sem lib de gráfico, sem client JS. Trecho
- * final do período (~20% dos dias) ganha destaque em `text-primary`; o
- * resto fica em tom neutro (`text-gray-300`/`dark:text-gray-700`), seguindo
- * o mesmo princípio de "período atual em destaque" de um stat-tile comum. */
-function Sparkline({ values, days }: { values: number[]; days: number }) {
+/**
+ * Converte os pontos numa curva suave (Catmull-Rom -> Bézier cúbica) em vez
+ * de segmentos retos: é isso que dá o traço arredondado/fluido do modelo de
+ * referência, no lugar dos "bicos" de uma polyline. `TENSION` < 1 segura o
+ * overshoot da curva pra ela não estourar o padding vertical do SVG.
+ */
+const SPARKLINE_TENSION = 0.75;
+
+function buildSmoothPath(points: readonly (readonly [number, number])[]): string {
+  if (points.length < 2) return "";
+  const at = (i: number) => points[Math.max(0, Math.min(points.length - 1, i))];
+  let d = `M${points[0][0].toFixed(1)},${points[0][1].toFixed(1)}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const [x0, y0] = at(i - 1);
+    const [x1, y1] = at(i);
+    const [x2, y2] = at(i + 1);
+    const [x3, y3] = at(i + 2);
+    const c1x = x1 + ((x2 - x0) / 6) * SPARKLINE_TENSION;
+    const c1y = y1 + ((y2 - y0) / 6) * SPARKLINE_TENSION;
+    const c2x = x2 - ((x3 - x1) / 6) * SPARKLINE_TENSION;
+    const c2y = y2 - ((y3 - y1) / 6) * SPARKLINE_TENSION;
+    d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}`;
+  }
+  return d;
+}
+
+/**
+ * Sparkline inline via SVG puro — sem lib de gráfico, sem client JS.
+ *
+ * Estilo copiado de um modelo de referência trazido pelo usuário: curva
+ * suave, traço de cor ÚNICA e preenchimento em degradê que some na base.
+ * O desenho anterior (trecho final em destaque + ponto no fim marcando o
+ * último dia) foi removido de propósito nessa troca — a informação de
+ * "quanto mudou no período" continua no selo de porcentagem ao lado.
+ */
+function Sparkline({ values, days, instanceId }: { values: number[]; days: number; instanceId: string }) {
   const w = 84;
   const h = 28;
   const pad = 4;
   const max = Math.max(...values, 1);
   const stepX = values.length > 1 ? (w - pad * 2) / (values.length - 1) : 0;
   const points = values.map((v, i) => [pad + i * stepX, h - pad - (v / max) * (h - pad * 2)] as const);
-  const line = points.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const line = buildSmoothPath(points);
   const [fx] = points[0];
   const [lx] = points[points.length - 1];
   const area = `${line} L${lx.toFixed(1)},${(h - pad).toFixed(1)} L${fx.toFixed(1)},${(h - pad).toFixed(1)} Z`;
-  const tailCount = Math.max(2, Math.round(values.length * 0.2));
-  const tail = points
-    .slice(-tailCount)
-    .map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`)
-    .join(" ");
-  const [ex, ey] = points[points.length - 1];
+  // `instanceId` PRECISA ser único no documento, não pode derivar só dos
+  // dados: cada item renderiza este componente DUAS vezes (uma versão
+  // mobile e uma desktop, alternadas por CSS) com exatamente os mesmos
+  // valores. Com id repetido, `url(#id)` resolve sempre pro PRIMEIRO do
+  // documento — o do mobile — que no desktop está `display:none`, e um
+  // degradê dentro de subárvore não renderizada não pinta nada. Resultado:
+  // o preenchimento aparecia só no mobile e sumia no desktop.
+  //
+  // Higienizado aqui (e não na chamada) porque id de SVG não aceita espaço
+  // nem acento — o nome da coluna ("Mais visualizados") entra na composição.
+  const gradientId = `sparkline-fade-${instanceId.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
 
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={`Tendência dos últimos ${days} dias`} className="shrink-0">
+    <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={`Tendência dos últimos ${days} dias`} className="shrink-0 text-primary dark:text-blue-300">
       <title>{`Tendência dos últimos ${days} dias`}</title>
-      <path d={area} className="fill-primary/10 dark:fill-blue-300/15" />
-      <path d={line} fill="none" stroke="currentColor" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" className="text-gray-300 dark:text-gray-700" />
-      <path d={tail} fill="none" stroke="currentColor" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" className="text-primary dark:text-blue-300" />
-      <circle cx={ex} cy={ey} r={4} className="fill-primary dark:fill-blue-300 stroke-white dark:stroke-gray-900" strokeWidth={2} />
+      {/* stop-color explícito por tema em vez de `currentColor`: dentro de
+          <defs> o currentColor não resolve de forma confiável (o traço
+          funcionava, mas o degradê saía sem cor — invisível no escuro).
+          Opacidade maior no escuro porque fundo escuro engole preenchimento
+          de baixa opacidade mais que fundo claro. */}
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <stop
+            offset="0%"
+            className="[stop-color:var(--color-primary)] [stop-opacity:0.32] dark:[stop-color:var(--color-blue-300)] dark:[stop-opacity:0.45]"
+          />
+          <stop
+            offset="100%"
+            className="[stop-color:var(--color-primary)] [stop-opacity:0] dark:[stop-color:var(--color-blue-300)]"
+          />
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#${gradientId})`} />
+      <path d={line} fill="none" stroke="currentColor" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   );
 }
@@ -201,13 +252,16 @@ function RankingList({
                   <span className="sm:hidden">{metricLabelMobile}</span>
                   <span className="hidden sm:inline">{metricLabel}</span>
                 </span>
+                {/* Tendência positiva usa o mesmo azul de marca do badge
+                    "Novo" (bg-primary-subtle/text-primary) — só a tendência
+                    NEGATIVA continua vermelha. "Disponível"/"Esgotado" (mais
+                    abaixo, no card do produto) é outro badge e continua
+                    verde/vermelho — não mexer nele por engano. */}
                 <span
                   className={`shrink-0 rounded-full px-2 py-px text-[10px] font-bold ${
-                    item.isNew
+                    item.isNew || (item.deltaPct ?? 0) >= 0
                       ? "bg-primary-subtle text-primary dark:bg-blue-400/15 dark:text-blue-300"
-                      : (item.deltaPct ?? 0) < 0
-                        ? "bg-error-bg text-error-fg dark:bg-error-solid/15"
-                        : "bg-success-bg text-success-fg dark:bg-success-solid/15"
+                      : "bg-error-bg text-error-badge-fg dark:bg-error-solid/15"
                   }`}
                 >
                   {item.isNew ? "Novo" : `${(item.deltaPct ?? 0) >= 0 ? "+" : ""}${item.deltaPct}%`}
@@ -233,7 +287,7 @@ function RankingList({
                         className={`shrink-0 rounded-full px-1.5 py-px text-[10px] font-bold ${
                           item.disponivel
                             ? "bg-success-bg text-success-fg dark:bg-success-solid/15"
-                            : "bg-error-bg text-error-fg dark:bg-error-solid/15"
+                            : "bg-error-bg text-error-badge-fg dark:bg-error-solid/15"
                         }`}
                       >
                         {item.disponivel ? "Disponível" : "Esgotado"}
@@ -249,14 +303,14 @@ function RankingList({
                     {/* Só no mobile: gráfico + métrica numa linha, ocupando o espaço
                         que era do subtítulo. No desktop os dois vivem nas colunas à direita. */}
                     <div className="mt-1 flex items-center gap-3 sm:hidden">
-                      <Sparkline values={item.trend} days={days} />
+                      <Sparkline values={item.trend} days={days} instanceId={`${title}-${item.productId}-mobile`} />
                       <div className="flex items-center gap-2">{metricContent}</div>
                     </div>
                   </div>
                   {/* Sparkline escondido no mobile: naquele tamanho fica minúsculo e
                       rouba a largura do nome (a info essencial do ranking). */}
                   <div className="hidden shrink-0 sm:block">
-                    <Sparkline values={item.trend} days={days} />
+                    <Sparkline values={item.trend} days={days} instanceId={`${title}-${item.productId}-desktop`} />
                   </div>
                   <div className="hidden shrink-0 flex-col items-end gap-0.5 sm:flex">{metricContent}</div>
                   {urgent && (

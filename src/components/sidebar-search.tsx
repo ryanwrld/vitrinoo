@@ -363,7 +363,7 @@ function SearchPalette({
                               className={`rounded-full px-1.5 py-px text-[10px] font-bold ${
                                 product.disponivel
                                   ? "bg-success-bg text-success-fg dark:bg-success-solid/15"
-                                  : "bg-error-bg text-error-fg dark:bg-error-solid/15"
+                                  : "bg-error-bg text-error-badge-fg dark:bg-error-solid/15"
                               }`}
                             >
                               {product.disponivel ? "Disponível" : "Esgotado"}

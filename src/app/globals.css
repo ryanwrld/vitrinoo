@@ -54,19 +54,40 @@
   --color-primary-border: #B9C1F1;
 
   /* Semanticas */
-  --color-success-bg: #EBFAF1;
-  --color-success-fg: #0B6238;
+  /* success-bg no claro: era quase branco (L~95%, mal se percebia como
+     verde nos balões de "Disponível"/tendência positiva). Mais escuro e
+     saturado (L~89%, ajustado levemente pra cima a pedido do usuário) pra
+     ler como verde vivo de verdade, contraste com success-fg continua
+     folgado (~6:1, acima do AA). Não mexe no dark (deriva de
+     success-solid/15%, token separado). */
+  --color-success-bg: #D0F5DD;
+  /* Hex exato pedido pelo usuário, aplicado globalmente (inclusive na
+     vitrine pública, "Disponível" no card de produto) — contraste ~2.3:1
+     contra o bg claro do balão, ~2.7:1 contra branco. Ainda abaixo do AA
+     (4.5:1), mas bem melhor que a tentativa anterior (#5AF48D, ~1.2:1). */
+  --color-success-fg: #47B269;
   --color-success-solid: #1FA860;
   --color-success-solid-hover: #128049;
-  --color-error-bg: #FDECEE;
+  /* error-bg abaixo: tinta clara derivada de --color-error-badge-fg (mesmo
+     tom, ~22% sobre branco) — o usuário passou o hex exato do texto
+     (#F75A43, ver abaixo) mas não o do fundo, então este aqui é estimado
+     pra combinar com ele. Ajustar se não bater com a referência original. */
+  --color-error-bg: #FDDBD6;
   /* Igual a --color-error-solid: o maroon escuro anterior (#86172A) tinha
      contraste técnico ótimo (~9.7:1) mas lia como opaco/sem vida em texto de
      erro no claro. #D82A44 ainda passa AA em fundo branco (~4.8:1) e é o
      mesmo vermelho já usado no escuro — um só vermelho de erro nos dois
-     temas, mais vívido nos dois. */
+     temas, mais vívido nos dois. Usado em mensagem de validação avulsa
+     (fundo branco) — NÃO usar em balões sobre --color-error-bg, ver
+     --color-error-badge-fg abaixo. */
   --color-error-fg: var(--color-error-solid);
   --color-error-solid: #D82A44;
   --color-error-solid-hover: #AE1F35;
+  /* Texto específico pra balões/pills com fundo --color-error-bg (ex.:
+     tendência negativa em "Demanda atual") — hex exato passado pelo
+     usuário. Sem equivalente no dark: lá o balão já deriva de
+     error-solid/15%. */
+  --color-error-badge-fg: #F75A43;
   --color-warning-bg: #FDF3E4;
   --color-warning-fg: #7A4C14;
   --color-warning-solid: #C9821F;
@@ -129,6 +150,10 @@
   --color-success-fg: var(--color-success-solid);
   --color-error-fg: var(--color-error-solid);
   --color-warning-fg: var(--color-warning-solid);
+  /* Sem isso, o balão de tendência negativa no escuro herdaria o maroon
+     (pensado só pro claro, contra o error-bg mais saturado) em vez do
+     vermelho vívido que já usa hoje — mantém o dark exatamente como era. */
+  --color-error-badge-fg: var(--color-error-solid);
 }
 
 body {
