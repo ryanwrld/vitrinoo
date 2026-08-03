@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createAnonClient, seedAuthenticatedAccount, type SeededAccount } from "../setup/supabase-test";
+import { createAnonClient, pageviewDedupColumns, seedAuthenticatedAccount, type SeededAccount } from "../setup/supabase-test";
 import { queryAccessCount, queryTopOrderClickProducts, queryTopViewedProducts } from "@/lib/dashboard/metrics";
 
 /**
@@ -74,7 +74,14 @@ describe("metrics.ts — queryAccessCount / queryTopViewedProducts / queryTopOrd
 
     // Acessos ao grid (product_id null) — 7 acessos exatos, para provar que
     // queryAccessCount SÓ conta essas linhas (D-01), nunca as de produto.
-    const gridRows = Array.from({ length: 7 }, () => ({ store_id: storeAId, product_id: null }));
+    // Um visitante distinto por linha (ver pageviewDedupColumns): desde a
+    // migration 0010 os 7 acessos precisam ser de 7 pessoas diferentes pra
+    // continuarem valendo 7.
+    const gridRows = Array.from({ length: 7 }, () => ({
+      store_id: storeAId,
+      product_id: null,
+      ...pageviewDedupColumns(),
+    }));
     const { error: gridError } = await anon.from("pageviews").insert(gridRows);
     if (gridError) {
       throw new Error(`Falha ao seedar pageviews de grid: ${gridError.message}`);
@@ -83,11 +90,11 @@ describe("metrics.ts — queryAccessCount / queryTopViewedProducts / queryTopOrd
     // Pageviews de produto — contagens distintas e decrescentes:
     // productIds[0] recebe 12 views, productIds[11] recebe 1 view. Prova
     // ordenação desc e truncamento em 10 (os 2 últimos ficam de fora).
-    const productViewRows: { store_id: string; product_id: string }[] = [];
+    const productViewRows: { store_id: string; product_id: string; visitor_id: string; view_date: string }[] = [];
     productIds.forEach((id, index) => {
       const viewCount = 12 - index;
       for (let v = 0; v < viewCount; v++) {
-        productViewRows.push({ store_id: storeAId, product_id: id });
+        productViewRows.push({ store_id: storeAId, product_id: id, ...pageviewDedupColumns() });
       }
     });
     const { error: viewsError } = await anon.from("pageviews").insert(productViewRows);
@@ -113,7 +120,7 @@ describe("metrics.ts — queryAccessCount / queryTopViewedProducts / queryTopOrd
     // Ruído da Loja B — nunca deve aparecer nos resultados escopados pra Loja A.
     const { error: noiseViewsError } = await anon
       .from("pageviews")
-      .insert({ store_id: storeBId, product_id: productBId });
+      .insert({ store_id: storeBId, product_id: productBId, ...pageviewDedupColumns() });
     if (noiseViewsError) {
       throw new Error(`Falha ao seedar pageview de ruído da Loja B: ${noiseViewsError.message}`);
     }

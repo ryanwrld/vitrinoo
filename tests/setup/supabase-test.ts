@@ -171,3 +171,26 @@ export async function seedAuthenticatedAccount(labelForEmail: string): Promise<S
 
   return { client, userId, email };
 }
+
+/**
+ * Colunas de deduplicação de `pageviews` (migration 0010) para uso em seed
+ * de teste. Desde a 0010 existe um índice único em
+ * (visitor_id, product_id, view_date): sem visitante distinto, N inserts
+ * seguidos do mesmo produto colapsam em 1 e qualquer teste que dependa de
+ * "12 views > 11 views" passa a medir outra coisa.
+ *
+ * Cada chamada devolve um visitante NOVO, ou seja: seedar N linhas com este
+ * helper significa "N pessoas diferentes viram isso hoje" — que é
+ * exatamente a semântica que a contagem passou a ter em produção.
+ */
+export function pageviewDedupColumns(): { visitor_id: string; view_date: string } {
+  return {
+    visitor_id: crypto.randomUUID(),
+    view_date: new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date()),
+  };
+}

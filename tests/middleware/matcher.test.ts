@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { config } from "@/middleware";
+import { config } from "@/proxy";
 
 /**
  * Converte um padrão de `config.matcher` do Next.js (sintaxe de path-to-regexp
@@ -25,7 +25,7 @@ function patternToRegex(pattern: string): RegExp {
 }
 
 function isCovered(pathname: string): boolean {
-  return config.matcher.some((pattern) => patternToRegex(pattern).test(pathname));
+  return config.matcher.some((pattern: string) => patternToRegex(pattern).test(pathname));
 }
 
 describe("middleware config.matcher", () => {

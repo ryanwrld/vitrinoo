@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createAnonClient, seedAuthenticatedAccount, type SeededAccount } from "../setup/supabase-test";
+import { createAnonClient, pageviewDedupColumns, seedAuthenticatedAccount, type SeededAccount } from "../setup/supabase-test";
 
 /**
  * Prova o contrato RLS/multi-tenant da migration 0006 (T-06-01, T-06-02,
@@ -101,31 +101,31 @@ describe("RLS de pageviews + isolamento das views agregadas (migration 0006)", (
 
   it("anon INSERE acesso ao grid válido (product_id null) contra loja com produto publicado", async () => {
     const anon = createAnonClient();
-    const { error } = await anon.from("pageviews").insert({ store_id: storeAId, product_id: null });
+    const { error } = await anon.from("pageviews").insert({ store_id: storeAId, product_id: null, ...pageviewDedupColumns() });
     expect(error).toBeNull();
   });
 
   it("anon INSERE visualização de produto válida (product_id preenchido)", async () => {
     const anon = createAnonClient();
-    const { error } = await anon.from("pageviews").insert({ store_id: storeAId, product_id: publishedProductAId });
+    const { error } = await anon.from("pageviews").insert({ store_id: storeAId, product_id: publishedProductAId, ...pageviewDedupColumns() });
     expect(error).toBeNull();
   });
 
   it("anon INSERE visualização com par product_id/store_id inconsistente é REJEITADO pelo WITH CHECK", async () => {
     const anon = createAnonClient();
-    const { error } = await anon.from("pageviews").insert({ store_id: storeAId, product_id: publishedProductBId });
+    const { error } = await anon.from("pageviews").insert({ store_id: storeAId, product_id: publishedProductBId, ...pageviewDedupColumns() });
     expect(error).not.toBeNull();
   });
 
   it("anon INSERE visualização apontando para produto draft é REJEITADO pelo WITH CHECK", async () => {
     const anon = createAnonClient();
-    const { error } = await anon.from("pageviews").insert({ store_id: storeAId, product_id: draftProductAId });
+    const { error } = await anon.from("pageviews").insert({ store_id: storeAId, product_id: draftProductAId, ...pageviewDedupColumns() });
     expect(error).not.toBeNull();
   });
 
   it("anon INSERE acesso ao grid (product_id null) para store SEM produto publicado é REJEITADO pelo WITH CHECK", async () => {
     const anon = createAnonClient();
-    const { error } = await anon.from("pageviews").insert({ store_id: storeNoPublishedId, product_id: null });
+    const { error } = await anon.from("pageviews").insert({ store_id: storeNoPublishedId, product_id: null, ...pageviewDedupColumns() });
     expect(error).not.toBeNull();
   });
 
@@ -138,7 +138,7 @@ describe("RLS de pageviews + isolamento das views agregadas (migration 0006)", (
 
   it("owner (Loja A) lê os próprios pageviews; os da Loja B retornam [] (isolamento cross-tenant)", async () => {
     const anon = createAnonClient();
-    const { error: insertError } = await anon.from("pageviews").insert({ store_id: storeBId, product_id: null });
+    const { error: insertError } = await anon.from("pageviews").insert({ store_id: storeBId, product_id: null, ...pageviewDedupColumns() });
     expect(insertError).toBeNull();
 
     const { data: ownData, error: ownError } = await lojaA.client.from("pageviews").select("*").eq("store_id", storeAId);
@@ -161,7 +161,7 @@ describe("RLS de pageviews + isolamento das views agregadas (migration 0006)", (
     // Seed extra: mais uma visualização de produto (Loja A) e um clique WhatsApp (Loja A e B)
     const { error: viewInsertError } = await anon
       .from("pageviews")
-      .insert({ store_id: storeAId, product_id: publishedProductAId });
+      .insert({ store_id: storeAId, product_id: publishedProductAId, ...pageviewDedupColumns() });
     expect(viewInsertError).toBeNull();
 
     const { error: clickAError } = await anon

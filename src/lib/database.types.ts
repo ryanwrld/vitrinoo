@@ -84,18 +84,24 @@ export type Database = {
           id: string
           product_id: string | null
           store_id: string
+          view_date: string
+          visitor_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           product_id?: string | null
           store_id: string
+          view_date: string
+          visitor_id: string
         }
         Update: {
           created_at?: string
           id?: string
           product_id?: string | null
           store_id?: string
+          view_date?: string
+          visitor_id?: string
         }
         Relationships: [
           {
