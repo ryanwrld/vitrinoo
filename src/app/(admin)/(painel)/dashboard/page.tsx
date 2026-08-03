@@ -690,7 +690,7 @@ export default async function DashboardPage({
               </ul>
             ) : (
               <span className="text-sm text-gray-500 dark:text-gray-400">
-                Nenhum pedido &quot;Pedir agora&quot; registrado nesse período ainda.
+                Nenhum tamanho pedido nesse período.
               </span>
             )}
           </div>
