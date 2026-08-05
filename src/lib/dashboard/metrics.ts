@@ -247,6 +247,16 @@ export type ActivityFeedPage = {
 };
 
 /**
+ * Quantos itens o pop-up do sino (`HeaderActions` → `NotificationBell`)
+ * carrega. Vive aqui, e não em cada página, porque o sino agora aparece em
+ * TODA rota do painel (Dashboard, Produtos, Configurações) — se cada uma
+ * escolhesse seu próprio teto, o mesmo sino mostraria quantidades
+ * diferentes dependendo de onde o usuário estivesse. O histórico sem teto
+ * continua em `/admin/dashboard/notificacoes` (paginação real por offset).
+ */
+export const HEADER_FEED_LIMIT = 15;
+
+/**
  * MTR-04: feed cronológico substituindo "Produtos recentes". Cliques viram
  * 1 linha cada (sinal de intenção, baixo volume); pageviews são agrupados
  * por produto+hora (bucket determinístico via prefixo do timestamp) pra

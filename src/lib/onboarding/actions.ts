@@ -59,6 +59,11 @@ async function validateLogoFile(file: File): Promise<{ error: string } | null> {
  * normalizado + template de mensagem — WPP-01/WPP-02), seta
  * `onboarding_completed_at` e libera o Dashboard.
  *
+ * Logo é OBRIGATÓRIA aqui (decisão do usuário — antes era opcional), regra
+ * que vale só para onboarding de contas novas: `stores.logo_url` continua
+ * nullable no banco, e lojas antigas sem logo não são afetadas nem
+ * bloqueadas em nenhuma outra tela.
+ *
  * A normalização de telefone acontece AQUI, uma única vez, chamando
  * `normalizeWhatsAppBR` (Task 2) — nunca no client e nunca re-derivada
  * depois (Armadilha 2 do 01-RESEARCH.md: a Fase 5 apenas lê o valor já
@@ -75,6 +80,19 @@ export async function saveOnboarding(formData: FormData): Promise<OnboardingActi
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
+  }
+
+  // Logo passou a ser OBRIGATÓRIA no onboarding (decisão explícita do
+  // usuário — antes era opcional). A regra vale só para contas NOVAS: lojas
+  // que já existiam sem logo continuam funcionando normalmente e podem
+  // adicionar depois em /configuracoes, sem bloqueio nenhum ali.
+  //
+  // Checado aqui, não só no wizard: o botão desabilitado no cliente evita o
+  // clique acidental, mas nunca é a garantia real — qualquer requisição
+  // direta à action passaria por cima de uma validação só no front.
+  const logoFile = formData.get("logo");
+  if (!(logoFile instanceof File) || logoFile.size === 0) {
+    return { error: "Envie uma logo para continuar." };
   }
 
   const phoneResult = normalizeWhatsAppBR(parsed.data.whatsapp);
@@ -99,26 +117,22 @@ export async function saveOnboarding(formData: FormData): Promise<OnboardingActi
     return { error: "Não foi possível localizar sua loja. Tente novamente." };
   }
 
-  let logoUrl: string | undefined;
-  const logoFile = formData.get("logo");
-  if (logoFile instanceof File && logoFile.size > 0) {
-    const validationError = await validateLogoFile(logoFile);
-    if (validationError) {
-      return validationError;
-    }
-
-    const path = `${userData.user.id}/logo.${logoExtension(logoFile.type)}`;
-    const { error: uploadError } = await supabase.storage
-      .from("store-assets")
-      .upload(path, logoFile, { contentType: logoFile.type, upsert: true });
-
-    if (uploadError) {
-      return { error: "Não foi possível enviar o logo. Tente novamente." };
-    }
-
-    const { data: publicUrlData } = supabase.storage.from("store-assets").getPublicUrl(path);
-    logoUrl = publicUrlData.publicUrl;
+  const validationError = await validateLogoFile(logoFile);
+  if (validationError) {
+    return validationError;
   }
+
+  const path = `${userData.user.id}/logo.${logoExtension(logoFile.type)}`;
+  const { error: uploadError } = await supabase.storage
+    .from("store-assets")
+    .upload(path, logoFile, { contentType: logoFile.type, upsert: true });
+
+  if (uploadError) {
+    return { error: "Não foi possível enviar o logo. Tente novamente." };
+  }
+
+  const { data: publicUrlData } = supabase.storage.from("store-assets").getPublicUrl(path);
+  const logoUrl = publicUrlData.publicUrl;
 
   const { error: storeUpdateError } = await supabase
     .from("stores")
@@ -126,7 +140,7 @@ export async function saveOnboarding(formData: FormData): Promise<OnboardingActi
       name: parsed.data.name,
       accent_color: parsed.data.accentColor || null,
       tagline: parsed.data.tagline || null,
-      ...(logoUrl ? { logo_url: logoUrl } : {}),
+      logo_url: logoUrl,
     })
     .eq("id", store.id);
 
@@ -147,5 +161,5 @@ export async function saveOnboarding(formData: FormData): Promise<OnboardingActi
     return { error: "Não foi possível salvar a configuração de WhatsApp. Tente novamente." };
   }
 
-  redirect("/dashboard");
+  redirect("/admin/dashboard");
 }

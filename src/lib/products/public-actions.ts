@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { queryPublicProducts, type QueryPublicProductsParams } from "@/lib/products/public-list";
-import type { PublicProductCardData } from "@/app/loja/[slug]/product-card";
+import type { PublicProductCardData } from "@/app/[slug]/product-card";
 
 /**
  * Server Actions PÚBLICAS/ANÔNIMAS da vitrine — arquivo deliberadamente

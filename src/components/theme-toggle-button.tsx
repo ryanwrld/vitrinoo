@@ -21,7 +21,7 @@ function useHasMounted(): boolean {
 
 /**
  * Atalho de tema no header do Dashboard — binário (Claro/Escuro), sem a
- * opção "Automático" do seletor de 3 estados em `/configuracoes` (ali
+ * opção "Automático" do seletor de 3 estados em `/admin/configuracoes` (ali
  * continua existindo pra quem quer seguir o SO; aqui é só um toggle rápido
  * lua/sol). Usa `resolvedTheme` (não `theme`) pra decidir o ícone/próximo
  * estado a partir da aparência REAL da tela no momento, mesmo se a

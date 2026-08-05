@@ -15,7 +15,7 @@ export type ShareVitrineButtonProps = {
  * Botão "Compartilhar vitrine" do CTA do dashboard (widget "Atividades
  * recentes"). Dispara o share sheet NATIVO do dispositivo (WhatsApp,
  * Mensagens, AirDrop, Copiar...) via Web Share API — não é mais um simples
- * `<a href>` pra `/loja/[slug]`, porque "compartilhar" != "abrir a vitrine".
+ * `<a href>` pra `/[slug]`, porque "compartilhar" != "abrir a vitrine".
  * Fallback pra `copyText` + toast (mesmo padrão de `qr-code-panel.tsx`) em
  * navegadores sem suporte a `navigator.share` (a maioria dos desktops).
  * `AbortError` (usuário fechou o share sheet sem escolher nada) é

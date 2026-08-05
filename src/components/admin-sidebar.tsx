@@ -18,16 +18,16 @@ import { buildSupportWhatsAppHref } from "@/lib/support/whatsapp";
  * lista, engrenagem).
  */
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", Icon: Home },
-  { href: "/produtos", label: "Produtos", Icon: List },
-  { href: "/configuracoes", label: "Configurações", Icon: Settings },
+  { href: "/admin/dashboard", label: "Dashboard", Icon: Home },
+  { href: "/admin/produtos", label: "Produtos", Icon: List },
+  { href: "/admin/configuracoes", label: "Configurações", Icon: Settings },
 ];
 
 /**
  * Links de navegação compartilhados entre a sidebar desktop e o drawer
  * mobile (mesmo componente interno, nunca duas implementações divergentes).
  * Link ativo via `usePathname().startsWith(item.href)` — como cada item tem
- * um prefixo distinto (`/dashboard`, `/produtos`, `/configuracoes`), não há
+ * um prefixo distinto (`/admin/dashboard`, `/admin/produtos`, `/admin/configuracoes`), não há
  * colisão entre eles. Estilo pill (fundo `bg-primary-subtle`/texto `primary`
  * quando ativo) conforme `components/navigation/NavItem.jsx` do design
  * system — substitui o antigo indicador de borda esquerda.
@@ -37,8 +37,8 @@ function NavLinks({ pathname }: { pathname: string }) {
     <>
       {NAV_ITEMS.map((item) => {
         const isActive =
-          item.href === "/configuracoes"
-            ? pathname === "/configuracoes"
+          item.href === "/admin/configuracoes"
+            ? pathname === "/admin/configuracoes"
             : pathname.startsWith(item.href);
         return (
           <Link
@@ -92,7 +92,7 @@ function AccountBlock({
       {/* Ver vitrine pública — link de acesso rápido */}
       {storeSlug && (
         <a
-          href={`/loja/${storeSlug}`}
+          href={`/${storeSlug}`}
           target="_blank"
           rel="noopener noreferrer"
           className="mb-1 flex min-h-10 items-center gap-2.5 rounded-md px-2 text-sm font-medium text-gray-500 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-50"
@@ -120,7 +120,7 @@ function AccountBlock({
  * AdminSidebar (D-05/D-06): sidebar fixa no desktop (`<aside hidden md:flex>`)
  * + hambúrguer que abre um drawer `<dialog>` nativo no mobile
  * (`<button md:hidden>` + `.showModal()`). Ambos sempre no DOM — CSS decide
- * a visibilidade (mesma técnica de `loja/[slug]/page.tsx`).
+ * a visibilidade (mesma técnica de `[slug]/page.tsx`).
  */
 export function AdminSidebar({
   storeName,
@@ -223,17 +223,22 @@ export function AdminSidebar({
         </button>
 
         <div className="flex items-center gap-2">
-          <Link
-            href="/dashboard/notificacoes"
-            aria-label="Ver notificações"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors duration-150 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-          >
-            <Bell className="h-5 w-5" aria-hidden="true" />
-          </Link>
+          {/* Escondido na própria /dashboard/notificacoes: seria um atalho
+              para a página em que o usuário já está. Mesma decisão do
+              cabeçalho desktop (header-actions.tsx, prop `showBell`). */}
+          {pathname !== "/admin/dashboard/notificacoes" && (
+            <Link
+              href="/admin/dashboard/notificacoes"
+              aria-label="Ver notificações"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors duration-150 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+            >
+              <Bell className="h-5 w-5" aria-hidden="true" />
+            </Link>
+          )}
           {/* Mesmo mecanismo do avatar+seta do header desktop
               (header-actions.tsx): pill inteiro é um único alvo de clique
-              que abre o menu de conta (Sair) — não navega mais direto pra
-              /configuracoes/loja. */}
+              que abre o menu de conta (Sair). A configuração da loja não
+              tem mais rota própria — foi fundida em /configuracoes. */}
           <div ref={accountMenuRef} className="relative">
             <button
               type="button"

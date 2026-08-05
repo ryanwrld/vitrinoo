@@ -153,6 +153,11 @@ export async function updateStoreSlug(newSlug: string): Promise<SettingsActionRe
  * `onboardingSchema` por D-07 e `normalizeWhatsAppBR`), mas NUNCA seta
  * `onboarding_completed_at` nem faz `redirect()` — é um save em página, não
  * um passo de wizard terminal.
+ *
+ * Logo é OBRIGATÓRIA (decisão do usuário — vale desde o onboarding, não só
+ * lá): a checagem abaixo bloqueia o save quando a loja não tem `logo_url` E
+ * não veio um arquivo novo nesta chamada. Não exige reenviar a MESMA imagem
+ * a cada edição — só afeta contas antigas que nunca tiveram logo.
  */
 export async function saveStoreSettings(formData: FormData): Promise<SettingsActionResult> {
   const parsed = onboardingSchema.safeParse({
@@ -181,9 +186,12 @@ export async function saveStoreSettings(formData: FormData): Promise<SettingsAct
   // D-11: precisa do valor ATUAL antes do update, para só resetar as
   // exceções por produto quando a preferência global REALMENTE muda (nunca
   // num resubmit do formulário sem alteração deste campo específico).
+  // `logo_url` vem na mesma consulta pelo mesmo motivo de eficiência — é o
+  // valor que decide se a checagem de logo obrigatória abaixo passa sem um
+  // arquivo novo.
   const { data: currentStore } = await owned.supabase
     .from("stores")
-    .select("hide_sold_out_default")
+    .select("hide_sold_out_default, logo_url")
     .eq("id", owned.storeId)
     .single();
   const previousHideSoldOutDefault = currentStore?.hide_sold_out_default ?? false;
@@ -191,6 +199,18 @@ export async function saveStoreSettings(formData: FormData): Promise<SettingsAct
     parsed.data.hideSoldOutDefault === undefined
       ? previousHideSoldOutDefault
       : parsed.data.hideSoldOutDefault === "true";
+
+  // Logo obrigatória (decisão do usuário — vale desde o onboarding, incluindo
+  // esta tela). Não exige um arquivo NOVO a cada save: a loja já ter uma
+  // (`currentStore.logo_url`) satisfaz a regra tanto quanto enviar uma agora
+  // — do contrário, editar só o WhatsApp forçaria reenviar a mesma imagem
+  // toda vez. Só bloqueia quem NUNCA teve logo e não está enviando uma agora
+  // (contas antigas de antes desta regra existir).
+  const incomingLogoFile = formData.get("logo");
+  const hasIncomingLogo = incomingLogoFile instanceof File && incomingLogoFile.size > 0;
+  if (!currentStore?.logo_url && !hasIncomingLogo) {
+    return { error: "Envie uma logo para continuar." };
+  }
 
   // A logo sobe CRUA, sem compressão/redimensionamento — diferente das fotos
   // de produto, que passam por `browser-image-compression` no uploader. Isso
@@ -202,8 +222,8 @@ export async function saveStoreSettings(formData: FormData): Promise<SettingsAct
   // ajuste de exibição resolve — o teto é a resolução da origem. Antes de
   // "corrigir" isso achando que é bug, confirmar que o escopo mudou.
   let logoUrl: string | undefined;
-  const logoFile = formData.get("logo");
-  if (logoFile instanceof File && logoFile.size > 0) {
+  if (incomingLogoFile instanceof File && incomingLogoFile.size > 0) {
+    const logoFile = incomingLogoFile;
     const validationError = await validateLogoFile(logoFile);
     if (validationError) {
       return validationError;

@@ -49,7 +49,7 @@ const SORT_COLUMNS: Record<string, { column: "created_at" | "name" | "price"; as
  * `queryProducts` faz duas queries separadas (produtos filtrados/ordenados,
  * depois `product_sizes`/`product_photos` em lote via `.in("product_id",
  * ids)`) e junta em memória — mesmo padrão de duas-queries-separadas já
- * estabelecido em `/produtos/[id]/editar/page.tsx` (em vez do embed
+ * estabelecido em `/admin/produtos/[id]/editar/page.tsx` (em vez do embed
  * `product_sizes(available)` sugerido como esboço em 03-RESEARCH.md Pattern
  * 3), escolhido por: (1) tipagem mais simples/segura do retorno do
  * Supabase client tipado, sem lidar com o shape aninhado de embeds; (2)

@@ -49,12 +49,12 @@ type RegistryContext = {
 
 export function buildSearchRegistry({ storeName, storeSlug }: RegistryContext): SearchEntry[] {
   const base: Omit<SearchEntry, "searchText">[] = [
-    { id: "dashboard", label: "Dashboard", keywords: ["inicio", "home", "painel", "visao geral"], Icon: Home, kind: "route", href: "/dashboard" },
-    { id: "notificacoes", label: "Notificações", keywords: ["atividade", "avisos", "sino", "alertas"], Icon: Bell, kind: "route", href: "/dashboard/notificacoes" },
-    { id: "produtos", label: "Produtos", keywords: ["catalogo", "chuteiras", "itens", "estoque"], Icon: List, kind: "route", href: "/produtos" },
-    { id: "novo-produto", label: "Novo produto", keywords: ["cadastrar", "adicionar", "criar", "novo"], Icon: PackagePlus, kind: "route", href: "/produtos/novo" },
-    { id: "configuracoes", label: "Configurações", keywords: ["ajustes", "preferencias", "conta", "tema", "senha"], Icon: Settings, kind: "route", href: "/configuracoes" },
-    { id: "configuracoes-loja", label: "Configurações da loja", keywords: ["identidade", "whatsapp", "link", "slug", "logo", "vitrine"], Icon: Store, kind: "route", href: "/configuracoes/loja" },
+    { id: "dashboard", label: "Dashboard", keywords: ["inicio", "home", "painel", "visao geral"], Icon: Home, kind: "route", href: "/admin/dashboard" },
+    { id: "notificacoes", label: "Notificações", keywords: ["atividade", "avisos", "sino", "alertas"], Icon: Bell, kind: "route", href: "/admin/dashboard/notificacoes" },
+    { id: "produtos", label: "Produtos", keywords: ["catalogo", "chuteiras", "itens", "estoque"], Icon: List, kind: "route", href: "/admin/produtos" },
+    { id: "novo-produto", label: "Novo produto", keywords: ["cadastrar", "adicionar", "criar", "novo"], Icon: PackagePlus, kind: "route", href: "/admin/produtos/novo" },
+    { id: "configuracoes", label: "Configurações", keywords: ["ajustes", "preferencias", "conta", "tema", "senha"], Icon: Settings, kind: "route", href: "/admin/configuracoes" },
+    { id: "configuracoes-loja", label: "Configurações da loja", keywords: ["identidade", "whatsapp", "link", "slug", "logo", "vitrine"], Icon: Store, kind: "route", href: "/admin/configuracoes/loja" },
   ];
 
   // "Ver minha vitrine" só faz sentido quando já existe slug configurado.
@@ -65,7 +65,7 @@ export function buildSearchRegistry({ storeName, storeSlug }: RegistryContext): 
       keywords: ["publica", "link", "compartilhar", "loja"],
       Icon: ExternalLink,
       kind: "external",
-      href: `/loja/${storeSlug}`,
+      href: `/${storeSlug}`,
       external: true,
     });
   }

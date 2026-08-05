@@ -40,7 +40,7 @@ export async function signUpAction(formData: FormData): Promise<AuthActionResult
   }
 
   // Se isto falhar aqui (colisão de slug esgotando os retries, hiccup de
-  // rede/DB), o usuário já está autenticado e vai cair em `/onboarding` no
+  // rede/DB), o usuário já está autenticado e vai cair em `/admin/onboarding` no
   // próximo login — `ensureStoreForUser` roda de novo lá e se autocura
   // (ver onboarding/page.tsx), nunca mais uma conta presa permanentemente.
   const result = await ensureStoreForUser(supabase, signUpData.user.id, parsed.data.email);
@@ -49,7 +49,7 @@ export async function signUpAction(formData: FormData): Promise<AuthActionResult
     return { error: `Conta criada, mas ${result.error.charAt(0).toLowerCase()}${result.error.slice(1)}` };
   }
 
-  redirect("/onboarding");
+  redirect("/admin/onboarding");
 }
 
 /**
@@ -86,7 +86,7 @@ export async function signInAction(formData: FormData): Promise<AuthActionResult
     return { error: 'Email ou senha inválidos' };
   }
 
-  redirect("/dashboard"); // guard de onboarding decide se o revendedor realmente chega lá
+  redirect("/admin/dashboard"); // guard de onboarding decide se o revendedor realmente chega lá
 }
 
 /**
@@ -96,5 +96,5 @@ export async function signInAction(formData: FormData): Promise<AuthActionResult
 export async function signOutAction(): Promise<void> {
   const supabase = await createClient();
   await supabase.auth.signOut();
-  redirect("/login");
+  redirect("/admin/login");
 }

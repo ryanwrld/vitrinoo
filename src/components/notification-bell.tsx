@@ -40,7 +40,7 @@ function getReadAtServerSnapshot() {
  * notificações) — abre um painel flutuante ancorado no próprio botão,
  * ocupando o canto superior direito por cima do conteúdo do Dashboard
  * (referência visual do usuário: painel a partir do sino, alinhado à
- * direita, com scroll interno). `/dashboard/notificacoes` (histórico completo
+ * direita, com scroll interno). `/admin/dashboard/notificacoes` (histórico completo
  * paginado) continua existindo como "Ver histórico completo" no rodapé do
  * painel, pra quem quiser vasculhar além do que cabe aqui.
  *
@@ -177,7 +177,7 @@ export function NotificationBell({ items }: { items: ActivityFeedItem[] }) {
 
             <div className="relative mx-4 h-px bg-gradient-to-r from-transparent via-gray-900/10 to-transparent dark:via-white/10" />
             <Link
-              href="/dashboard/notificacoes"
+              href="/admin/dashboard/notificacoes"
               onClick={() => setOpen(false)}
               className="relative px-4 py-3 text-center text-sm font-semibold text-primary transition-colors duration-150 hover:bg-gray-900/[.04] dark:text-blue-300 dark:hover:bg-white/[.06]"
             >

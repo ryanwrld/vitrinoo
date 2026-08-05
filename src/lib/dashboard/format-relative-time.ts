@@ -1,5 +1,5 @@
 /**
- * Extraído de `dashboard/page.tsx` pra ser reaproveitado por `/dashboard/notificacoes`
+ * Extraído de `dashboard/page.tsx` pra ser reaproveitado por `/admin/dashboard/notificacoes`
  * e `notification-bell.tsx` — mesmo formato, uma única fonte de verdade.
  *
  * Só os primeiros minutos/horas ficam relativos ("há 23 min", "há 23h") —

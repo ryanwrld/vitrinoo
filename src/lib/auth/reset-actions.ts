@@ -8,7 +8,7 @@ import { signUpSchema } from "@/lib/validation/auth";
 export type ResetPasswordRequestResult = { message: string };
 export type UpdatePasswordResult = { error: string } | void;
 
-const RESET_PASSWORD_CALLBACK_PATH = "/auth/confirm";
+const RESET_PASSWORD_CALLBACK_PATH = "/admin/auth/confirm";
 const GENERIC_RESET_MESSAGE = "Se o email existir, um link de recuperação foi enviado.";
 
 /**
@@ -50,7 +50,7 @@ export async function requestPasswordReset(formData: FormData): Promise<ResetPas
 
 /**
  * Define a nova senha (AUTH-05) após a sessão de recuperação já ter sido
- * estabelecida pelo Route Handler `/auth/confirm` (`verifyOtp`). Senha fraca
+ * estabelecida pelo Route Handler `/admin/auth/confirm` (`verifyOtp`). Senha fraca
  * é rejeitada por Zod (mesmo critério do cadastro) antes de gravar a nova
  * senha no Supabase Auth.
  */
@@ -68,5 +68,5 @@ export async function updatePassword(formData: FormData): Promise<UpdatePassword
     return { error: "Não foi possível redefinir sua senha. O link pode ter expirado — solicite um novo." };
   }
 
-  redirect("/dashboard");
+  redirect("/admin/dashboard");
 }

@@ -5,8 +5,8 @@ import { createClient } from "@/lib/supabase/server";
  * Guard de DADOS (D-04) — separado e explícito do gate de auth (Antipadrão
  * do 01-RESEARCH.md: nunca fundir "sessão válida?" com "onboarding
  * completo?" em uma única condição). Usado em toda página protegida que
- * exige onboarding completo (ex.: `/dashboard`), nunca no próprio
- * `/onboarding` nem nas rotas de auth — evita loop de redirect.
+ * exige onboarding completo (ex.: `/admin/dashboard`), nunca no próprio
+ * `/admin/onboarding` nem nas rotas de auth — evita loop de redirect.
  *
  * Também revalida a sessão via `getUser()` como rede de segurança: como
  * `(admin)/layout.tsx` não pode determinar de forma confiável se a rota
@@ -23,7 +23,7 @@ export async function requireCompletedOnboarding(): Promise<void> {
   // 1) Gate de auth (nunca `getSession()`).
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) {
-    redirect("/login");
+    redirect("/admin/login");
   }
 
   // 2) Gate de dados — onboarding completo?
@@ -34,7 +34,7 @@ export async function requireCompletedOnboarding(): Promise<void> {
     .single();
 
   if (!store) {
-    redirect("/onboarding");
+    redirect("/admin/onboarding");
   }
 
   const { data: settings } = await supabase
@@ -44,6 +44,6 @@ export async function requireCompletedOnboarding(): Promise<void> {
     .single();
 
   if (!settings || !settings.onboarding_completed_at) {
-    redirect("/onboarding");
+    redirect("/admin/onboarding");
   }
 }

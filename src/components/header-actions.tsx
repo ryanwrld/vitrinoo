@@ -18,7 +18,21 @@ import { useStoreIdentity } from "@/lib/store-identity/context";
  * mágico. `hidden md:flex`: no mobile essa mesma informação já vive na barra
  * de topo do `AdminSidebar` (hambúrguer + sino + avatar), não duplicar aqui.
  */
-export function HeaderActions({ activityFeed }: { activityFeed?: ActivityFeedItem[] }) {
+export function HeaderActions({
+  activityFeed,
+  showBell = true,
+}: {
+  activityFeed?: ActivityFeedItem[];
+  /**
+   * `false` remove o sino do cabeçalho. Usado apenas em
+   * `/admin/dashboard/notificacoes`: ali o sino seria um atalho para a própria
+   * página em que o usuário já está — e não pode virar pop-up, porque o feed
+   * daquela rota é paginado por offset (estando na página 3, os itens em
+   * memória são os antigos, não os recentes). Melhor não existir do que
+   * existir sem fazer nada.
+   */
+  showBell?: boolean;
+}) {
   const { storeName, storeLogoUrl } = useStoreIdentity();
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
@@ -46,21 +60,22 @@ export function HeaderActions({ activityFeed }: { activityFeed?: ActivityFeedIte
   return (
     <div className="hidden shrink-0 items-center gap-3 md:flex">
       <ThemeToggleButton />
-      {activityFeed ? (
-        <NotificationBell items={activityFeed} />
-      ) : (
-        <Link
-          href="/dashboard/notificacoes"
-          aria-label="Ver notificações"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors duration-150 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-        >
-          <Bell className="h-5 w-5" aria-hidden="true" />
-        </Link>
-      )}
-      {/* Pill inteiro é um único alvo de clique agora — a interação de ir
-          pra /configuracoes/loja foi removida (rota continua existindo, só
-          não tem mais esse atalho); clicar em qualquer parte do pill
-          (avatar ou seta) abre o menu de conta (Sair). */}
+      {showBell &&
+        (activityFeed ? (
+          <NotificationBell items={activityFeed} />
+        ) : (
+          <Link
+            href="/admin/dashboard/notificacoes"
+            aria-label="Ver notificações"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors duration-150 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+          >
+            <Bell className="h-5 w-5" aria-hidden="true" />
+          </Link>
+        ))}
+      {/* Pill inteiro é um único alvo de clique — clicar em qualquer parte
+          (avatar ou seta) abre o menu de conta (Sair). A configuração da
+          loja não tem mais rota própria: /configuracoes/loja foi fundida em
+          /configuracoes (aba "Configurações da loja"). */}
       <div ref={accountMenuRef} className="relative">
         <button
           type="button"

@@ -208,7 +208,7 @@ function SearchPalette({
       }
       // produto
       addRecentSearch(trimmed || item.product.name);
-      router.push(`/produtos/${item.product.id}/editar`);
+      router.push(`/admin/produtos/${item.product.id}/editar`);
       onClose();
     },
     [trimmed, router, onClose, updateQuery]

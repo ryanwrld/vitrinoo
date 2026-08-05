@@ -13,7 +13,7 @@ function generateStoreSlug(email: string): string {
 
 /**
  * Garante que o usuário autenticado tem `stores`/`store_settings` — chamada
- * tanto no cadastro (caminho feliz) quanto no topo de `/onboarding`
+ * tanto no cadastro (caminho feliz) quanto no topo de `/admin/onboarding`
  * (self-heal). Existe porque `auth.signUp()` pode ter sucesso e o insert de
  * `stores` falhar logo depois (colisão do slug aleatório, hiccup
  * transitório de rede/DB), deixando um usuário autenticado sem loja — sem
