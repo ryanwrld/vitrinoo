@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { createAnonClient } from "../setup/supabase-test";
+import { createAnonClient, makeFakeLogoFile } from "../setup/supabase-test";
 import { signUpAction } from "@/lib/auth/actions";
 import { saveOnboarding } from "@/lib/onboarding/actions";
 import { DEFAULT_MESSAGE_TEMPLATE } from "@/lib/validation/onboarding";
@@ -39,7 +39,7 @@ async function signUpAndGetCredentials(label: string) {
   const formData = new FormData();
   formData.set("email", email);
   formData.set("password", password);
-  await expect(signUpAction(formData)).rejects.toThrow("NEXT_REDIRECT:/onboarding");
+  await expect(signUpAction(formData)).rejects.toThrow("NEXT_REDIRECT:/admin/onboarding");
   return { email, password };
 }
 
@@ -53,8 +53,11 @@ describe("saveOnboarding — identidade da loja (LOJA-01)", () => {
     formData.set("tagline", "As melhores chuteiras importadas do Brasil");
     formData.set("whatsapp", "(11) 99999-9999");
     formData.set("messageTemplate", DEFAULT_MESSAGE_TEMPLATE);
+    // Logo virou obrigatória no onboarding — este é o caminho de SUCESSO,
+    // então precisa de um arquivo válido para chegar ao redirect.
+    formData.set("logo", makeFakeLogoFile());
 
-    await expect(saveOnboarding(formData)).rejects.toThrow("NEXT_REDIRECT:/dashboard");
+    await expect(saveOnboarding(formData)).rejects.toThrow("NEXT_REDIRECT:/admin/dashboard");
 
     const verifyClient = createAnonClient();
     const { data: signInData } = await verifyClient.auth.signInWithPassword({ email, password });
@@ -101,6 +104,11 @@ describe("saveOnboarding — identidade da loja (LOJA-01)", () => {
     formData.set("name", "Loja Teste WhatsApp Inválido");
     formData.set("whatsapp", "123");
     formData.set("messageTemplate", DEFAULT_MESSAGE_TEMPLATE);
+    // Sem isso, o teste passaria pelo motivo ERRADO: a checagem de logo
+    // obrigatória roda antes da normalização de telefone, então sem arquivo
+    // o erro devolvido seria "Envie uma logo…", não o de WhatsApp inválido —
+    // a asserção genérica (`any(String)`) não denunciaria a troca.
+    formData.set("logo", makeFakeLogoFile());
 
     const result = await saveOnboarding(formData);
     expect(result).toEqual({ error: expect.any(String) });

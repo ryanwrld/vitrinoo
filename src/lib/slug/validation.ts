@@ -12,6 +12,21 @@ import { z } from "zod";
  */
 const SLUG_CHARSET_REGEX = /^[a-z0-9-]+$/;
 
+/**
+ * Nomes que NÃO podem virar slug de loja, porque a vitrine pública mora na
+ * raiz (`vitrinoo.app/<slug>`) e disputaria o caminho com uma rota real do
+ * app. O Next.js dá prioridade à rota estática, então uma loja com um destes
+ * slugs ficaria permanentemente inacessível — e o revendedor não teria como
+ * descobrir por quê.
+ *
+ * A lista é curta de propósito: mover o painel inteiro para `/admin/*`
+ * resolveu a colisão por construção, em vez de exigir uma denylist que
+ * cresce a cada rota nova. `admin` está aqui porque é justamente o segmento
+ * que sobrou na raiz; `api` e `_next`/`static` são reservas do próprio
+ * framework/hospedagem que nunca devem ser vendíveis como link de loja.
+ */
+const RESERVED_SLUGS = new Set(["admin", "api", "static", "public", "www"]);
+
 export const slugSchema = z
   .string()
   .trim()
@@ -21,6 +36,7 @@ export const slugSchema = z
   .refine(
     (value) => !value.startsWith("-") && !value.endsWith("-"),
     "O link não pode começar ou terminar com hífen"
-  );
+  )
+  .refine((value) => !RESERVED_SLUGS.has(value), "Esse link é reservado — escolha outro.");
 
 export type SlugInput = z.infer<typeof slugSchema>;

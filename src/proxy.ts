@@ -7,33 +7,24 @@ import { updateSession } from "@/lib/supabase/middleware";
  * matcher — NUNCA um matcher catch-all com allowlist/denylist interna em
  * código (Antipadrão #1 do 01-RESEARCH.md; CVE-2025-29927 é o precedente).
  *
- * `/admin/:path*` (valor original) NUNCA bateu com nenhuma rota real: o
- * painel inteiro vive em route groups (`(admin)`, `(painel)`), que o
- * Next.js resolve para caminhos na raiz (`/login`, `/dashboard`,
- * `/produtos`, ...) — nenhuma URL do projeto começa com `/admin/`. Na
- * prática isso fazia o refresh de sessão de `updateSession()` nunca
- * rodar, apesar de `src/lib/supabase/server.ts` assumir (no comentário do
- * `setAll`) que ele sempre roda — sessões podiam expirar em silêncio.
+ * Historicamente o painel resolvia para caminhos na RAIZ (`/dashboard`,
+ * `/produtos`, ...) por viver em route groups, e o matcher precisava listar
+ * cada rota uma a uma. Desde que a vitrine pública passou a ocupar a raiz
+ * (`/[slug]`, para encurtar o link que o cliente final digita), o painel
+ * inteiro mora sob o segmento real `/admin/*` — o que torna o matcher um
+ * único prefixo em vez de uma lista que precisava ser atualizada à mão a
+ * cada rota nova (e que silenciosamente deixava a rota sem refresh de
+ * sessão quando alguém esquecia).
  *
- * A rota pública `/loja/[slug]` (e qualquer outra fora desta lista) deve
- * ser inalcançável por este middleware por construção, não por exceção.
+ * A vitrine pública `/[slug]` continua inalcançável por este middleware por
+ * CONSTRUÇÃO: ela não começa com `/admin/`, e o matcher é um prefixo
+ * explícito — nunca um catch-all com allowlist interna (Antipadrão #1 do
+ * 01-RESEARCH.md; CVE-2025-29927 é o precedente).
  */
 export async function proxy(request: NextRequest) {
   return updateSession(request);
 }
 
 export const config = {
-  matcher: [
-    "/login",
-    "/cadastro",
-    "/esqueci-senha",
-    "/redefinir-senha",
-    "/onboarding",
-    "/dashboard",
-    "/dashboard/:path*",
-    "/produtos",
-    "/produtos/:path*",
-    "/configuracoes",
-    "/configuracoes/:path*",
-  ],
+  matcher: ["/admin/:path*"],
 };

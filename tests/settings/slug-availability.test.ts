@@ -38,7 +38,7 @@ async function signUpLojaA(label: string): Promise<void> {
   const formData = new FormData();
   formData.set("email", uniqueEmail(label));
   formData.set("password", "SenhaForte123!");
-  await expect(signUpAction(formData)).rejects.toThrow("NEXT_REDIRECT:/onboarding");
+  await expect(signUpAction(formData)).rejects.toThrow("NEXT_REDIRECT:/admin/onboarding");
 }
 
 describe("checkSlugAvailability (cross-tenant, via RPC is_slug_available)", () => {

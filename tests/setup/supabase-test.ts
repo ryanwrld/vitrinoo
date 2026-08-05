@@ -172,3 +172,16 @@ export function pageviewDedupColumns(): { visitor_id: string; view_date: string 
     }).format(new Date()),
   };
 }
+
+/**
+ * PNG mínimo (assinatura de 4 bytes + padding) para satisfazer
+ * `validateLogoFile` (src/lib/onboarding/actions.ts) — que checa magic bytes,
+ * nunca a extensão. Logo virou obrigatória no onboarding, então todo teste
+ * que chama `saveOnboarding` diretamente precisa enviar um arquivo, mesmo
+ * quando o próprio teste não é sobre logo.
+ */
+export function makeFakeLogoFile(): File {
+  const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47];
+  const bytes = new Uint8Array([...PNG_SIGNATURE, 0, 0, 0, 0]);
+  return new File([bytes], "logo.png", { type: "image/png" });
+}

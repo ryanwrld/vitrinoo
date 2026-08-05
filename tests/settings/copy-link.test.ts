@@ -15,9 +15,9 @@ describe("copyText", () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal("navigator", { clipboard: { writeText } });
 
-    const result = await copyText("https://vitrinoo.app/loja/minha-loja");
+    const result = await copyText("https://vitrinoo.app/minha-loja");
 
-    expect(writeText).toHaveBeenCalledWith("https://vitrinoo.app/loja/minha-loja");
+    expect(writeText).toHaveBeenCalledWith("https://vitrinoo.app/minha-loja");
     expect(result).toBe(true);
   });
 
@@ -25,7 +25,7 @@ describe("copyText", () => {
     const writeText = vi.fn().mockRejectedValue(new Error("clipboard indisponível"));
     vi.stubGlobal("navigator", { clipboard: { writeText } });
 
-    const result = await copyText("https://vitrinoo.app/loja/minha-loja");
+    const result = await copyText("https://vitrinoo.app/minha-loja");
 
     expect(result).toBe(false);
   });

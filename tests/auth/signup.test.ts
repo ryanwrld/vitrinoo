@@ -39,7 +39,7 @@ describe("signUpAction", () => {
     formData.set("email", email);
     formData.set("password", password);
 
-    await expect(signUpAction(formData)).rejects.toThrow("NEXT_REDIRECT:/onboarding");
+    await expect(signUpAction(formData)).rejects.toThrow("NEXT_REDIRECT:/admin/onboarding");
 
     // Confirma a escrita real autenticando como o mesmo usuário (RLS: só ele
     // enxerga sua própria linha `stores`/`store_settings`).

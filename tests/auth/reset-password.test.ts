@@ -55,7 +55,7 @@ describe("requestPasswordReset", () => {
 
 describe("updatePassword", () => {
   /**
-   * O Route Handler `/auth/confirm` (Task 2 deste plano) é quem troca o
+   * O Route Handler `/admin/auth/confirm` (Task 2 deste plano) é quem troca o
    * `token_hash` do email por uma sessão real via `verifyOtp` — isso exige
    * interceptar um email de verdade e é coberto pelo human-check manual do
    * PLAN.md (fluxo completo ponta a ponta). Aqui testamos o contrato de
@@ -72,7 +72,7 @@ describe("updatePassword", () => {
     // Estabelece a sessão através do MESMO `createClient()` (cookie jar
     // mockado compartilhado) que `updatePassword` usa internamente — assim
     // a sessão fica disponível para o Server Action ler, simulando o estado
-    // pós `verifyOtp` do Route Handler `/auth/confirm` (Task 2).
+    // pós `verifyOtp` do Route Handler `/admin/auth/confirm` (Task 2).
     const setupClient = await createClient();
     const { data: signUpData, error: signUpError } = await setupClient.auth.signUp({
       email,
@@ -84,7 +84,7 @@ describe("updatePassword", () => {
     const formData = new FormData();
     formData.set("password", newPassword);
 
-    await expect(updatePassword(formData)).rejects.toThrow("NEXT_REDIRECT:/dashboard");
+    await expect(updatePassword(formData)).rejects.toThrow("NEXT_REDIRECT:/admin/dashboard");
 
     // Confirma contra o Supabase real: a senha antiga não funciona mais, a
     // nova funciona.

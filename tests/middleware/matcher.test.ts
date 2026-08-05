@@ -3,19 +3,23 @@ import { config } from "@/proxy";
 
 /**
  * Converte um padrão de `config.matcher` do Next.js (sintaxe de path-to-regexp
- * simplificada, ex.: "/dashboard", "/produtos/:path*") em uma RegExp
+ * simplificada, ex.: "/admin/dashboard", "/admin/produtos/:path*") em uma RegExp
  * equivalente, apenas para fins deste smoke test — não é o matcher real do
  * Next.js em produção, mas verifica que os padrões declarados cobrem
  * exatamente as rotas reais do painel admin e nada além delas (SC-7,
  * Armadilha 5 do 01-RESEARCH.md).
  *
- * O matcher NUNCA foi `['/admin/:path*']` de fato em produção: o painel
- * inteiro vive em route groups (`(admin)`, `(painel)`), que o Next.js
- * resolve para caminhos na raiz — nenhuma URL do projeto começa com
- * `/admin/`. A versão anterior deste teste fixava essa premissa errada
- * (asserção literal `toEqual(["/admin/:path*"])` + "`/login` NÃO coberto"),
- * mascarando o bug em vez de pegá-lo: o middleware de refresh de sessão
- * nunca rodava em nenhuma página real.
+ * O painel morava em route groups (`(admin)`, `(painel)`) que resolviam para
+ * a RAIZ, e por isso o matcher precisou um dia listar cada rota à mão. Com a
+ * vitrine pública ocupando a raiz (`/[slug]`), o painel passou a viver sob o
+ * segmento real `/admin/*` e o matcher voltou a ser um prefixo único.
+ *
+ * O ponto crítico que este teste protege continua o mesmo, só que agora pelo
+ * lado oposto: a vitrine pública NÃO pode ser coberta pelo middleware. Antes
+ * ela estava a salvo por morar em `/loja/*`; hoje ela é a raiz inteira, então
+ * o que a protege é o matcher ser um prefixo `/admin/` explícito. Se alguém
+ * um dia trocar isso por um catch-all com allowlist interna, estes casos
+ * quebram.
  */
 function patternToRegex(pattern: string): RegExp {
   const escaped = pattern
@@ -30,30 +34,37 @@ function isCovered(pathname: string): boolean {
 
 describe("middleware config.matcher", () => {
   it("cobre todas as rotas reais do painel admin", () => {
-    expect(isCovered("/login")).toBe(true);
-    expect(isCovered("/cadastro")).toBe(true);
-    expect(isCovered("/esqueci-senha")).toBe(true);
-    expect(isCovered("/redefinir-senha")).toBe(true);
-    expect(isCovered("/onboarding")).toBe(true);
-    expect(isCovered("/dashboard")).toBe(true);
-    expect(isCovered("/dashboard/notificacoes")).toBe(true);
-    expect(isCovered("/produtos")).toBe(true);
-    expect(isCovered("/produtos/novo")).toBe(true);
-    expect(isCovered("/produtos/123/editar")).toBe(true);
-    expect(isCovered("/configuracoes")).toBe(true);
-    expect(isCovered("/configuracoes/loja")).toBe(true);
+    expect(isCovered("/admin/login")).toBe(true);
+    expect(isCovered("/admin/cadastro")).toBe(true);
+    expect(isCovered("/admin/esqueci-senha")).toBe(true);
+    expect(isCovered("/admin/redefinir-senha")).toBe(true);
+    expect(isCovered("/admin/onboarding")).toBe(true);
+    expect(isCovered("/admin/dashboard")).toBe(true);
+    expect(isCovered("/admin/dashboard/notificacoes")).toBe(true);
+    expect(isCovered("/admin/produtos")).toBe(true);
+    expect(isCovered("/admin/produtos/novo")).toBe(true);
+    expect(isCovered("/admin/produtos/123/editar")).toBe(true);
+    expect(isCovered("/admin/configuracoes")).toBe(true);
+    expect(isCovered("/admin/configuracoes/loja")).toBe(true);
   });
 
-  it("NÃO cobre a vitrine pública /loja/[slug]", () => {
-    expect(isCovered("/loja/loja-teste")).toBe(false);
-    expect(isCovered("/loja/loja-teste/produto-123")).toBe(false);
+  it("NÃO cobre a vitrine pública, que agora mora na raiz (/[slug])", () => {
+    expect(isCovered("/loja-teste")).toBe(false);
+    expect(isCovered("/loja-teste/produto-123")).toBe(false);
+    // Um slug que por acaso comece com as letras de "admin" também precisa
+    // ficar de fora: só o segmento inteiro `/admin/` é do painel.
+    expect(isCovered("/administradora-de-chuteiras")).toBe(false);
   });
 
   it("NÃO cobre a home /", () => {
     expect(isCovered("/")).toBe(false);
   });
 
-  it("NÃO cobre a rota de callback de auth /auth/confirm", () => {
-    expect(isCovered("/auth/confirm")).toBe(false);
+  it("cobre o callback de auth, que passou a viver sob /admin", () => {
+    // `updateSession` só renova cookies de sessão — nunca redireciona nem
+    // bloqueia — então rodar o middleware antes do `verifyOtp` do Route
+    // Handler é inofensivo. Coberto por consequência do prefixo único, não
+    // por uma exceção declarada.
+    expect(isCovered("/admin/auth/confirm")).toBe(true);
   });
 });

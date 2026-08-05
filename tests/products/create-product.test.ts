@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { createAnonClient } from "../setup/supabase-test";
+import { createAnonClient, makeFakeLogoFile } from "../setup/supabase-test";
 import { signUpAction } from "@/lib/auth/actions";
 import { saveOnboarding } from "@/lib/onboarding/actions";
 import { DEFAULT_MESSAGE_TEMPLATE } from "@/lib/validation/onboarding";
@@ -43,7 +43,7 @@ async function signUpAndCompleteOnboarding(label: string): Promise<{ email: stri
   const formData = new FormData();
   formData.set("email", email);
   formData.set("password", password);
-  await expect(signUpAction(formData)).rejects.toThrow("NEXT_REDIRECT:/onboarding");
+  await expect(signUpAction(formData)).rejects.toThrow("NEXT_REDIRECT:/admin/onboarding");
 
   const onboardingFormData = new FormData();
   onboardingFormData.set("name", "Chuteiras Import Teste");
@@ -51,7 +51,8 @@ async function signUpAndCompleteOnboarding(label: string): Promise<{ email: stri
   onboardingFormData.set("tagline", "Frase original");
   onboardingFormData.set("whatsapp", "(11) 99999-0000");
   onboardingFormData.set("messageTemplate", DEFAULT_MESSAGE_TEMPLATE);
-  await expect(saveOnboarding(onboardingFormData)).rejects.toThrow("NEXT_REDIRECT:/dashboard");
+  onboardingFormData.set("logo", makeFakeLogoFile());
+  await expect(saveOnboarding(onboardingFormData)).rejects.toThrow("NEXT_REDIRECT:/admin/dashboard");
 
   return { email, password };
 }

@@ -38,7 +38,7 @@ async function signUpLojaA(label: string): Promise<{ email: string; password: st
   const formData = new FormData();
   formData.set("email", email);
   formData.set("password", password);
-  await expect(signUpAction(formData)).rejects.toThrow("NEXT_REDIRECT:/onboarding");
+  await expect(signUpAction(formData)).rejects.toThrow("NEXT_REDIRECT:/admin/onboarding");
   return { email, password };
 }
 

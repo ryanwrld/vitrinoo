@@ -42,7 +42,7 @@ describe("signOutAction", () => {
 
     // Popula o cookie jar compartilhado com uma sessão real (mesmo padrão
     // de escrita real usado no restante da suíte de auth/RLS do projeto).
-    await expect(signUpAction(formData)).rejects.toThrow("NEXT_REDIRECT:/onboarding");
+    await expect(signUpAction(formData)).rejects.toThrow("NEXT_REDIRECT:/admin/onboarding");
   }, 30000);
 
   it("encerra a sessão (auth.signOut) e redireciona para /login", async () => {
@@ -50,7 +50,7 @@ describe("signOutAction", () => {
     const { data: beforeUser } = await before.auth.getUser();
     expect(beforeUser.user).not.toBeNull();
 
-    await expect(signOutAction()).rejects.toThrow("NEXT_REDIRECT:/login");
+    await expect(signOutAction()).rejects.toThrow("NEXT_REDIRECT:/admin/login");
 
     const after = await createServerClient();
     const { data: afterUser } = await after.auth.getUser();

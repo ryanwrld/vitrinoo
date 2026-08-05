@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { createAnonClient } from "../setup/supabase-test";
+import { createAnonClient, makeFakeLogoFile } from "../setup/supabase-test";
 import { signUpAction } from "@/lib/auth/actions";
 import { saveOnboarding } from "@/lib/onboarding/actions";
 
@@ -35,7 +35,7 @@ async function signUpAndGetCredentials(label: string) {
   const formData = new FormData();
   formData.set("email", email);
   formData.set("password", password);
-  await expect(signUpAction(formData)).rejects.toThrow("NEXT_REDIRECT:/onboarding");
+  await expect(signUpAction(formData)).rejects.toThrow("NEXT_REDIRECT:/admin/onboarding");
   return { email, password };
 }
 
@@ -48,8 +48,9 @@ describe("saveOnboarding — template de mensagem (WPP-02)", () => {
     formData.set("name", "Loja Template OK");
     formData.set("whatsapp", "(11) 98888-7777");
     formData.set("messageTemplate", customTemplate);
+    formData.set("logo", makeFakeLogoFile());
 
-    await expect(saveOnboarding(formData)).rejects.toThrow("NEXT_REDIRECT:/dashboard");
+    await expect(saveOnboarding(formData)).rejects.toThrow("NEXT_REDIRECT:/admin/dashboard");
 
     const verifyClient = createAnonClient();
     const { data: signInData } = await verifyClient.auth.signInWithPassword({ email, password });
