@@ -307,6 +307,75 @@ input:autofill {
 .animate-scale-in { animation: vt-scale-in 280ms cubic-bezier(.2,0,0,1); }
 .animate-slide-up { animation: vt-slide-up 280ms cubic-bezier(.2,0,0,1); }
 
+/*
+ * Diálogos modais (<dialog> + showModal).
+ *
+ * Anima o PRÓPRIO elemento e o ::backdrop — antes a animação vivia num <div>
+ * interno (`.animate-scale-in`), o que produzia dois defeitos visíveis: a
+ * caixa branca com sombra aparecia instantaneamente e só o conteúdo escalava
+ * dentro dela, e o fundo escuro entrava num corte seco.
+ *
+ * `@starting-style` + `transition-behavior: allow-discrete` em `display` e
+ * `overlay` são o que permite animar algo que entra e SAI da top layer — sem
+ * eles só haveria animação de entrada, e fechar continuaria sendo um corte.
+ * Navegador sem suporte (Chrome <117 / Safari <17.4) simplesmente mostra e
+ * esconde na hora: degradação limpa, nada quebra.
+ *
+ * Saída mais curta que a entrada (150ms contra 220ms) e com curva de
+ * aceleração invertida: sair rápido é o que faz a interface parecer
+ * responsiva; entrar devagar é o que faz parecer suave.
+ *
+ * NÃO substitui `.animate-scale-in`, que continua servindo dropdowns e
+ * popovers (menu da conta, sino, busca) — aqueles não são top layer.
+ */
+.dialog-modal {
+  opacity: 0;
+  transform: scale(0.97) translateY(8px);
+  transition:
+    opacity 150ms cubic-bezier(0.4, 0, 1, 1),
+    transform 150ms cubic-bezier(0.4, 0, 1, 1),
+    overlay 150ms allow-discrete,
+    display 150ms allow-discrete;
+}
+
+.dialog-modal[open] {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  transition:
+    opacity 220ms cubic-bezier(0.2, 0, 0, 1),
+    transform 220ms cubic-bezier(0.2, 0, 0, 1),
+    overlay 220ms allow-discrete,
+    display 220ms allow-discrete;
+}
+
+.dialog-modal::backdrop {
+  opacity: 0;
+  transition:
+    opacity 150ms ease,
+    overlay 150ms allow-discrete,
+    display 150ms allow-discrete;
+}
+
+.dialog-modal[open]::backdrop {
+  opacity: 1;
+  transition:
+    opacity 220ms ease,
+    overlay 220ms allow-discrete,
+    display 220ms allow-discrete;
+}
+
+/* Estado inicial da animação de entrada — sem isso o navegador não teria
+   "de onde" transicionar quando o elemento entra na top layer. */
+@starting-style {
+  .dialog-modal[open] {
+    opacity: 0;
+    transform: scale(0.97) translateY(8px);
+  }
+  .dialog-modal[open]::backdrop {
+    opacity: 0;
+  }
+}
+
 /* Dot-grid — fundo do onboarding e de páginas isoladas */
 .bg-dot-pattern {
   background-color: #F7F8FB;
@@ -362,6 +431,21 @@ input:autofill {
   .animate-ping,
   .animate-fade-zoom-in {
     animation: none;
+  }
+
+  /* Diálogos: sem transição, mas mantendo os estados finais — o modal
+     aparece e some na hora, sem escala nem fade. `transition: none` é o
+     suficiente porque opacidade/transform já têm valor definido em cada
+     estado; não é preciso zerar o transform. */
+  .dialog-modal,
+  .dialog-modal[open],
+  .dialog-modal::backdrop,
+  .dialog-modal[open]::backdrop {
+    transition: none;
+  }
+
+  .dialog-modal {
+    transform: none;
   }
 }
 
