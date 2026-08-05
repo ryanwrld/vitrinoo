@@ -68,8 +68,8 @@ export const onboardingSchema = z.object({
   /**
    * Preferência global de visibilidade de esgotado (D-09, Plan 04-05).
    * Optional: o wizard de onboarding (Fase 1) não define este campo — a
-   * coluna `stores.hide_sold_out_default` já nasce com `false` via default
-   * do banco (migration 0004). Só `settings-form.tsx` (/configuracoes)
+   * coluna `stores.hide_sold_out_default` já nasce com `true` via default
+   * do banco (migration 0011). Só `settings-form.tsx` (/configuracoes)
    * define este valor explicitamente.
    */
   hideSoldOutDefault: z.enum(["true", "false"]).optional(),
