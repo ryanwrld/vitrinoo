@@ -112,7 +112,22 @@ export default async function ProdutosPage({
         <HeaderActions activityFeed={headerFeed.items} />
       </div>
 
-      <div className="flex w-full max-w-4xl flex-col gap-6">
+      {/* `max-w-4xl` (896px) era estreito demais pro próprio conteúdo: cada
+          linha da lista é nome+marca (truncado) + preço + ações numa faixa
+          só, e nomes de produto reais cortavam cedo. Subiu pra `max-w-6xl`
+          — mesmo teto BASE de configuracoes/page.tsx — e ainda mais em telas
+          muito largas (`2xl:max-w-[96rem]`), porque uma lista aproveita
+          largura melhor que um formulário (menos truncamento, não textos
+          esticados demais pra ler).
+
+          `mx-auto` VOLTOU, mas não reabre o bug que a tirou daqui (distância
+          da sidebar variando por rota): ele só tem efeito quando a largura
+          disponível EXCEDE o `max-w` — ou seja, exatamente na faixa larga
+          onde hoje sobra vão. Em qualquer tela normal, onde o conteúdo já
+          preenche ou ultrapassa o teto, `mx-auto` fica inerte e a borda
+          esquerda continua exatamente na mesma posição de antes (a do
+          padding do container acima, não de centralização). */}
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 2xl:max-w-[96rem]">
       {/* "Novo produto" saiu da linha do h1: os três ícones do cabeçalho
           ocupam a direita agora, e disputar essa borda faria o botão mais
           importante da tela brigar por espaço com controles utilitários. */}

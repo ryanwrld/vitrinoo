@@ -532,7 +532,14 @@ export function SettingsForm({ store, settings, currentSlug, aside }: SettingsFo
             id="messageTemplate"
             rows={6}
             {...register("messageTemplate")}
-            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:placeholder:text-gray-600 dark:focus:ring-blue-400/20"
+            // `w-full resize-y`: sem isso o <textarea> usa a largura
+            // intrínseca do atributo `cols` e, pior, pode ser ARRASTADO na
+            // horizontal pela alça do canto — o arraste grava uma largura
+            // inline que empurra a coluna e faz a aba "Loja" ficar mais larga
+            // que a aba "Conta". Travar em `resize-y` mantém o ajuste de
+            // altura (útil pra um template longo) e elimina o vetor
+            // horizontal.
+            className="w-full resize-y rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:placeholder:text-gray-600 dark:focus:ring-blue-400/20"
           />
           {errors.messageTemplate && (
             <span className="text-sm text-error-fg">{errors.messageTemplate.message}</span>
