@@ -1,6 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { UserCircle, Shield, Paintbrush, Link as LinkIcon, AlertTriangle, LogOut } from "lucide-react";
+import {
+  UserCircle,
+  Shield,
+  Paintbrush,
+  Link as LinkIcon,
+  AlertTriangle,
+  LogOut,
+  MonitorSmartphone,
+  DatabaseBackup,
+} from "lucide-react";
 import { requireCompletedOnboarding } from "@/lib/auth/onboarding-guard";
 import { createClient } from "@/lib/supabase/server";
 import { buildStoreUrl } from "@/lib/slug/store-url";
@@ -12,6 +21,9 @@ import { SettingsForm } from "./settings-form";
 import { SlugEditor } from "./slug-editor";
 import { QrCodePanel } from "./qr-code-panel";
 import { DeleteAccountPanel } from "./delete-account-panel";
+import { ChangePasswordPanel } from "./change-password-panel";
+import { SignOutAllPanel } from "./sign-out-all-panel";
+import { ExportDataPanel } from "./export-data-panel";
 import { signOutAction } from "@/lib/auth/actions";
 
 type Aba = "conta" | "loja";
@@ -118,8 +130,19 @@ export default async function ConfiguracoesPage({
         <HeaderActions activityFeed={headerFeed.items} />
       </div>
 
-      <div className="flex w-full max-w-6xl flex-col gap-6">
-        <div className="flex gap-6 border-b border-gray-200 dark:border-gray-800">
+      {/* Divisor cinza é FULL WIDTH (sem max-w), igual à linha que corre sob
+          o título acima — antes o divisor vivia dentro do mesmo
+          `max-w-6xl 2xl:max-w-7xl` do conteúdo e parava bem antes da borda
+          direita (onde ficam os ícones), lendo como uma linha incompleta.
+
+          As ABAS (o texto clicável) voltam à posição ORIGINAL, de antes de
+          qualquer mudança de largura desta sessão: SEM `mx-auto` nem
+          `max-w` — são só dois links curtos, não precisam de teto, e sem
+          centralização ficam sempre coladas no canto esquerdo (mesmo
+          offset do padding do container, igual ao "Configurações" acima),
+          nunca deslocadas pela centralização do conteúdo em telas largas. */}
+      <div className="border-b border-gray-200 dark:border-gray-800">
+        <div className="flex gap-6">
           {TABS.map((tab) => {
             const isActive = tab.value === aba;
             return (
@@ -138,28 +161,36 @@ export default async function ConfiguracoesPage({
             );
           })}
         </div>
+      </div>
 
+      {/* Wrapper de conteúdo comum às DUAS abas — é ele que garante que um
+          card da aba "Conta" tenha exatamente a mesma largura que um card da
+          aba "Loja": mesmo teto, mesma centralização, mesmo grid de 2
+          colunas iguais nos dois lados. */}
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 2xl:max-w-7xl">
       {aba === "conta" ? (
-        // Duas colunas SÓ no desktop (lg+), 50/50 — ao contrário da aba
-        // "Loja" (57/43), aqui nenhum lado é "o principal" que justifique
-        // mais espaço. Empilhado abaixo de lg, como a outra aba.
+        // Colunas IGUAIS (50/50) — e a aba "Loja" usa a mesma proporção.
+        // Isso garante as duas coisas ao mesmo tempo: os cards têm a mesma
+        // largura entre si DENTRO da aba, e a divisa entre as colunas não
+        // muda de lugar ao alternar Conta ↔ Loja. Uma tentativa anterior de
+        // usar 1.35fr/1fr nas duas abas resolvia o pulo entre abas mas
+        // deixava um card visivelmente maior que o outro aqui — trocar um
+        // desalinhamento por outro.
         //
-        // Distribuição: à esquerda quem é o usuário (perfil) e como ele vê o
-        // painel (interface); à direita o que mexe no acesso — senha, sair e
-        // excluir. Manter as três ações destrutivas/de acesso na mesma coluna
-        // evita que "Excluir conta" apareça isolado no fim de uma cascata.
+        // Distribuição: à esquerda quem é o usuário (perfil), como ele vê o
+        // painel (interface) e o que é dele (dados); à direita o que mexe no
+        // acesso — senha, sessões e excluir. Manter as ações destrutivas/de
+        // acesso na mesma coluna evita que "Excluir conta" apareça isolado no
+        // fim de uma cascata.
         //
-        // `items-stretch` (padrão do grid, sem `items-start`) + `lg:flex-1` no
-        // ÚLTIMO card de cada coluna: as duas colunas terminam sempre na mesma
-        // linha, para qualquer combinação de dados. Sem isso a altura de cada
-        // coluna era a soma natural do conteúdo dela, e bastava uma descrição
-        // quebrar em duas linhas de um lado para o pé desalinhar.
-        // O `flex-1` precisa estar no card VISÍVEL (não num wrapper) — quem
-        // cresce é o card, não um espaço vazio ao redor dele. Mesma técnica da
-        // aba "Loja" e do Dashboard.
+        // Cada coluna empilha seus próprios cards de forma independente
+        // (sem `items-stretch`/`lg:flex-1`): as alturas internas ficam como
+        // o conteúdo de cada card pede, sem esticar nada pra forçar os pés
+        // a baterem — diferença de altura entre as colunas é aceitável,
+        // diferença de LARGURA não.
         <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2">
-          <div className="flex flex-col gap-6">
-            <section className="flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+          <div className="flex w-full min-w-0 flex-col gap-6">
+            <section className="flex w-full min-w-0 flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
               <div className="flex items-center gap-2 text-gray-900 dark:text-gray-50">
                 <UserCircle className="h-5 w-5" />
                 <h2 className="font-display font-bold">Seu perfil</h2>
@@ -187,47 +218,61 @@ export default async function ConfiguracoesPage({
               </div>
             </section>
 
-            <section className="flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 lg:flex-1 dark:border-gray-800 dark:bg-gray-900">
+            <section className="flex w-full min-w-0 flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
               <div className="flex items-center gap-2 text-gray-900 dark:text-gray-50">
                 <Paintbrush className="h-5 w-5" />
                 <h2 className="font-display font-bold">Interface</h2>
               </div>
 
-              {/* Cadeia de crescimento: section (lg:flex-1) → esta caixa
-                  (lg:flex-1) → a linha do Tema (flex-1 + justify-center). É
-                  ela que absorve a sobra quando esta coluna é a mais curta,
-                  mantendo "Tema" e o seletor centralizados em vez de deixar um
-                  vão embaixo. `min-h-16` é só o piso (a altura que o conteúdo
-                  tinha quando ainda havia sub-linha).
-                  A sub-linha saiu por decisão do usuário: nenhuma versão
-                  testada acrescentava informação que Claro/Auto/Escuro já não
-                  passassem sozinhos. */}
-              <div className="flex flex-col gap-2 rounded-lg border border-gray-100 bg-gray-50/50 p-4 lg:flex-1 dark:border-gray-800 dark:bg-gray-925/40">
-                <div className="flex min-h-16 flex-1 flex-col items-start justify-center gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <span className="font-medium text-gray-900 dark:text-gray-50">Tema</span>
+              {/* Rótulo + subtítulo no mesmo formato das linhas dos outros
+                  cards (span block + span text-sm text-gray-500). */}
+              <div className="flex flex-col gap-2 rounded-lg border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-925/40">
+                <div className="flex min-h-16 flex-col items-start justify-center gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <span className="block font-medium text-gray-900 dark:text-gray-50">Tema</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">Altere a cor do seu painel</span>
+                  </div>
                   <ThemeToggle />
                 </div>
               </div>
             </section>
+
+            {/* Contrapeso do card vermelho da outra coluna: a mesma tela que
+                deixa apagar tudo agora deixa levar uma cópia antes. Fica na
+                coluna esquerda, com o que é "seu", e não junto do vermelho —
+                baixar dados é ação tranquila, não passo da exclusão. */}
+            <section className="flex w-full min-w-0 flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+              <div className="flex items-center gap-2 text-gray-900 dark:text-gray-50">
+                <DatabaseBackup className="h-5 w-5" />
+                <h2 className="font-display font-bold">Seus dados</h2>
+              </div>
+
+              <ExportDataPanel />
+            </section>
           </div>
 
-          <div className="flex flex-col gap-6">
-            <section className="flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+          <div className="flex w-full min-w-0 flex-col gap-6">
+            <section className="flex w-full min-w-0 flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
               <div className="flex items-center gap-2 text-gray-900 dark:text-gray-50">
                 <Shield className="h-5 w-5" />
                 <h2 className="font-display font-bold">Acesso</h2>
               </div>
 
-              <div className="flex flex-col gap-2 rounded-lg border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-925/40">
-                <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <span className="block font-medium text-gray-900 dark:text-gray-50">Senha</span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">Alterar a senha de acesso da sua conta.</span>
-                  </div>
-                  <button disabled className="cursor-not-allowed text-sm font-medium text-gray-400 dark:text-gray-600">
-                    Alterar
-                  </button>
-                </div>
+              {/* Antes: botão "Alterar" desabilitado, ao lado de um texto que
+                  prometia alterar a senha. Agora funciona de verdade e sem
+                  depender de email — ver `changePasswordAction`. */}
+              <ChangePasswordPanel />
+            </section>
+
+            {/* Sessões em card próprio, separado de "Acesso": são duas
+                perguntas diferentes ("como eu entro" vs. "onde eu estou
+                logado"), e juntas empilhavam três linhas de ação num card só.
+                Separado, "sair daqui" e "sair de todos" ficam lado a lado —
+                que é exatamente quando a diferença entre os dois importa. */}
+            <section className="flex w-full min-w-0 flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+              <div className="flex items-center gap-2 text-gray-900 dark:text-gray-50">
+                <MonitorSmartphone className="h-5 w-5" />
+                <h2 className="font-display font-bold">Sessões</h2>
               </div>
 
               {/* "Sair da conta" também existe no menu do avatar, mas lá está
@@ -237,7 +282,7 @@ export default async function ConfiguracoesPage({
               <div className="flex flex-col gap-2 rounded-lg border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-925/40">
                 <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <span className="block font-medium text-gray-900 dark:text-gray-50">Sessão</span>
+                    <span className="block font-medium text-gray-900 dark:text-gray-50">Este dispositivo</span>
                     <span className="text-sm text-gray-500 dark:text-gray-400">Encerrar a sessão neste dispositivo.</span>
                   </div>
                   <form action={signOutAction} className="w-full shrink-0 sm:w-auto">
@@ -251,6 +296,8 @@ export default async function ConfiguracoesPage({
                   </form>
                 </div>
               </div>
+
+              <SignOutAllPanel />
             </section>
 
             {/* "Apagar permanentemente" e não "Zona de perigo": o segundo é
@@ -260,7 +307,7 @@ export default async function ConfiguracoesPage({
                 catástrofe, e o título deixa de repetir literalmente o rótulo
                 do botão logo abaixo. O peso visual vermelho fica, por decisão
                 do usuário. */}
-            <section className="flex flex-col gap-4 rounded-lg border border-error-bg bg-white p-5 lg:flex-1 dark:border-error-solid/25 dark:bg-gray-900">
+            <section className="flex w-full min-w-0 flex-col gap-4 rounded-lg border border-error-bg bg-white p-5 dark:border-error-solid/25 dark:bg-gray-900">
               <div className="flex items-center gap-2 text-error-solid">
                 <AlertTriangle className="h-5 w-5" />
                 <h2 className="font-display font-bold">Apagar permanentemente</h2>
@@ -288,7 +335,7 @@ export default async function ConfiguracoesPage({
         // card. Sem o espaçador espelho abaixo, o card do QR esticava até o
         // rodapé do botão e ficava visivelmente mais alto que o card do
         // WhatsApp ao lado.
-        <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-stretch">
+        <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-stretch">
           <SettingsForm
             store={{
               name: store.name,

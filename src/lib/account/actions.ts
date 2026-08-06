@@ -5,8 +5,176 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DELETE_ACCOUNT_CONFIRMATION } from "@/lib/account/constants";
+import { signUpSchema } from "@/lib/validation/auth";
 
 const BUCKETS = ["product-images", "store-assets"] as const;
+
+/**
+ * Troca a senha de quem já está logado, sem passar por email.
+ *
+ * Por que não reusar o fluxo de "esqueci minha senha": ele depende de o
+ * email de recuperação chegar, e o plano free do Supabase não entrega
+ * template customizado — o botão pareceria funcionar e o revendedor ficaria
+ * esperando um email que não vem. Aqui a sessão já prova quem é o usuário,
+ * então o email não é necessário para nada.
+ *
+ * A senha ATUAL é exigida mesmo assim: sem isso, quem pegasse o notebook
+ * destravado trocaria a senha e tomaria a conta. `signInWithPassword` é
+ * usado só para conferir a senha atual — é a única forma de verificar via
+ * SDK, já que não existe endpoint de "confira esta senha".
+ */
+export async function changePasswordAction(
+  currentPassword: string,
+  newPassword: string
+): Promise<{ error: string } | { success: true }> {
+  const parsed = signUpSchema.shape.password.safeParse(newPassword);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Senha inválida" };
+  }
+
+  const supabase = await createClient();
+  const { data: userData } = await supabase.auth.getUser();
+  const email = userData.user?.email;
+
+  if (!email) {
+    redirect("/admin/login");
+  }
+
+  if (parsed.data === currentPassword) {
+    return { error: "A nova senha precisa ser diferente da atual." };
+  }
+
+  const { error: reauthError } = await supabase.auth.signInWithPassword({
+    email,
+    password: currentPassword,
+  });
+  if (reauthError) {
+    return { error: "Senha atual incorreta." };
+  }
+
+  const { error: updateError } = await supabase.auth.updateUser({ password: parsed.data });
+  if (updateError) {
+    return { error: "Não foi possível alterar a senha. Tente novamente." };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Encerra a sessão em TODOS os dispositivos (`scope: "global"`), incluindo
+ * este. Serve pro caso real de quem entrou no painel do celular de outra
+ * pessoa ou num computador emprestado e não lembra de ter saído — sem isso
+ * a única saída seria trocar a senha.
+ *
+ * Termina em `redirect` porque a sessão local também é derrubada: continuar
+ * na página renderizaria um painel logado que já não tem sessão válida.
+ */
+export async function signOutAllDevicesAction(): Promise<{ error: string } | never> {
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signOut({ scope: "global" });
+
+  if (error) {
+    console.error("signOutAllDevicesAction: signOut global falhou", error);
+    return { error: "Não foi possível encerrar as sessões. Tente novamente." };
+  }
+
+  redirect("/admin/login");
+}
+
+/**
+ * Exporta os dados da conta (loja, configurações e catálogo) como JSON.
+ *
+ * Contrapeso de "Excluir conta": a LGPD trata portabilidade e eliminação
+ * como direitos irmãos, e na prática é o que permite o revendedor sair sem
+ * perder o catálogo que levou meses montando — ou simplesmente guardar uma
+ * cópia.
+ *
+ * Devolve a string do JSON em vez de gravar arquivo: o download é montado no
+ * cliente (Blob), sem precisar de bucket, rota de arquivo estático ou
+ * limpeza posterior.
+ *
+ * Só lê o que pertence ao dono logado. As URLs das fotos entram como
+ * caminhos do Storage, não binário — um JSON com imagens embutidas ficaria
+ * grande demais para o navegador montar em memória.
+ */
+export async function exportAccountDataAction(): Promise<
+  { error: string } | { json: string; filename: string }
+> {
+  const supabase = await createClient();
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData.user;
+
+  if (!user) {
+    redirect("/admin/login");
+  }
+
+  const { data: store } = await supabase
+    .from("stores")
+    .select("id, name, slug, tagline, accent_color, logo_url, hide_sold_out_default, created_at")
+    .eq("owner_id", user.id)
+    .single();
+
+  if (!store) {
+    return { error: "Não encontramos sua loja para exportar." };
+  }
+
+  const [{ data: settings }, { data: products, error: productsError }] = await Promise.all([
+    supabase
+      .from("store_settings")
+      .select("whatsapp_e164, message_template, onboarding_completed_at")
+      .eq("store_id", store.id)
+      .single(),
+    // Nomes de tabela/coluna conferidos contra `database.types.ts`: a tabela
+    // de fotos é `product_photos` (com `storage_path`), NÃO `product_images`.
+    // TODOS os campos do produto entram — `description`, `category`, `sole` e
+    // `fulfillment` também: num backup, campo faltando é dado perdido, e o
+    // dono não tem como saber que faltou.
+    supabase
+      .from("products")
+      .select(
+        "id, name, brand, brand_other, line, sole, category, fulfillment, description, price, status, hide_when_sold_out, created_at, product_sizes(size, available), product_photos(storage_path, position)"
+      )
+      .eq("store_id", store.id)
+      .order("created_at", { ascending: true }),
+  ]);
+
+  // Falha de consulta NÃO pode virar `[]`: um backup vazio é
+  // indistinguível de uma loja vazia, e o revendedor só descobriria o
+  // problema no dia em que precisasse restaurar. Melhor não entregar
+  // arquivo nenhum do que entregar um arquivo que mente.
+  if (productsError) {
+    console.error("exportAccountDataAction: falha ao ler produtos", productsError);
+    return { error: "Não foi possível ler seus produtos. Tente novamente." };
+  }
+
+  const publicPhotoUrl = (storagePath: string) =>
+    supabase.storage.from("product-images").getPublicUrl(storagePath).data.publicUrl;
+
+  const payload = {
+    exportadoEm: new Date().toISOString(),
+    conta: { email: user.email, criadaEm: user.created_at },
+    loja: store,
+    configuracoes: settings ?? null,
+    // Tamanhos ordenados e fotos com URL pública resolvida: o caminho cru do
+    // Storage não serve pra nada fora do painel — quem abre o backup precisa
+    // conseguir ver a foto, não decifrar um path.
+    produtos: (products ?? []).map((product) => {
+      const { product_sizes, product_photos, ...rest } = product;
+      return {
+        ...rest,
+        tamanhos: [...(product_sizes ?? [])].sort((a, b) => a.size - b.size),
+        fotos: [...(product_photos ?? [])]
+          .sort((a, b) => a.position - b.position)
+          .map((photo) => ({ posicao: photo.position, url: publicPhotoUrl(photo.storage_path) })),
+      };
+    }),
+  };
+
+  return {
+    json: JSON.stringify(payload, null, 2),
+    filename: `vitrinoo-${store.slug}.json`,
+  };
+}
 
 /**
  * Storage do Supabase NÃO tem cascade: apagar a linha do banco não apaga o
