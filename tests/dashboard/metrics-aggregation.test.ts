@@ -1,5 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createAnonClient, pageviewDedupColumns, seedAuthenticatedAccount, type SeededAccount } from "../setup/supabase-test";
+import {
+  createAnonClient,
+  orderClickDedupColumns,
+  pageviewDedupColumns,
+  seedAuthenticatedAccount,
+  type SeededAccount,
+} from "../setup/supabase-test";
 import { queryAccessCount, queryTopOrderClickProducts, queryTopViewedProducts } from "@/lib/dashboard/metrics";
 
 /**
@@ -105,11 +111,22 @@ describe("metrics.ts — queryAccessCount / queryTopViewedProducts / queryTopOrd
     // order_clicks — ordem INVERSA da de views, para provar que a lista de
     // cliques é ranqueada independentemente (D-08/D-09, nunca fundida):
     // productIds[0] recebe 1 clique, productIds[11] recebe 12 cliques.
-    const clickRows: { store_id: string; product_id: string; size: number }[] = [];
+    // `orderClickDedupColumns()` por LINHA (visitante novo a cada chamada):
+    // desde a migration 0012 há índice único em
+    // (visitor_id, product_id, click_date), então repetir o mesmo visitante
+    // faria os N cliques do mesmo produto colapsarem em 1 e o ranking
+    // "12 cliques > 11 cliques" mediria outra coisa.
+    const clickRows: {
+      store_id: string;
+      product_id: string;
+      size: number;
+      visitor_id: string;
+      click_date: string;
+    }[] = [];
     productIds.forEach((id, index) => {
       const clickCount = index + 1;
       for (let c = 0; c < clickCount; c++) {
-        clickRows.push({ store_id: storeAId, product_id: id, size: 40 });
+        clickRows.push({ store_id: storeAId, product_id: id, size: 40, ...orderClickDedupColumns() });
       }
     });
     const { error: clicksError } = await anon.from("order_clicks").insert(clickRows);
@@ -126,7 +143,7 @@ describe("metrics.ts — queryAccessCount / queryTopViewedProducts / queryTopOrd
     }
     const { error: noiseClicksError } = await anon
       .from("order_clicks")
-      .insert({ store_id: storeBId, product_id: productBId, size: 39 });
+      .insert({ store_id: storeBId, product_id: productBId, size: 39, ...orderClickDedupColumns() });
     if (noiseClicksError) {
       throw new Error(`Falha ao seedar order_click de ruído da Loja B: ${noiseClicksError.message}`);
     }

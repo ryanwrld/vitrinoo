@@ -1,5 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createAnonClient, seedAuthenticatedAccount, type SeededAccount } from "../setup/supabase-test";
+import {
+  createAnonClient,
+  orderClickDedupColumns,
+  seedAuthenticatedAccount,
+  type SeededAccount,
+} from "../setup/supabase-test";
 
 /**
  * Prova o comportamento RLS da migration 0005 (T-05-01, T-05-03): a
@@ -85,7 +90,7 @@ describe("RLS de order_clicks (migration 0005 — anon insert-only, owner read-s
 
   it("cliente anônimo INSERE um clique válido contra produto publicado (par product_id/store_id consistente)", async () => {
     const anon = createAnonClient();
-    const { error } = await anon.from("order_clicks").insert({ store_id: storeAId, product_id: publishedProductAId, size: 40 });
+    const { error } = await anon.from("order_clicks").insert({ store_id: storeAId, product_id: publishedProductAId, size: 40, ...orderClickDedupColumns() });
     expect(error).toBeNull();
   });
 
@@ -95,6 +100,7 @@ describe("RLS de order_clicks (migration 0005 — anon insert-only, owner read-s
       store_id: storeAId,
       product_id: publishedProductBId,
       size: 40,
+      ...orderClickDedupColumns(),
     });
     expect(error).not.toBeNull();
   });
@@ -105,6 +111,7 @@ describe("RLS de order_clicks (migration 0005 — anon insert-only, owner read-s
       store_id: storeAId,
       product_id: draftProductAId,
       size: 40,
+      ...orderClickDedupColumns(),
     });
     expect(error).not.toBeNull();
   });
@@ -120,7 +127,7 @@ describe("RLS de order_clicks (migration 0005 — anon insert-only, owner read-s
     const anon = createAnonClient();
     const { error: insertError } = await anon
       .from("order_clicks")
-      .insert({ store_id: storeBId, product_id: publishedProductBId, size: 41 });
+      .insert({ store_id: storeBId, product_id: publishedProductBId, size: 41, ...orderClickDedupColumns() });
     expect(insertError).toBeNull();
 
     const { data: ownData, error: ownError } = await lojaA.client.from("order_clicks").select("*").eq("store_id", storeAId);

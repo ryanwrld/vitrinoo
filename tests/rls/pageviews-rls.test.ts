@@ -1,5 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createAnonClient, pageviewDedupColumns, seedAuthenticatedAccount, type SeededAccount } from "../setup/supabase-test";
+import {
+  createAnonClient,
+  orderClickDedupColumns,
+  pageviewDedupColumns,
+  seedAuthenticatedAccount,
+  type SeededAccount,
+} from "../setup/supabase-test";
 
 /**
  * Prova o contrato RLS/multi-tenant da migration 0006 (T-06-01, T-06-02,
@@ -166,12 +172,12 @@ describe("RLS de pageviews + isolamento das views agregadas (migration 0006)", (
 
     const { error: clickAError } = await anon
       .from("order_clicks")
-      .insert({ store_id: storeAId, product_id: publishedProductAId, size: 40 });
+      .insert({ store_id: storeAId, product_id: publishedProductAId, size: 40, ...orderClickDedupColumns() });
     expect(clickAError).toBeNull();
 
     const { error: clickBError } = await anon
       .from("order_clicks")
-      .insert({ store_id: storeBId, product_id: publishedProductBId, size: 41 });
+      .insert({ store_id: storeBId, product_id: publishedProductBId, size: 41, ...orderClickDedupColumns() });
     expect(clickBError).toBeNull();
 
     const { data: ownViews, error: ownViewsError } = await lojaA.client

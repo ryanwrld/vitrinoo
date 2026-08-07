@@ -164,13 +164,39 @@ export async function seedAuthenticatedAccount(labelForEmail: string): Promise<S
 export function pageviewDedupColumns(): { visitor_id: string; view_date: string } {
   return {
     visitor_id: crypto.randomUUID(),
-    view_date: new Intl.DateTimeFormat("en-CA", {
-      timeZone: "America/Sao_Paulo",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(new Date()),
+    view_date: currentDateBR(),
   };
+}
+
+/**
+ * Colunas de deduplicação de `order_clicks` (migration 0012) — o par exato
+ * de `pageviewDedupColumns`, criado quando os cliques passaram a usar a
+ * mesma régua das visualizações.
+ *
+ * Existe pelo mesmo motivo: com o índice único em
+ * (visitor_id, product_id, click_date), N inserts seguidos do mesmo produto
+ * sem visitante distinto colapsam em 1, e um teste que dependa de
+ * "12 cliques > 11 cliques" passaria a medir outra coisa.
+ *
+ * Cada chamada devolve um visitante NOVO — seedar N linhas com este helper
+ * significa "N pessoas diferentes pediram isso hoje", que é a semântica que
+ * a contagem passou a ter em produção.
+ */
+export function orderClickDedupColumns(): { visitor_id: string; click_date: string } {
+  return {
+    visitor_id: crypto.randomUUID(),
+    click_date: currentDateBR(),
+  };
+}
+
+/** Data civil brasileira no formato `YYYY-MM-DD` que o Postgres espera. */
+function currentDateBR(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 }
 
 /**
