@@ -26,6 +26,7 @@ import {
 } from "@/lib/dashboard/metrics";
 import { formatBRLPrice } from "@/lib/currency/brl";
 import { formatRelativeTime } from "@/lib/dashboard/format-relative-time";
+import { resolveTimeZone } from "@/lib/time/store-timezone";
 import { buildStoreUrl } from "@/lib/slug/store-url";
 import { HeaderActions } from "@/components/header-actions";
 import { ShareVitrineButton } from "@/components/share-vitrine-button";
@@ -359,7 +360,7 @@ export default async function DashboardPage({
 
   const { data: store } = await supabase
     .from("stores")
-    .select("id, slug, name")
+    .select("id, slug, name, timezone")
     .eq("owner_id", userData.user!.id)
     .single();
 
@@ -401,11 +402,16 @@ export default async function DashboardPage({
     );
   }
 
+  // Fuso da própria loja (migration 0013) — define o que "hoje" e a janela
+  // de N dias significam para ESTE revendedor. Sem isso, quem é de Roraima
+  // (UTC-4) via o dia virar às 23h no relógio dele.
+  const timeZone = resolveTimeZone(store.timezone);
+
   const [today, feed, maisVisualizados, cliquesWhatsapp, sizeDemand] = await Promise.all([
-    queryTodayStats(supabase, store.id),
+    queryTodayStats(supabase, store.id, timeZone),
     queryRecentActivity(supabase, store.id, ACTIVITY_FEED_LIMIT),
-    queryTrendRanking(supabase, store.id, "views", periodo),
-    queryTrendRanking(supabase, store.id, "clicks", periodo),
+    queryTrendRanking(supabase, store.id, "views", periodo, timeZone),
+    queryTrendRanking(supabase, store.id, "clicks", periodo, timeZone),
     querySizeDemand(supabase, store.id, periodo),
   ]);
   const maxSizeDemand = Math.max(...sizeDemand.map((item) => item.count), 1);

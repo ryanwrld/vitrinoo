@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeWhatsAppBR } from "@/lib/phone/normalize-br";
 import { onboardingSchema } from "@/lib/validation/onboarding";
+import { resolveTimeZone } from "@/lib/time/store-timezone";
 
 export type OnboardingActionResult = { error: string } | void;
 
@@ -95,6 +96,17 @@ export async function saveOnboarding(formData: FormData): Promise<OnboardingActi
     return { error: "Envie uma logo para continuar." };
   }
 
+  // Fuso da loja (migration 0013): vem do navegador do revendedor, sem
+  // nenhuma pergunta no wizard — o aparelho já sabe o fuso, e perguntar isso
+  // a um usuário não-técnico seria fricção sem retorno. NUNCA confiado cru:
+  // `resolveTimeZone` valida contra o motor de datas do runtime e cai em
+  // São Paulo se vier ausente, vazio ou forjado. Fora do schema Zod de
+  // propósito — é telemetria de ambiente, não um campo que o usuário
+  // preenche, e um valor inválido jamais pode bloquear o cadastro.
+  const timezone = resolveTimeZone(
+    typeof formData.get("timezone") === "string" ? (formData.get("timezone") as string) : null
+  );
+
   const phoneResult = normalizeWhatsAppBR(parsed.data.whatsapp);
   if ("error" in phoneResult) {
     return { error: phoneResult.error };
@@ -141,6 +153,7 @@ export async function saveOnboarding(formData: FormData): Promise<OnboardingActi
       accent_color: parsed.data.accentColor || null,
       tagline: parsed.data.tagline || null,
       logo_url: logoUrl,
+      timezone,
     })
     .eq("id", store.id);
 

@@ -61,6 +61,12 @@ export function OnboardingWizard() {
     formData.set("tagline", values.tagline ?? "");
     formData.set("whatsapp", values.whatsapp);
     formData.set("messageTemplate", values.messageTemplate);
+    // Fuso do aparelho do revendedor (migration 0013) — nenhum campo novo no
+    // wizard: o navegador já sabe, e perguntar isso a um usuário não-técnico
+    // seria fricção sem retorno. O servidor NUNCA confia neste valor cru
+    // (`resolveTimeZone` valida e cai em São Paulo), então um navegador que
+    // não resolva o fuso apenas mantém o comportamento antigo.
+    formData.set("timezone", Intl.DateTimeFormat().resolvedOptions().timeZone ?? "");
     if (logoFile) {
       formData.set("logo", logoFile);
     }

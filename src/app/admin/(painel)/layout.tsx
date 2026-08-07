@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { AdminSidebar } from "@/components/admin-sidebar";
 import { createClient } from "@/lib/supabase/server";
 import { StoreIdentityProvider } from "@/lib/store-identity/context";
+import { TimezoneSync } from "@/components/timezone-sync";
 
 /**
  * Layout do grupo de rotas aninhado `(painel)` — isola a sidebar às páginas
@@ -23,19 +24,26 @@ export default async function PainelLayout({ children }: { children: ReactNode }
   let storeName: string | null = null;
   let storeSlug: string | null = null;
   let storeLogoUrl: string | null = null;
+  let storeTimezone: string | null = null;
   if (userData.user) {
     const { data: store } = await supabase
       .from("stores")
-      .select("name, slug, logo_url")
+      .select("name, slug, logo_url, timezone")
       .eq("owner_id", userData.user.id)
       .single();
     storeName = store?.name ?? null;
     storeSlug = store?.slug ?? null;
     storeLogoUrl = store?.logo_url ?? null;
+    storeTimezone = store?.timezone ?? null;
   }
 
   return (
     <div className="admin-scope flex min-h-dvh flex-col md:flex-row">
+      {/* Mantém o fuso da loja igual ao do aparelho em uso (migration 0013).
+          Aqui e não no onboarding apenas: aquele só roda na criação, então
+          lojas já existentes ficariam presas no default para sempre. Sem
+          trava de "uma vez só" — quem viaja quer o painel acompanhando. */}
+      {storeTimezone && <TimezoneSync currentTimezone={storeTimezone} />}
       <AdminSidebar storeName={storeName} storeSlug={storeSlug} storeLogoUrl={storeLogoUrl} />
       {/* justify-center APENAS abaixo de lg. No mobile, onde as páginas são
           uma coluna só e frequentemente curtas, centralizar evita o conteúdo
