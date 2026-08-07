@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
+import { DEFAULT_TIMEZONE, startOfTodayInTimeZone } from "@/lib/time/store-timezone";
+import { fetchAllRows } from "@/lib/supabase/fetch-all-rows";
 
 /**
  * Agregações de métricas do dashboard (MTR-01, 06-03-PLAN.md Task 2,
@@ -196,17 +198,18 @@ export async function queryTopOrderClickProducts(
 // =============================================================================
 
 /**
- * Início do dia civil em horário de Brasília, expresso como instante UTC
- * correto. Brasil não observa horário de verão desde 2019 (Decreto
- * 9.826/2019), então o offset fixo -03:00 é seguro sem depender de uma lib
- * de timezone — simplificação consciente, não uma tabela de timezone por
- * loja (fora de escopo do v1.1).
+ * Início do dia civil NO FUSO DA LOJA, como instante UTC.
+ *
+ * Era `startOfTodayBR`, com `-03:00` embutido e um comentário reconhecendo a
+ * dívida ("não uma tabela de timezone por loja"). O Brasil tem três fusos
+ * continentais: para um revendedor de Roraima (UTC-4) o "hoje" do painel
+ * começava às 23h da noite anterior no relógio dele. Agora o fuso vem da
+ * própria loja (coluna `stores.timezone`, migration 0013) e cai em São Paulo
+ * quando ausente/inválido — ou seja, comportamento idêntico ao anterior para
+ * toda loja já existente.
  */
-function startOfTodayBR(referenceMs: number = Date.now()): Date {
-  const BR_OFFSET_MS = 3 * 60 * 60 * 1000;
-  const shifted = new Date(referenceMs - BR_OFFSET_MS);
-  shifted.setUTCHours(0, 0, 0, 0);
-  return new Date(shifted.getTime() + BR_OFFSET_MS);
+function startOfToday(timeZone: string, referenceMs: number = Date.now()): Date {
+  return startOfTodayInTimeZone(timeZone, referenceMs);
 }
 
 export type TodayStats = {
@@ -216,23 +219,76 @@ export type TodayStats = {
 };
 
 /**
- * MTR-03: views/cliques/conversão sempre relativos a hoje (dia civil BR),
- * nunca acumulado histórico. `views` conta TODO pageview de hoje (grid +
- * produto) — diferente de `queryAccessCount`, que isola só o grid (D-01);
- * aqui o objetivo é "quanto minha loja se moveu hoje", não o contador
- * histórico do card antigo.
+ * MTR-03: views/cliques/conversão sempre relativos a hoje (dia civil no fuso
+ * da loja), nunca acumulado histórico. `views` conta TODO pageview de hoje
+ * (grid + produto) — diferente de `queryAccessCount`, que isola só o grid
+ * (D-01); aqui o objetivo é "quanto minha loja se moveu hoje", não o
+ * contador histórico do card antigo.
+ *
+ * `clicks` é o número exibido no card ("Cliques em Pedir agora hoje") e conta
+ * LINHAS — desde a 0014 uma linha por (visitante, produto, tamanho, dia),
+ * ou seja: quem pede 39 e 40 aparece como 2 pedidos, que é a leitura certa
+ * pra quem vai comprar estoque.
+ *
+ * A CONVERSÃO, porém, NÃO pode usar esse mesmo número: ela responde "de
+ * quantas pessoas que viram, quantas quiseram pedir", então divide gente por
+ * gente. Usar linhas aqui faria a mesma pessoa pedindo dois tamanhos valer
+ * como duas, e a taxa voltaria a passar de 100% — exatamente o defeito que a
+ * 0012 tentou corrigir engrossando o índice (e que, ao engrossar, quebrou o
+ * card de tamanhos). A separação certa é esta: grão fino na GRAVAÇÃO, gente
+ * distinta na LEITURA.
+ *
+ * A contagem distinta é feita em memória sobre as linhas do dia — PostgREST
+ * não expõe `count(distinct ...)`, e o volume de um dia de uma loja é
+ * pequeno o bastante para isso não ser um problema (mesmo padrão de
+ * "duas queries + junção em memória" já usado em queryTrendRanking).
  */
-export async function queryTodayStats(supabase: SupabaseClient<Database>, storeId: string): Promise<TodayStats> {
-  const start = startOfTodayBR().toISOString();
+export async function queryTodayStats(
+  supabase: SupabaseClient<Database>,
+  storeId: string,
+  timeZone: string = DEFAULT_TIMEZONE
+): Promise<TodayStats> {
+  const start = startOfToday(timeZone).toISOString();
 
-  const [{ count: views }, { count: clicks }] = await Promise.all([
+  // `fetchAllRows` (e não um `select` solto) em tudo que é CONTADO em
+  // memória: o PostgREST corta a resposta em 1000 linhas sem avisar, e uma
+  // loja movimentada estouraria isso num único dia — "cliques" travaria em
+  // 1000 e a conversão sairia errada. O `count: exact, head: true` das
+  // visualizações não sofre o corte, e era justamente por isso que as duas
+  // métricas divergiam na mesma tela.
+  const [{ count: views }, clickRows, viewRows] = await Promise.all([
     supabase.from("pageviews").select("id", { count: "exact", head: true }).eq("store_id", storeId).gte("created_at", start),
-    supabase.from("order_clicks").select("id", { count: "exact", head: true }).eq("store_id", storeId).gte("created_at", start),
+    fetchAllRows<{ visitor_id: string; product_id: string | null }>((from, to) =>
+      supabase
+        .from("order_clicks")
+        .select("visitor_id, product_id")
+        .eq("store_id", storeId)
+        .gte("created_at", start)
+        .order("created_at", { ascending: true })
+        .range(from, to)
+    ),
+    fetchAllRows<{ visitor_id: string; product_id: string | null }>((from, to) =>
+      supabase
+        .from("pageviews")
+        .select("visitor_id, product_id")
+        .eq("store_id", storeId)
+        .gte("created_at", start)
+        .order("created_at", { ascending: true })
+        .range(from, to)
+    ),
   ]);
 
   const viewsCount = views ?? 0;
-  const clicksCount = clicks ?? 0;
-  const conversionPct = viewsCount > 0 ? Math.round((clicksCount / viewsCount) * 100) : 0;
+  const clicksCount = clickRows.length;
+
+  // Denominador e numerador na MESMA régua: pares (pessoa, produto) únicos.
+  // Sem isso a taxa compararia coisas diferentes e poderia estourar 100%.
+  const distinctPairs = (rows: { visitor_id: string; product_id: string | null }[]) =>
+    new Set(rows.filter((row) => row.product_id).map((row) => `${row.visitor_id}:${row.product_id}`)).size;
+
+  const peopleWhoViewed = distinctPairs(viewRows);
+  const peopleWhoClicked = distinctPairs(clickRows);
+  const conversionPct = peopleWhoViewed > 0 ? Math.round((peopleWhoClicked / peopleWhoViewed) * 100) : 0;
 
   return { views: viewsCount, clicks: clicksCount, conversionPct };
 }
@@ -354,7 +410,22 @@ export type TrendRankingItem = {
   trend: number[];
 };
 
-const TREND_MIN_CURRENT = 2; // piso pra entrar no ranking — corta ruído e evita porcentagem de tendência enganosa com número quase zero
+/**
+ * Piso de eventos no período para um produto entrar no ranking.
+ *
+ * Era 2, com a justificativa de "cortar ruído". Na prática isso quebrava
+ * exatamente o caso mais comum do produto: uma loja nova, com um punhado de
+ * eventos, via "Sem pedidos no WhatsApp nesse período" ao MESMO tempo que o
+ * topo da página dizia "Cliques hoje: 1" e o feed listava os cliques por
+ * nome — a tela se contradizia e lia como sistema quebrado, não como filtro
+ * de ruído.
+ *
+ * Com 1, um produto com um único evento aparece marcado como "Novo" (o selo
+ * de `isNew`), nunca como uma porcentagem de tendência enganosa: `deltaPct`
+ * fica null sempre que não houve período anterior, então o risco que o piso
+ * 2 tentava evitar já é tratado por outro mecanismo.
+ */
+const TREND_MIN_CURRENT = 1;
 
 /**
  * MTR-06..MTR-10: ranking por TENDÊNCIA (período atual vs. período anterior
@@ -371,29 +442,41 @@ export async function queryTrendRanking(
   supabase: SupabaseClient<Database>,
   storeId: string,
   metric: "views" | "clicks",
-  days: 7 | 15 | 30
+  days: 7 | 15 | 30,
+  timeZone: string = DEFAULT_TIMEZONE
 ): Promise<TrendRankingItem[]> {
   const table = metric === "views" ? "pageviews" : "order_clicks";
   const dayMs = 24 * 60 * 60 * 1000;
 
-  const todayStart = startOfTodayBR();
+  const todayStart = startOfToday(timeZone);
   const periodStartMs = todayStart.getTime() - days * dayMs;
   const priorStartMs = todayStart.getTime() - days * 2 * dayMs;
 
-  let query = supabase
-    .from(table)
-    .select("product_id, created_at")
-    .eq("store_id", storeId)
-    .gte("created_at", new Date(priorStartMs).toISOString());
+  // Janela real de leitura: `days * 2` (o período atual E o anterior, para
+  // calcular a variação). Com 30 dias são 60 dias de eventos — é a query mais
+  // exposta ao teto de 1000 linhas do PostgREST de todo o painel: ~17
+  // eventos/dia já estouram. Pior: sem `.order()` a ordem das linhas
+  // descartadas era indefinida, então o ranking seria calculado sobre uma
+  // amostra sem critério nenhum. `fetchAllRows` + ordenação estável resolvem
+  // as duas coisas de uma vez.
+  const rows = await fetchAllRows<{ product_id: string | null; created_at: string }>((from, to) => {
+    let query = supabase
+      .from(table)
+      .select("product_id, created_at")
+      .eq("store_id", storeId)
+      .gte("created_at", new Date(priorStartMs).toISOString())
+      .order("created_at", { ascending: true })
+      .range(from, to);
 
-  if (metric === "views") {
-    query = query.not("product_id", "is", null);
-  }
+    if (metric === "views") {
+      query = query.not("product_id", "is", null);
+    }
 
-  const { data: rows } = await query;
+    return query;
+  });
 
   const stats = new Map<string, { current: number; prior: number; daily: number[] }>();
-  for (const row of rows ?? []) {
+  for (const row of rows) {
     const productId = row.product_id as string | null;
     if (!productId) continue;
 
@@ -495,14 +578,20 @@ export async function querySizeDemand(
 ): Promise<SizeDemandItem[]> {
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
-  const { data } = await supabase
-    .from("order_clicks")
-    .select("size")
-    .eq("store_id", storeId)
-    .gte("created_at", cutoff);
+  // Mesmo motivo de queryTrendRanking: contagem em memória sobre 30 dias de
+  // cliques precisa ler TODAS as linhas, não as 1000 primeiras.
+  const data = await fetchAllRows<{ size: number }>((from, to) =>
+    supabase
+      .from("order_clicks")
+      .select("size")
+      .eq("store_id", storeId)
+      .gte("created_at", cutoff)
+      .order("created_at", { ascending: true })
+      .range(from, to)
+  );
 
   const counts = new Map<number, number>();
-  for (const row of data ?? []) {
+  for (const row of data) {
     counts.set(row.size, (counts.get(row.size) ?? 0) + 1);
   }
 
