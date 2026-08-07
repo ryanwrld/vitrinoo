@@ -30,7 +30,27 @@ export async function ensureStoreForUser(
   userId: string,
   email: string
 ): Promise<{ storeId: string } | { error: string }> {
-  const { data: existingStore } = await supabase.from("stores").select("id").eq("owner_id", userId).single();
+  // `.order().limit(1).maybeSingle()` e NUNCA `.single()`: `.single()`
+  // devolve data=null tanto para ZERO linhas quanto para VÁRIAS, e o erro
+  // era descartado aqui. Numa conta que (por uma corrida na criação) ficou
+  // com duas lojas, isso lia como "não tem loja" e o código abaixo criava
+  // MAIS UMA — a cada visita ao onboarding, num ciclo que se realimentava:
+  // o mesmo `.single()` no guard de rota já tinha redirecionado o usuário
+  // para cá, e ele nunca mais saía. Aconteceu de verdade em 2026-08-07: uma
+  // conta acumulou 8 lojas, 6 delas em 90 segundos, com a loja real (e seus
+  // produtos) inalcançável.
+  //
+  // A migration 0015 tornou o estado duplicado impossível; esta leitura
+  // tolerante é a segunda camada — se ainda assim houver mais de uma linha,
+  // o comportamento correto é ADOTAR a mais antiga (a real, com o
+  // conteúdo), jamais criar outra.
+  const { data: existingStore } = await supabase
+    .from("stores")
+    .select("id")
+    .eq("owner_id", userId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
 
   let storeId = existingStore?.id ?? null;
 

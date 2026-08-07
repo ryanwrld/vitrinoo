@@ -27,11 +27,21 @@ export async function requireCompletedOnboarding(): Promise<void> {
   }
 
   // 2) Gate de dados — onboarding completo?
+  // `.limit(1).maybeSingle()` e NUNCA `.single()`: `.single()` devolve null
+  // tanto para ZERO linhas quanto para VÁRIAS. Este é o ponto que DISPARA o
+  // redirect para o onboarding, então confundir "tem duas lojas" com "não
+  // tem loja" prendia o usuário lá para sempre — e o `ensureStoreForUser`
+  // chamado por aquela página, com o mesmo defeito, criava uma loja nova a
+  // cada visita (incidente de 2026-08-07: 8 lojas numa conta, a real
+  // inalcançável). A migration 0015 tornou o estado duplicado impossível;
+  // esta leitura é a segunda camada.
   const { data: store } = await supabase
     .from("stores")
     .select("id")
     .eq("owner_id", userData.user.id)
-    .single();
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
 
   if (!store) {
     redirect("/admin/onboarding");
