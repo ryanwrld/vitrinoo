@@ -1,12 +1,27 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { productSchema } from "@/lib/validation/product";
 import { parseBRLPrice } from "@/lib/currency/brl";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 
-export type ProductActionResult = { error: string } | { success: true; id: string };
+/**
+ * `warning` = o produto FOI salvo, mas uma etapa secundária (hoje só o upload
+ * de fotos) falhou. Nunca devolver `error` nesse caso: o form trataria como
+ * "não salvou" e o revendedor clicaria de novo, criando um segundo produto.
+ */
+export type ProductActionResult =
+  | { error: string }
+  | { success: true; id: string; warning?: string };
+
+function revalidateProdutos(productId?: string) {
+  revalidatePath("/admin/produtos");
+  if (productId) {
+    revalidatePath(`/admin/produtos/${productId}/editar`);
+  }
+}
 
 /**
  * Assinaturas de magic bytes por content-type aceito para fotos de produto —
@@ -315,6 +330,11 @@ export async function saveProduct(formData: FormData): Promise<ProductActionResu
     );
 
     if (sizesInsertError) {
+      // Postgres não é transacional através do PostgREST: o INSERT do produto
+      // acima já commitou. Desfazer aqui é o que impede o retry do revendedor
+      // ("Tente novamente") de virar um SEGUNDO produto idêntico — nada de
+      // valor se perde, porque nenhuma foto foi enviada ainda.
+      await owned.supabase.from("products").delete().eq("id", product.id);
       return { error: "Não foi possível salvar os tamanhos do produto. Tente novamente." };
     }
   }
@@ -328,10 +348,17 @@ export async function saveProduct(formData: FormData): Promise<ProductActionResu
   if (photoFiles.length > 0) {
     const photoError = await uploadAndInsertPhotos(owned, product.id, photoFiles);
     if (photoError) {
-      return photoError;
+      // O produto e os tamanhos já estão salvos — devolver `error` aqui faria
+      // o revendedor achar que nada foi salvo e cadastrar tudo de novo (era a
+      // origem dos produtos duplicados). Devolve sucesso com aviso: o form
+      // leva para a edição desse produto, onde as fotos são reenviadas uma a
+      // uma sem refazer o cadastro.
+      revalidateProdutos(product.id);
+      return { success: true, id: product.id, warning: photoError.error };
     }
   }
 
+  revalidateProdutos(product.id);
   return { success: true, id: product.id };
 }
 
@@ -344,10 +371,10 @@ export async function saveProduct(formData: FormData): Promise<ProductActionResu
  * linhas, sem erro (T-03-11, testado em edit-delete-product.test.ts) — nunca
  * confiar no `productId` isoladamente.
  *
- * Reescreve `product_sizes` com a estratégia delete+insert (nunca um diff
- * parcial): apaga todas as linhas atuais daquele `product_id` e insere as
- * novas conforme o array recebido — aceitável dado o tamanho pequeno do
- * conjunto (no máximo 10 tamanhos, 36-45).
+ * Reescreve `product_sizes` com a estratégia upsert-depois-delete: grava
+ * primeiro os tamanhos recebidos e só então remove os que saíram da grade —
+ * nunca delete-depois-insert, que deixaria o produto sem tamanho nenhum
+ * (= "Esgotado" na vitrine) se o insert seguinte falhasse.
  *
  * NÃO mexe em `product_photos` aqui — fotos têm suas próprias actions
  * dedicadas (`addProductPhotos`/`updatePhotoOrder`/`removePhoto`, Plan 03-04).
@@ -393,29 +420,40 @@ export async function updateProduct(productId: string, formData: FormData): Prom
     return { error: "Não foi possível salvar as alterações. Verifique sua conexão e tente novamente." };
   }
 
-  const { error: deleteSizesError } = await owned.supabase
-    .from("product_sizes")
-    .delete()
-    .eq("product_id", productId);
+  // Upsert-depois-delete, nunca delete-depois-insert: sem transação no
+  // PostgREST, apagar primeiro abre uma janela em que o produto fica com ZERO
+  // tamanhos — e se o insert seguinte falhar (rede caindo no meio), o produto
+  // fica permanentemente sem tamanho nenhum, ou seja, "Esgotado" na vitrine
+  // sem o revendedor ter pedido isso. Nesta ordem o pior caso é sobrar um
+  // tamanho antigo a mais, que é visível e corrigível.
+  if (fields.sizes.length > 0) {
+    const { error: sizesUpsertError } = await owned.supabase.from("product_sizes").upsert(
+      fields.sizes.map((item) => ({
+        product_id: productId,
+        size: item.size,
+        available: item.available,
+      })),
+      { onConflict: "product_id,size" }
+    );
+
+    if (sizesUpsertError) {
+      return { error: "Não foi possível salvar os tamanhos do produto. Tente novamente." };
+    }
+  }
+
+  // Remove só os tamanhos que saíram da grade (nunca todos de uma vez quando
+  // ainda há tamanhos escolhidos).
+  const keptSizes = fields.sizes.map((item) => item.size);
+  const removeStale = owned.supabase.from("product_sizes").delete().eq("product_id", productId);
+  const { error: deleteSizesError } = keptSizes.length > 0
+    ? await removeStale.not("size", "in", `(${keptSizes.join(",")})`)
+    : await removeStale;
 
   if (deleteSizesError) {
     return { error: "Não foi possível atualizar os tamanhos do produto. Tente novamente." };
   }
 
-  if (fields.sizes.length > 0) {
-    const { error: sizesInsertError } = await owned.supabase.from("product_sizes").insert(
-      fields.sizes.map((item) => ({
-        product_id: productId,
-        size: item.size,
-        available: item.available,
-      }))
-    );
-
-    if (sizesInsertError) {
-      return { error: "Não foi possível salvar os tamanhos do produto. Tente novamente." };
-    }
-  }
-
+  revalidateProdutos(productId);
   return { success: true, id: productId };
 }
 
@@ -443,6 +481,7 @@ export async function deleteProduct(productId: string): Promise<ProductActionRes
     return { error: "Não foi possível excluir o produto. Tente novamente." };
   }
 
+  revalidateProdutos();
   return { success: true, id: productId };
 }
 
@@ -463,6 +502,7 @@ export async function publishProduct(productId: string): Promise<ProductActionRe
     return { error: "Não foi possível publicar o produto. Tente novamente." };
   }
 
+  revalidateProdutos(productId);
   return { success: true, id: productId };
 }
 
@@ -482,6 +522,7 @@ export async function unpublishProduct(productId: string): Promise<ProductAction
     return { error: "Não foi possível mover o produto para rascunho. Tente novamente." };
   }
 
+  revalidateProdutos(productId);
   return { success: true, id: productId };
 }
 
@@ -505,6 +546,9 @@ export async function addProductPhotos(productId: string, formData: FormData): P
     return photoError;
   }
 
+  // A capa (posição 0) alimenta a thumbnail da listagem — sem revalidar, sair
+  // da edição mostraria a capa antiga.
+  revalidateProdutos(productId);
   return { success: true, id: productId };
 }
 
@@ -554,6 +598,7 @@ export async function updatePhotoOrder(
     }
   }
 
+  revalidatePath("/admin/produtos");
   return { success: true, id: order[0].id };
 }
 
@@ -588,6 +633,7 @@ export async function removePhoto(photoId: string): Promise<ProductActionResult>
     return { error: "Não foi possível remover a foto. Tente novamente." };
   }
 
+  revalidatePath("/admin/produtos");
   return { success: true, id: photoId };
 }
 
@@ -635,5 +681,6 @@ export async function markProductEsgotado(productId: string): Promise<ProductAct
     return { error: "Não foi possível marcar o produto como esgotado. Tente novamente." };
   }
 
+  revalidateProdutos(productId);
   return { success: true, id: productId };
 }

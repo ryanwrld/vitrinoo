@@ -63,6 +63,15 @@ export function ProductForm({ defaultValues, productId, status, initialPhotos }:
   // clique: um setState aqui não teria repintado a tempo de ser lido logo
   // em seguida.
   const submitIntentRef = useRef<"publish" | "draft" | "save">("draft");
+  // Trava síncrona contra duplo-envio. `disabled={isPending}` não basta: o
+  // `handleSubmit` do react-hook-form valida de forma assíncrona, então dois
+  // toques rápidos (comum no mobile, em conexão lenta) atravessam a validação
+  // antes de `isPending` virar true — e viravam dois produtos.
+  const isSubmittingRef = useRef(false);
+  // Id do produto criado nesta sessão do formulário. Se o cadastro já criou a
+  // linha e algo posterior falhou, qualquer nova tentativa EDITA esse produto
+  // em vez de criar outro — é o que torna o retry idempotente.
+  const createdIdRef = useRef<string | null>(null);
 
   const {
     register,
@@ -96,6 +105,9 @@ export function ProductForm({ defaultValues, productId, status, initialPhotos }:
   const isBrandOther = brandValue === "Outra";
 
   const onSubmit = (values: ProductInput) => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+
     const formData = new FormData();
     formData.set("name", values.name);
     formData.set("brand", values.brand);
@@ -118,19 +130,37 @@ export function ProductForm({ defaultValues, productId, status, initialPhotos }:
     }
 
     startTransition(async () => {
-      const result = productId ? await updateProduct(productId, formData) : await saveProduct(formData);
-      if ("error" in result) {
-        toast.error(result.error);
-        return;
+      try {
+        const targetId = productId ?? createdIdRef.current;
+        const result = targetId ? await updateProduct(targetId, formData) : await saveProduct(formData);
+
+        if ("error" in result) {
+          toast.error(result.error);
+          return;
+        }
+
+        createdIdRef.current = result.id;
+
+        // Produto salvo, fotos não. Manda direto para a edição desse mesmo
+        // produto (uploader em modo "salvo", reenvio foto a foto) em vez de
+        // deixar o revendedor achando que precisa cadastrar tudo de novo.
+        if (result.warning) {
+          toast.error(`${result.warning} Os dados do produto já foram salvos.`);
+          router.push(`/admin/produtos/${result.id}/editar`);
+          return;
+        }
+
+        if (submitIntentRef.current === "publish") {
+          toast.success("Produto publicado na sua vitrine!");
+        } else if (currentStatus === "published") {
+          toast.success("Alterações salvas!");
+        } else {
+          toast.success("Rascunho salvo!");
+        }
+        router.push("/admin/produtos");
+      } finally {
+        isSubmittingRef.current = false;
       }
-      if (submitIntentRef.current === "publish") {
-        toast.success("Produto publicado na sua vitrine!");
-      } else if (currentStatus === "published") {
-        toast.success("Alterações salvas!");
-      } else {
-        toast.success("Rascunho salvo!");
-      }
-      router.push("/admin/produtos");
     });
   };
 

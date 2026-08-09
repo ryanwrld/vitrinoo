@@ -33,6 +33,16 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
+// `revalidatePath` só funciona dentro do contexto de request do Next; chamada
+// direto do Vitest ela lança "Invariant: static generation store missing".
+// As Server Actions de produto revalidam `/admin/produtos` para a listagem
+// nunca mostrar um estado velho — comportamento de cache, não a regra de
+// negócio que estes testes verificam, então é simulado aqui.
+vi.mock("next/cache", () => ({
+  revalidatePath: () => {},
+  revalidateTag: () => {},
+}));
+
 function uniqueEmail(label: string): string {
   return `vitrinoo.createproduct.${label}.${Date.now()}.${Math.random().toString(36).slice(2)}@gmail.com`;
 }

@@ -19,7 +19,7 @@ import {
  * cookie jar compartilhado" para provar isolamento cross-tenant).
  *
  * Cobre o 03-05-PLAN.md (Task 1): updateProduct (campos + reescrita de
- * product_sizes via delete+insert), deleteProduct (cascade de linhas + limpeza
+ * product_sizes via upsert+delete), deleteProduct (cascade de linhas + limpeza
  * best-effort do Storage — 03-RESEARCH.md Pitfall 1), publishProduct/
  * unpublishProduct (D-10, toggle manual sem gate de completude), e isolamento
  * cross-tenant (T-03-11) para as três actions.
@@ -42,6 +42,16 @@ vi.mock("next/navigation", () => ({
   redirect: (url: string) => {
     throw new Error(`NEXT_REDIRECT:${url}`);
   },
+}));
+
+// `revalidatePath` só funciona dentro do contexto de request do Next; chamada
+// direto do Vitest ela lança "Invariant: static generation store missing".
+// As Server Actions de produto revalidam `/admin/produtos` para a listagem
+// nunca mostrar um estado velho — comportamento de cache, não a regra de
+// negócio que estes testes verificam, então é simulado aqui.
+vi.mock("next/cache", () => ({
+  revalidatePath: () => {},
+  revalidateTag: () => {},
 }));
 
 function uniqueEmail(label: string): string {
