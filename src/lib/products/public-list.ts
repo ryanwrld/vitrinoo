@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
-import { BRANDS, SOLES, FULFILLMENTS } from "@/lib/products/constants";
+import { BRANDS, SOLES, FULFILLMENTS, SORT_OPTIONS, DEFAULT_SORT, type SortOption } from "@/lib/products/constants";
 
 /**
  * Leitura pública paginada de produtos publicados (VITR-01/VITR-04,
@@ -31,11 +31,44 @@ export type QueryPublicProductsParams = {
   brand?: string[];
   sole?: string[];
   fulfillment?: string[];
+  sort?: string;
 };
 
 const VALID_BRANDS = new Set<string>(BRANDS);
 const VALID_SOLES = new Set<string>(SOLES);
 const VALID_FULFILLMENTS = new Set<string>(FULFILLMENTS.map((item) => item.value));
+const VALID_SORTS = new Set<string>(SORT_OPTIONS.map((item) => item.value));
+
+/**
+ * Mapa ordenação -> coluna/direção. Isolado num objeto (nunca uma string
+ * vinda de `params` interpolada em `.order()`) pela mesma disciplina que
+ * valida brand/sole/fulfillment contra listas fixas: um valor arbitrário de
+ * searchParams jamais chega ao Postgres.
+ */
+const SORT_CLAUSES: Record<SortOption, { column: "created_at" | "price"; ascending: boolean }> = {
+  recentes: { column: "created_at", ascending: false },
+  menor_preco: { column: "price", ascending: true },
+  maior_preco: { column: "price", ascending: false },
+};
+
+export function resolveSort(value: string | undefined): SortOption {
+  return value && VALID_SORTS.has(value) ? (value as SortOption) : DEFAULT_SORT;
+}
+
+/**
+ * Expande a seleção de modalidade do cliente para o conjunto de valores que
+ * REALMENTE satisfazem a intenção dele. Um produto marcado `ambos` é
+ * atendido tanto por pronta entrega quanto por encomenda — então ele
+ * pertence a qualquer filtro selecionado, e não a um chip "Ambos" próprio
+ * (que era o bug: filtrar "Pronta entrega" escondia produtos que o
+ * revendedor de fato entrega na hora). Sem seleção nenhuma, retorna vazio e
+ * o chamador não aplica `.in()` — todos aparecem.
+ */
+export function expandFulfillmentFilter(selected: string[]): string[] {
+  const valid = selected.filter((value) => VALID_FULFILLMENTS.has(value));
+  if (valid.length === 0) return [];
+  return Array.from(new Set([...valid, "ambos"]));
+}
 
 export type PublicProduct = {
   id: string;
@@ -77,7 +110,12 @@ export type QueryPublicProductsResult = {
   hasMore: boolean;
 };
 
-export const PUBLIC_PAGE_SIZE = 20;
+/**
+ * 24 (era 20): é o único valor que fecha fileiras CHEIAS em toda a régua de
+ * colunas do grid (8/6/5/4/3 — ver product-grid.tsx). Com 20, a última
+ * fileira ficava pela metade em 8 e em 6 colunas.
+ */
+export const PUBLIC_PAGE_SIZE = 24;
 
 export async function queryPublicProducts(
   supabase: SupabaseClient<Database>,
@@ -105,16 +143,24 @@ export async function queryPublicProducts(
     query = query.in("sole", validSoles);
   }
 
-  const validFulfillments = (params.fulfillment ?? []).filter((value) => VALID_FULFILLMENTS.has(value));
-  if (validFulfillments.length > 0) {
-    query = query.in("fulfillment", validFulfillments);
+  const expandedFulfillments = expandFulfillmentFilter(params.fulfillment ?? []);
+  if (expandedFulfillments.length > 0) {
+    query = query.in("fulfillment", expandedFulfillments);
   }
 
   if (params.q) {
     query = query.ilike("name", `%${params.q}%`);
   }
 
-  query = query.order("created_at", { ascending: false }).range(from, to);
+  // Desempate por created_at em toda ordenação de preço: dois produtos com o
+  // mesmo preço teriam ordem indefinida entre páginas, o que faz um item
+  // repetir ou sumir no "carregar mais".
+  const sortClause = SORT_CLAUSES[resolveSort(params.sort)];
+  query = query.order(sortClause.column, { ascending: sortClause.ascending });
+  if (sortClause.column !== "created_at") {
+    query = query.order("created_at", { ascending: false });
+  }
+  query = query.range(from, to);
 
   const { data: fetchedProducts, error } = await query;
   if (error || !fetchedProducts || fetchedProducts.length === 0) {

@@ -5,9 +5,9 @@ import { queryPublicProductDetail } from "@/lib/products/public-detail";
 import { getProductImagePublicUrl } from "@/lib/storage/product-image-url";
 import { buildProductUrl } from "@/lib/slug/store-url";
 import { formatBRLPrice } from "@/lib/currency/brl";
-import { DEFAULT_MESSAGE_TEMPLATE } from "@/lib/validation/onboarding";
 import { ProductOrderPanel } from "./product-order-panel";
 import { ProductNotFoundContent } from "./product-not-found-content";
+import { loadProductDetail } from "./product-detail-data";
 
 /**
  * Rota de detalhe do produto — Server Component totalmente dinâmico, SEM
@@ -79,62 +79,21 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ProductDetailPage({ params }: PageProps) {
   const { slug, produto } = await params;
-  const supabase = await createClient();
 
-  const { data: store, error: storeError } = await supabase
-    .from("stores")
-    .select("id, name, slug, hide_sold_out_default")
-    .eq("slug", slug)
-    .single();
+  const result = await loadProductDetail(slug, produto);
 
-  if (storeError || !store) {
-    notFound();
-  }
-
-  const detail = await queryPublicProductDetail(supabase, store.id, produto, store.hide_sold_out_default);
-
-  // Loja existe (slug válido), mas o produto não é visível — renderiza o
-  // 404 diretamente aqui (em vez de notFound(), que delegaria pro
-  // not-found.tsx de segmento, que não recebe params) pra poder linkar
-  // "Voltar para a loja" pra /${slug} de verdade, não pra raiz do
-  // site (05-VERIFICATION.md gap #10).
-  if (!detail) {
+  if (!result.ok) {
+    // Loja inexistente: não há slug válido pra linkar, então o 404 genérico
+    // do not-found.tsx de segmento serve. Loja existe mas produto não é
+    // visível: 404 inline pra poder linkar "Voltar para a loja" pra
+    // /${slug} de verdade (05-VERIFICATION.md gap #10).
+    if (result.reason === "store") notFound();
     return <ProductNotFoundContent backHref={`/${slug}`} />;
   }
 
-  const { data: storeSettings } = await supabase
-    .from("store_settings")
-    .select("whatsapp_e164, message_template")
-    .eq("store_id", store.id)
-    .single();
-
-  const whatsappE164 = storeSettings?.whatsapp_e164 ?? "";
-  const messageTemplate = storeSettings?.message_template ?? DEFAULT_MESSAGE_TEMPLATE;
-
-  const galleryUrls = detail.photos
-    .map((photo) => getProductImagePublicUrl(supabase, photo.storage_path))
-    .filter((url): url is string => url !== null);
-  const coverUrl = galleryUrls[0] ?? null;
-
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-6 bg-white px-4 py-6">
-      <ProductOrderPanel
-        product={{
-          name: detail.name,
-          line: detail.line,
-          sole: detail.sole,
-          price: detail.price,
-        }}
-        sizes={detail.sizes}
-        whatsappE164={whatsappE164}
-        messageTemplate={messageTemplate}
-        coverUrl={coverUrl}
-        galleryUrls={galleryUrls}
-        storeId={store.id}
-        productId={detail.id}
-        slug={slug}
-        productUrl={buildProductUrl(slug, detail.id)}
-      />
+      <ProductOrderPanel {...result.panel} />
     </main>
   );
 }

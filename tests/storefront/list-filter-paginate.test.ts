@@ -6,8 +6,8 @@ import { queryPublicProducts, PUBLIC_PAGE_SIZE } from "@/lib/products/public-lis
  * Cobre VITR-01/VITR-04 (04-02-PLAN.md Task 1): queryPublicProducts filtra
  * status='published' (nunca draft), isola por storeId (defesa em
  * profundidade, mesma disciplina de queryProducts/T-03-13), e pagina
- * corretamente (PUBLIC_PAGE_SIZE=20 por carga, técnica "buscar 21, mostrar
- * 20" para hasMore, page 1-based).
+ * corretamente (PUBLIC_PAGE_SIZE por carga, técnica "buscar N+1, mostrar N"
+ * para hasMore, page 1-based).
  *
  * Filtros multi-select/busca são adicionados no Plan 04-03 (mesmo arquivo,
  * novos casos) — este arquivo cobre só o Plan 04-02 nesta primeira versão.
@@ -79,7 +79,7 @@ describe("queryPublicProducts (leitura pública paginada de produtos publicados)
     await lojaB.client.from("stores").delete().eq("id", storeB.id);
   }, 30000);
 
-  it("pagina corretamente: 21 produtos publicados -> page 1 retorna 20 (hasMore=true), page 2 retorna 1 (hasMore=false)", async () => {
+  it("pagina corretamente: PUBLIC_PAGE_SIZE+1 publicados -> page 1 enche a página (hasMore=true), page 2 traz o resto (hasMore=false)", async () => {
     const loja = await seedAuthenticatedAccount("public-list-pagination");
 
     const { data: store, error: storeError } = await loja.client
@@ -153,9 +153,16 @@ describe("queryPublicProducts (leitura pública paginada de produtos publicados)
     const soleResult = await queryPublicProducts(loja.client, store.id, { sole: ["FG"] }, false);
     expect(soleResult.products.map((p) => p.name).sort()).toEqual(["Mercurial Vapor", "Ultra Ultimate"]);
 
-    // Filtro por modalidade.
+    // Filtro por modalidade — um produto marcado "ambos" satisfaz TANTO
+    // pronta entrega quanto encomenda, então aparece nas duas seleções
+    // (expandFulfillmentFilter). Antes ele sumia de ambas e só era
+    // alcançável por um chip "Ambos", que era o bug: o cliente que filtrava
+    // "Pronta entrega" não via produtos que o revendedor entrega na hora.
     const fulfillmentResult = await queryPublicProducts(loja.client, store.id, { fulfillment: ["sob_encomenda"] }, false);
-    expect(fulfillmentResult.products.map((p) => p.name)).toEqual(["Predator Elite"]);
+    expect(fulfillmentResult.products.map((p) => p.name).sort()).toEqual(["Predator Elite", "Ultra Ultimate"]);
+
+    const prontaResult = await queryPublicProducts(loja.client, store.id, { fulfillment: ["pronta_entrega"] }, false);
+    expect(prontaResult.products.map((p) => p.name).sort()).toEqual(["Mercurial Vapor", "Ultra Ultimate"]);
 
     // Busca por nome (ilike, parcial, case-insensitive).
     const searchResult = await queryPublicProducts(loja.client, store.id, { q: "merc" }, false);
@@ -169,6 +176,26 @@ describe("queryPublicProducts (leitura pública paginada de produtos publicados)
     // — nunca lançado como erro, nunca interpolado cru; resultado equivale a nenhum filtro de marca.
     const invalidBrandResult = await queryPublicProducts(loja.client, store.id, { brand: ["Reebok"] }, false);
     expect(invalidBrandResult.products).toHaveLength(3);
+
+    // Ordenação por preço (799,90 / 899,90 / 1099,90).
+    const menorPreco = await queryPublicProducts(loja.client, store.id, { sort: "menor_preco" }, false);
+    expect(menorPreco.products.map((p) => p.name)).toEqual([
+      "Predator Elite",
+      "Mercurial Vapor",
+      "Ultra Ultimate",
+    ]);
+
+    const maiorPreco = await queryPublicProducts(loja.client, store.id, { sort: "maior_preco" }, false);
+    expect(maiorPreco.products.map((p) => p.name)).toEqual([
+      "Ultra Ultimate",
+      "Mercurial Vapor",
+      "Predator Elite",
+    ]);
+
+    // Valor de ordenação arbitrário vindo da URL cai no padrão em vez de
+    // chegar ao Postgres — mesma disciplina de allowlist dos filtros.
+    const sortInvalido = await queryPublicProducts(loja.client, store.id, { sort: "'; drop table--" }, false);
+    expect(sortInvalido.products).toHaveLength(3);
 
     await loja.client.from("stores").delete().eq("id", store.id);
   }, 30000);

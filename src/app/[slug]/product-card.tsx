@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { formatBRLPrice } from "@/lib/currency/brl";
 import { ImageWithFallback } from "./image-with-fallback";
@@ -21,25 +22,57 @@ export type PublicProductCardData = {
  * fallback inline "sem foto"
  * do admin — aqui a URL pode existir mas falhar no CDN do Storage (VITR-05).
  *
- * Card envolvido num `<Link>` para `/[slug]/[produto]` (D-01: página de
- * detalhe dedicada, não modal/accordion inline no grid) — `[produto]` é o
- * `id` (UUID) do produto (decisão A3 do 05-RESEARCH.md: URL compartilhável
- * satisfeita sem coluna slug nova). `slug` chega como prop separada, nunca
- * poluindo `PublicProductCardData` (que descreve só o dado do produto).
+ * Card envolvido num `<Link>` que abre o produto como modal sobre o grid
+ * (D-01, revisado: velocidade de navegação do cliente final), via
+ * `?produto=<id>` na PRÓPRIA `/[slug]` — nunca uma rota interceptada/
+ * paralela do Next (`@modal/(.)[produto]`, primeira versão): esse padrão
+ * corrompeu a árvore de rotas do app inteiro (reproduzido em build de
+ * produção isolado, quebrando navegação client-side até em `/admin/*`,
+ * segmento sem nenhuma relação com `/[slug]`). Query param é comprovadamente
+ * seguro. `id` é o UUID do produto (decisão A3 do 05-RESEARCH.md); `slug` e
+ * `query` (filtros/página atuais, preservados no link) chegam como props
+ * separadas, nunca poluindo `PublicProductCardData`.
  */
-export function ProductCard({ product, slug }: { product: PublicProductCardData; slug: string }) {
-  const brandLabel = product.brand === "Outra" && product.brand_other ? product.brand_other : product.brand;
-  const secondaryLine = [brandLabel, product.line].filter(Boolean).join(" · ");
+export function ProductCard({
+  product,
+  slug,
+  query,
+  staggerIndex = 0,
+}: {
+  product: PublicProductCardData;
+  slug: string;
+  query: string;
+  /** Posição na entrada escalonada do grid (já com teto aplicado). */
+  staggerIndex?: number;
+}) {
+  const params = new URLSearchParams(query);
+  params.set("produto", product.id);
 
   return (
-    <Link href={`/${slug}/${product.id}`} className="flex flex-col gap-2 transition-all duration-150 hover:shadow-md hover:-translate-y-0.5">
+    <Link
+      href={`/${slug}?${params.toString()}`}
+      scroll={false}
+      style={{ "--stagger-index": staggerIndex } as CSSProperties}
+      className="animate-card-in flex flex-col gap-2 rounded-xl transition-transform duration-150 hover:-translate-y-1"
+    >
       <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-gray-100">
-        <ImageWithFallback src={product.coverUrl} alt={product.name} />
+        {/* Espelha EXATAMENTE a régua de colunas de product-grid.tsx — se uma
+            mudar sem a outra, o navegador escolhe o arquivo errado (borrado se
+            pedir de menos, desperdício de banda se pedir demais). */}
+        <ImageWithFallback
+          src={product.coverUrl}
+          alt={product.name}
+          sizes="(min-width: 1600px) 190px, (min-width: 1280px) 12.5vw, (min-width: 1024px) 16.6vw, (min-width: 768px) 20vw, (min-width: 640px) 25vw, 33vw"
+        />
       </div>
 
+      {/* Nome, preço e disponibilidade — a linha "marca · linha" saiu (decisão
+          do usuário): num card de ~140px ela consumia a linha mais escassa
+          repetindo o que o nome já diz ("Nike Phantom GX III" → "Nike ·
+          Phantom GX III"). A marca segue disponível como FILTRO, que é onde
+          ela de fato ajuda a achar o produto. */}
       <div className="flex flex-col gap-0.5">
-        <span className="truncate font-display font-medium text-gray-900">{product.name}</span>
-        {secondaryLine && <span className="truncate text-xs text-gray-500">{secondaryLine}</span>}
+        <span className="truncate font-display text-sm font-medium text-gray-900">{product.name}</span>
         <span className="font-display text-sm font-bold text-primary">{formatBRLPrice(product.price)}</span>
         <span
           className={`flex items-center gap-1 text-xs transition-colors duration-150 ${

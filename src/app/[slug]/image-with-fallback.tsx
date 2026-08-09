@@ -15,7 +15,20 @@ import { ImageOff } from "lucide-react";
  * usado em src/app/(admin)/produtos/product-list.tsx — nenhuma nova
  * dependência.
  */
-export function ImageWithFallback({ src, alt }: { src: string | null; alt: string }) {
+export function ImageWithFallback({
+  src,
+  alt,
+  sizes,
+}: {
+  src: string | null;
+  alt: string;
+  /**
+   * Largura renderizada por breakpoint. Sem isto o `fill` do next/image assume
+   * `100vw` e baixa uma imagem de viewport inteiro para cada card — num grid
+   * de 8 colunas, ~8x mais bytes do que o necessário, no 4G do cliente final.
+   */
+  sizes?: string;
+}) {
   const [errored, setErrored] = useState(!src);
 
   if (errored || !src) {
@@ -31,6 +44,7 @@ export function ImageWithFallback({ src, alt }: { src: string | null; alt: strin
       src={src}
       alt={alt}
       fill
+      sizes={sizes}
       className="rounded-xl object-cover"
       onError={() => setErrored(true)}
     />

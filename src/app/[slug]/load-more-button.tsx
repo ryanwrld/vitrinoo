@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { fetchNextPage } from "@/lib/products/public-actions";
-import type { QueryPublicProductsParams } from "@/lib/products/public-list";
+import { PUBLIC_PAGE_SIZE, type QueryPublicProductsParams } from "@/lib/products/public-list";
+import { DEFAULT_SORT } from "@/lib/products/constants";
 import { ProductCard, type PublicProductCardData } from "./product-card";
 
 export type LoadMoreButtonProps = {
@@ -45,12 +46,32 @@ export function LoadMoreButton({ slug, initialPage, initialHasMore, filters }: L
 
   if (!hasMore && items.length === 0) return null;
 
+  // Mesma query string que page.tsx monta pro grid inicial — reconstruída
+  // aqui a partir de `filters` (sem "page") pra que o link "?produto=<id>"
+  // de cada card carregado via "Carregar mais" preserve o filtro ativo.
+  const query = new URLSearchParams();
+  if (filters.q) query.set("q", filters.q);
+  (filters.brand ?? []).forEach((value) => query.append("brand", value));
+  (filters.sole ?? []).forEach((value) => query.append("sole", value));
+  (filters.fulfillment ?? []).forEach((value) => query.append("fulfillment", value));
+  if (filters.sort && filters.sort !== DEFAULT_SORT) query.set("sort", filters.sort);
+  const queryString = query.toString();
+
   return (
     <>
       {items.length > 0 && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 md:gap-4">
-          {items.map((product) => (
-            <ProductCard key={product.id} product={product} slug={slug} />
+          {/* `staggerIndex` reinicia em 0 a cada lote: o escalonamento deve
+              acompanhar a chegada dos itens novos, não continuar a contagem
+              do grid inteiro (no 3º lote isso viraria um atraso absurdo). */}
+          {items.map((product, index) => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              slug={slug}
+              query={queryString}
+              staggerIndex={Math.min(index % PUBLIC_PAGE_SIZE, 8)}
+            />
           ))}
         </div>
       )}
