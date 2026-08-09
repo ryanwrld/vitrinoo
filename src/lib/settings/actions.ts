@@ -5,27 +5,33 @@ import { createClient } from "@/lib/supabase/server";
 import { normalizeWhatsAppBR } from "@/lib/phone/normalize-br";
 import { onboardingSchema } from "@/lib/validation/onboarding";
 import { slugSchema } from "@/lib/slug/validation";
+import { normalizeInstagramHandle } from "@/lib/social/instagram";
+import { resolveCoverRatio } from "@/lib/store/cover-ratio";
+import { resolveCoverFrame } from "@/lib/store/cover-frame";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 
 export type SettingsActionResult = { error: string } | { success: true };
 
 /**
- * Assinaturas de magic bytes por content-type aceito para o logo — mesma
- * checagem de src/lib/onboarding/actions.ts (Domínio de Segurança do
- * 01-RESEARCH.md), duplicada aqui em vez de importada porque
- * `validateLogoFile` não é exportada e este plano (02-03) não modifica
- * src/lib/onboarding/actions.ts (fora do `files_modified` do 02-03-PLAN.md).
+ * Assinaturas de magic bytes por content-type aceito — mesma checagem de
+ * src/lib/onboarding/actions.ts (Domínio de Segurança do 01-RESEARCH.md),
+ * duplicada aqui em vez de importada porque `validateLogoFile` não é
+ * exportada lá e este arquivo não modifica o onboarding.
+ *
+ * Validar o CONTEÚDO e não só o `type` declarado é o ponto: `file.type` vem
+ * do navegador e é trivial de forjar — um .php renomeado para .png chega com
+ * `image/png` no cabeçalho. Os primeiros bytes não mentem.
  */
-const LOGO_MAGIC_BYTES: Record<string, number[]> = {
+const IMAGE_MAGIC_BYTES: Record<string, number[]> = {
   "image/png": [0x89, 0x50, 0x4e, 0x47],
   "image/jpeg": [0xff, 0xd8, 0xff],
   "image/webp": [0x52, 0x49, 0x46, 0x46],
 };
 
-const MAX_LOGO_BYTES = 5 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
-function logoExtension(contentType: string): string {
+function imageExtension(contentType: string): string {
   switch (contentType) {
     case "image/png":
       return "png";
@@ -38,20 +44,53 @@ function logoExtension(contentType: string): string {
   }
 }
 
-async function validateLogoFile(file: File): Promise<{ error: string } | null> {
-  const signature = LOGO_MAGIC_BYTES[file.type];
+/**
+ * `label` entra nas mensagens de erro ("Logo deve ser…" / "Capa deve ser…").
+ * Sem ele, o revendedor que errou a capa receberia um aviso falando de logo
+ * e iria mexer no campo errado — os dois uploads convivem na mesma tela.
+ */
+async function validateImageFile(file: File, label: string): Promise<{ error: string } | null> {
+  const signature = IMAGE_MAGIC_BYTES[file.type];
   if (!signature) {
-    return { error: "Logo deve ser uma imagem PNG, JPEG ou WebP." };
+    return { error: `${label} deve ser uma imagem PNG, JPEG ou WebP.` };
   }
-  if (file.size > MAX_LOGO_BYTES) {
-    return { error: "Logo excede o limite de 5MB." };
+  if (file.size > MAX_IMAGE_BYTES) {
+    return { error: `${label} excede o limite de 5MB.` };
   }
   const headerBytes = new Uint8Array(await file.slice(0, signature.length).arrayBuffer());
   const matchesSignature = signature.every((byte, index) => headerBytes[index] === byte);
   if (!matchesSignature) {
-    return { error: "Arquivo de logo inválido (conteúdo não corresponde a uma imagem)." };
+    return { error: `Arquivo de ${label.toLowerCase()} inválido (conteúdo não corresponde a uma imagem).` };
   }
   return null;
+}
+
+/**
+ * Sobe um asset da loja e devolve a URL pública já com cache-buster.
+ *
+ * `upsert: true` grava sempre no mesmo caminho, então a URL pública nunca
+ * muda de um upload pro outro — sem o parâmetro `v` o navegador e o CDN
+ * continuam servindo a imagem ANTIGA depois da troca. `Date.now()` aqui é um
+ * valor opaco pra invalidar cache, nunca comparado nem persistido como
+ * timestamp real.
+ */
+async function uploadStoreAsset(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  file: File,
+  basename: "logo" | "cover"
+): Promise<{ url: string } | { error: string }> {
+  const path = `${userId}/${basename}.${imageExtension(file.type)}`;
+  const { error: uploadError } = await supabase.storage
+    .from("store-assets")
+    .upload(path, file, { contentType: file.type, upsert: true });
+
+  if (uploadError) {
+    return { error: `Não foi possível enviar ${basename === "logo" ? "o logo" : "a capa"}. Tente novamente.` };
+  }
+
+  const { data: publicUrlData } = supabase.storage.from("store-assets").getPublicUrl(path);
+  return { url: `${publicUrlData.publicUrl}?v=${Date.now()}` };
 }
 
 /**
@@ -212,39 +251,85 @@ export async function saveStoreSettings(formData: FormData): Promise<SettingsAct
     return { error: "Envie uma logo para continuar." };
   }
 
-  // A logo sobe CRUA, sem compressão/redimensionamento — diferente das fotos
-  // de produto, que passam por `browser-image-compression` no uploader. Isso
-  // é decisão consciente de escopo (confirmada pelo usuário), NÃO um passo
-  // esquecido: só `validateLogoFile` (tipo + teto de 5MB) roda aqui.
+  // Logo e capa sobem CRUAS, sem compressão/redimensionamento — diferente das
+  // fotos de produto, que passam por `browser-image-compression` no uploader.
+  // Isso é decisão consciente de escopo (confirmada pelo usuário), NÃO um
+  // passo esquecido: só `validateImageFile` (tipo + teto de 5MB) roda aqui.
   //
-  // Consequência conhecida e aceita: se o lojista enviar uma imagem de baixa
-  // resolução, o avatar do painel (`StoreAvatar`) aparece pixelado e nenhum
-  // ajuste de exibição resolve — o teto é a resolução da origem. Antes de
-  // "corrigir" isso achando que é bug, confirmar que o escopo mudou.
+  // Consequência conhecida e aceita: imagem de baixa resolução aparece
+  // pixelada e nenhum ajuste de exibição resolve — o teto é a resolução da
+  // origem. Vale mais para a CAPA que para a logo, porque ela é exibida
+  // larga: uma foto pequena estica na vitrine. Antes de "corrigir" isso
+  // achando que é bug, confirmar que o escopo mudou.
   let logoUrl: string | undefined;
   if (incomingLogoFile instanceof File && incomingLogoFile.size > 0) {
-    const logoFile = incomingLogoFile;
-    const validationError = await validateLogoFile(logoFile);
+    const validationError = await validateImageFile(incomingLogoFile, "Logo");
     if (validationError) {
       return validationError;
     }
 
-    const path = `${owned.userId}/logo.${logoExtension(logoFile.type)}`;
-    const { error: uploadError } = await owned.supabase.storage
-      .from("store-assets")
-      .upload(path, logoFile, { contentType: logoFile.type, upsert: true });
+    const uploaded = await uploadStoreAsset(owned.supabase, owned.userId, incomingLogoFile, "logo");
+    if ("error" in uploaded) {
+      return uploaded;
+    }
+    logoUrl = uploaded.url;
+  }
 
-    if (uploadError) {
-      return { error: "Não foi possível enviar o logo. Tente novamente." };
+  // Capa é OPCIONAL (decisão do usuário): sem ela a vitrine gera um gradiente
+  // a partir da cor de marca, e toda loja nasce apresentável sem ninguém
+  // fazer nada. Três estados possíveis, e eles precisam ser distinguidos —
+  // `undefined` (não mexeu, mantém o que está no banco), uma URL nova
+  // (enviou), ou `null` (pediu para remover e voltar ao gradiente).
+  const incomingCoverFile = formData.get("cover");
+  const wantsCoverRemoved = formData.get("removeCover") === "true";
+  let coverUrl: string | null | undefined;
+  let coverAspectRatio: number | null | undefined;
+
+  if (incomingCoverFile instanceof File && incomingCoverFile.size > 0) {
+    const validationError = await validateImageFile(incomingCoverFile, "Capa");
+    if (validationError) {
+      return validationError;
     }
 
-    // `upsert: true` grava sempre no mesmo caminho, então a URL pública
-    // nunca muda de um upload pro outro — sem um cache-buster o navegador
-    // (e o CDN da Vercel/Supabase) continuam servindo a logo antiga em
-    // cache mesmo depois da troca. `Date.now()` aqui é só um valor opaco
-    // pra invalidar cache, nunca comparado/persistido como timestamp real.
-    const { data: publicUrlData } = owned.supabase.storage.from("store-assets").getPublicUrl(path);
-    logoUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
+    const uploaded = await uploadStoreAsset(owned.supabase, owned.userId, incomingCoverFile, "cover");
+    if ("error" in uploaded) {
+      return uploaded;
+    }
+    coverUrl = uploaded.url;
+
+    // Proporção medida no navegador (ver measureImageRatio) e re-enquadrada
+    // AQUI: o número vem do cliente e, como qualquer entrada, não é confiável.
+    // Sem este segundo enquadramento, um valor forjado passaria direto para a
+    // vitrine e viraria um cabeçalho de altura arbitrária.
+    coverAspectRatio = resolveCoverRatio(Number(formData.get("coverAspectRatio"))).ratio;
+  } else if (wantsCoverRemoved) {
+    // Só limpa a coluna. O arquivo continua no bucket de propósito: o próximo
+    // upload usa `upsert` no MESMO caminho e sobrescreve, então apagar aqui
+    // seria uma chamada de rede a mais para nada — e uma falha nela deixaria
+    // o formulário com erro por um arquivo que ninguém mais alcança.
+    coverUrl = null;
+    // A proporção acompanha a capa: deixá-la para trás faria o gradiente
+    // herdar a forma de uma imagem que não existe mais.
+    coverAspectRatio = null;
+  }
+
+  // Enquadramento da capa. `resolveCoverFrame` roda aqui de novo porque estes
+  // quatro números vêm do formulário e, como qualquer entrada, não são
+  // confiáveis — um valor fora da faixa viraria uma vitrine quebrada para o
+  // cliente final, que não tem como reportar nada.
+  const coverFrame = resolveCoverFrame({
+    bandRatio: formData.get("coverBandRatio"),
+    zoom: formData.get("coverZoom"),
+    posX: formData.get("coverPosX"),
+    posY: formData.get("coverPosY"),
+  });
+
+  // Instagram: normalizado UMA vez, aqui, para o banco guardar só o handle
+  // canônico. A vitrine monta a URL a partir dele e nunca re-interpreta o que
+  // foi digitado — mesma disciplina do telefone.
+  const instagramResult = normalizeInstagramHandle(formData.get("instagram") as string | null);
+  if ("error" in instagramResult) {
+    return { error: instagramResult.error };
   }
 
   const { error: storeUpdateError } = await owned.supabase
@@ -254,7 +339,17 @@ export async function saveStoreSettings(formData: FormData): Promise<SettingsAct
       accent_color: parsed.data.accentColor || null,
       tagline: parsed.data.tagline || null,
       hide_sold_out_default: nextHideSoldOutDefault,
+      instagram: instagramResult.handle,
+      cover_band_ratio: coverFrame.bandRatio,
+      cover_zoom: coverFrame.zoom,
+      cover_pos_x: coverFrame.posX,
+      cover_pos_y: coverFrame.posY,
       ...(logoUrl ? { logo_url: logoUrl } : {}),
+      // `undefined` significa "não mexeu" e precisa ficar FORA do objeto —
+      // incluído, o supabase-js o serializa como null e apagaria a capa a
+      // cada save de qualquer outro campo.
+      ...(coverUrl !== undefined ? { cover_url: coverUrl } : {}),
+      ...(coverAspectRatio !== undefined ? { cover_aspect_ratio: coverAspectRatio } : {}),
     })
     .eq("id", owned.storeId);
 

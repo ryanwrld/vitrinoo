@@ -10,6 +10,10 @@ import { ChevronDown, Paintbrush, MessageCircle, SlidersHorizontal, Eye } from "
 import { onboardingSchema, type OnboardingInput } from "@/lib/validation/onboarding";
 import { checkSlugAvailability, saveStoreSettings, updateStoreSlug } from "@/lib/settings/actions";
 import { getContrastTextColor } from "@/lib/color/contrast";
+import { buildCoverGradient } from "@/lib/color/cover-gradient";
+import { measureImageRatio, resolveCoverRatio } from "@/lib/store/cover-ratio";
+import { resolveCoverFrame, type CoverFrame } from "@/lib/store/cover-frame";
+import { CoverEditor } from "./cover-editor";
 import { slugify } from "@/lib/slug/slugify";
 import { slugSchema } from "@/lib/slug/validation";
 import { useDebouncedValue } from "@/lib/hooks/use-debounce";
@@ -30,8 +34,15 @@ export type SettingsFormProps = {
   store: {
     name: string;
     logoUrl: string | null;
+    /** Capa do cartão de perfil da vitrine. `null` = usa o gradiente da cor. */
+    coverUrl: string | null;
+    /** Proporção da capa salva. `null` = sem capa, usa a padrão. */
+    coverAspectRatio: number | null;
+    /** Enquadramento salvo: altura da faixa, zoom e posição. */
+    coverFrame: CoverFrame;
     accentColor: string | null;
     tagline: string | null;
+    instagram: string | null;
     hideSoldOutDefault: boolean;
   };
   settings: {
@@ -61,6 +72,19 @@ export function SettingsForm({ store, settings, currentSlug, aside }: SettingsFo
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  // Capa: além do arquivo novo, precisa de um estado explícito de REMOÇÃO.
+  // Sem ele, "não enviei arquivo" e "quero voltar ao gradiente" seriam
+  // indistinguíveis no submit, e apagar a capa viraria impossível.
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
+  const [coverRemoved, setCoverRemoved] = useState(false);
+  // Proporção do arquivo ESCOLHIDO AGORA (ainda não salvo). Medida no
+  // navegador para a prévia já sair na forma real e para o aviso de
+  // enquadramento aparecer ANTES de salvar, não depois.
+  const [coverRatio, setCoverRatio] = useState<number | null>(null);
+  const [coverRatioClamped, setCoverRatioClamped] = useState(false);
+  const [coverFrame, setCoverFrame] = useState<CoverFrame>(store.coverFrame);
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const {
     register,
     handleSubmit,
@@ -76,6 +100,7 @@ export function SettingsForm({ store, settings, currentSlug, aside }: SettingsFo
       whatsapp: settings.whatsapp,
       messageTemplate: settings.messageTemplate,
       hideSoldOutDefault: store.hideSoldOutDefault ? "true" : "false",
+      instagram: store.instagram ?? "",
     },
   });
 
@@ -88,11 +113,22 @@ export function SettingsForm({ store, settings, currentSlug, aside }: SettingsFo
     return () => URL.revokeObjectURL(objectUrl);
   }, [logoFile]);
 
+  useEffect(() => {
+    if (!coverFile) return;
+    const objectUrl = URL.createObjectURL(coverFile);
+    setCoverPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [coverFile]);
+
   const whatsappValue = watch("whatsapp");
   const taglineValue = watch("tagline") ?? "";
   const nameValue = watch("name");
   const accentColorValue = watch("accentColor") || "#0D21A1";
   const heroLogoUrl = logoPreviewUrl ?? store.logoUrl;
+  // Ordem importa: arquivo novo > remoção pendente > capa salva. Sem a
+  // remoção no meio, clicar em "Usar o gradiente" não mudaria nada na tela
+  // até salvar, e o revendedor clicaria de novo achando que falhou.
+  const coverPreview = coverPreviewUrl ?? (coverRemoved ? null : store.coverUrl);
   // Mesma função usada em store-hero.tsx (a vitrine REAL) — a prévia usa a
   // lógica exata de contraste, não uma aproximação, senão ela pode mostrar
   // uma combinação legível aqui e ilegível na vitrine de verdade.
@@ -150,7 +186,13 @@ export function SettingsForm({ store, settings, currentSlug, aside }: SettingsFo
    * Olhar só o `isDirty` deixaria o botão "Reverter" invisível justamente
    * para quem trocou o logo ou o link.
    */
-  const hasUnsavedChanges = isDirty || logoFile !== null || slugChanged;
+  const frameChanged =
+    coverFrame.bandRatio !== store.coverFrame.bandRatio ||
+    coverFrame.zoom !== store.coverFrame.zoom ||
+    coverFrame.posX !== store.coverFrame.posX ||
+    coverFrame.posY !== store.coverFrame.posY;
+  const hasUnsavedChanges =
+    isDirty || logoFile !== null || coverFile !== null || coverRemoved || frameChanged || slugChanged;
 
   /**
    * Devolve tudo ao último estado salvo, sem recarregar a página — o ponto do
@@ -200,8 +242,19 @@ export function SettingsForm({ store, settings, currentSlug, aside }: SettingsFo
     formData.set("whatsapp", values.whatsapp);
     formData.set("messageTemplate", values.messageTemplate);
     formData.set("hideSoldOutDefault", values.hideSoldOutDefault ?? "false");
+    formData.set("instagram", values.instagram ?? "");
+    formData.set("coverBandRatio", String(coverFrame.bandRatio));
+    formData.set("coverZoom", String(coverFrame.zoom));
+    formData.set("coverPosX", String(coverFrame.posX));
+    formData.set("coverPosY", String(coverFrame.posY));
     if (logoFile) {
       formData.set("logo", logoFile);
+    }
+    if (coverFile) {
+      formData.set("cover", coverFile);
+      formData.set("coverAspectRatio", String(coverRatio ?? 0));
+    } else if (coverRemoved) {
+      formData.set("removeCover", "true");
     }
 
     startTransition(async () => {
@@ -229,9 +282,21 @@ export function SettingsForm({ store, settings, currentSlug, aside }: SettingsFo
       reset(values);
       setLogoFile(null);
       setLogoPreviewUrl(null);
+      setCoverFile(null);
+      setCoverPreviewUrl(null);
+      setCoverRemoved(false);
+      setCoverRatio(null);
+      setCoverRatioClamped(false);
       if (logoInputRef.current) {
         logoInputRef.current.value = "";
       }
+      if (coverInputRef.current) {
+        coverInputRef.current.value = "";
+      }
+      // A capa e a logo salvas vieram do servidor nas props; sem um refresh, a
+      // prévia local some no reset e o card volta a mostrar a imagem ANTIGA
+      // até uma navegação manual.
+      router.refresh();
 
       toast.success("Configurações salvas!");
     });
@@ -351,6 +416,102 @@ export function SettingsForm({ store, settings, currentSlug, aside }: SettingsFo
             </button>
           </div>
         </dialog>
+
+        {/* CAPA — banner do cartão de perfil da vitrine.
+            Fica ACIMA de logo e cor porque é isso que a vitrine mostra
+            primeiro, e porque a prévia larga aqui ensina o enquadramento
+            sem precisar de texto explicando.
+            Opcional de propósito (decisão do usuário): sem capa a vitrine
+            gera um gradiente da cor de destaque, então nenhuma loja fica
+            com buraco e ninguém é obrigado a um segundo upload. */}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-baseline justify-between gap-2">
+            <label htmlFor="cover" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Capa da vitrine
+            </label>
+            <span className="text-xs text-gray-500 dark:text-gray-500">Opcional</span>
+          </div>
+
+          {/* `aspect-[3/1]` reproduz a proporção real da capa na vitrine — uma
+              prévia quadrada mentiria sobre o corte e o revendedor só
+              descobriria o enquadramento errado depois de publicar. */}
+          {/* Editor de enquadramento: a prévia É a vitrine (mesmas funções de
+              estilo), e os controles decidem o que fica de fora quando a
+              proporção da arte não bate com a da faixa. Sem capa, mostra o
+              gradiente REAL que a vitrine vai gerar — assim "não enviar" é
+              uma escolha informada, não um campo vazio esperando ser
+              preenchido. */}
+          <CoverEditor
+            imageUrl={coverPreview}
+            fallbackBackground={buildCoverGradient(accentColorValue)}
+            frame={coverFrame}
+            onChange={setCoverFrame}
+          />
+
+          <input
+            id="cover"
+            ref={coverInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            onChange={async (event) => {
+              const file = event.target.files?.[0] ?? null;
+              setCoverFile(file);
+              // Escolher um arquivo cancela uma remoção pendente — do
+              // contrário o submit mandaria os dois sinais e o servidor
+              // decidiria por conta própria qual vale.
+              setCoverRemoved(false);
+
+              if (!file) {
+                setCoverRatio(null);
+                setCoverRatioClamped(false);
+                return;
+              }
+              const measured = await measureImageRatio(file);
+              const resolved = resolveCoverRatio(measured);
+              setCoverRatio(resolved.ratio);
+              setCoverRatioClamped(resolved.clamped);
+            }}
+            className="sr-only"
+          />
+
+          {coverRatioClamped && (
+            // Aviso ANTES de salvar, não um erro depois. A capa continua
+            // válida — ela só ficou fora da faixa em que o cabeçalho ainda
+            // deixa o catálogo visível, e vai recortar um pouco.
+            <p className="text-xs text-warning-fg">
+              Essa imagem é muito {coverRatio && coverRatio <= 3 ? "alta" : "larga"} para o cabeçalho — ela vai
+              aparecer levemente recortada. Um banner mais alongado (tipo 1600×400) encaixa inteiro.
+            </p>
+          )}
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => coverInputRef.current?.click()}
+              className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 outline-none transition-colors duration-150 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+            >
+              {coverPreview ? "Trocar capa" : "Enviar capa"}
+            </button>
+            {coverPreview && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCoverFile(null);
+                  setCoverPreviewUrl(null);
+                  setCoverRemoved(true);
+                  // Enquadramento é de uma imagem específica; mantê-lo depois
+                  // de remover a capa aplicaria o ajuste de uma arte que não
+                  // existe mais ao gradiente.
+                  setCoverFrame(resolveCoverFrame(null));
+                  if (coverInputRef.current) coverInputRef.current.value = "";
+                }}
+                className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-500 outline-none transition-colors duration-150 hover:bg-gray-100 hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-primary-subtle dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+              >
+                Usar o gradiente
+              </button>
+            )}
+          </div>
+        </div>
 
         {/* Logo e cor de destaque na MESMA linha: são as duas escolhas de
             identidade visual e ocupam pouco espaço cada uma — empilhadas,
@@ -477,6 +638,34 @@ export function SettingsForm({ store, settings, currentSlug, aside }: SettingsFo
             className="rounded-md border border-gray-300 bg-white px-3 h-11 text-base text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:placeholder:text-gray-600 dark:focus:ring-blue-400/20"
           />
           {errors.tagline && <span className="text-sm text-error-fg">{errors.tagline.message}</span>}
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <div className="flex items-baseline justify-between gap-2">
+            <label htmlFor="instagram" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Instagram
+            </label>
+            <span className="text-xs text-gray-500 dark:text-gray-500">Opcional</span>
+          </div>
+          {/* Prefixo `@` fixo no campo: comunica o formato esperado sem uma
+              linha de instrução, e o servidor aceita de qualquer jeito o link
+              inteiro colado do app (normalizeInstagramHandle) — o prefixo
+              orienta, não restringe. */}
+          <div className="flex items-center rounded-md border border-gray-300 bg-white transition-colors duration-150 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:focus-within:ring-blue-400/20">
+            <span className="pl-3 text-base text-gray-400 dark:text-gray-600">@</span>
+            <input
+              id="instagram"
+              type="text"
+              inputMode="text"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder="rlesportes"
+              {...register("instagram")}
+              className="h-11 w-full bg-transparent px-2 text-base text-gray-900 outline-none placeholder:text-gray-400 dark:text-gray-50 dark:placeholder:text-gray-600"
+            />
+          </div>
+          {errors.instagram && <span className="text-sm text-error-fg">{errors.instagram.message}</span>}
         </div>
 
         <div className="flex flex-col gap-1">

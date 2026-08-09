@@ -41,25 +41,31 @@ export type Database = {
     Tables: {
       order_clicks: {
         Row: {
+          click_date: string
           created_at: string
           id: string
           product_id: string
           size: number
           store_id: string
+          visitor_id: string
         }
         Insert: {
+          click_date: string
           created_at?: string
           id?: string
           product_id: string
           size: number
           store_id: string
+          visitor_id: string
         }
         Update: {
+          click_date?: string
           created_at?: string
           id?: string
           product_id?: string
           size?: number
           store_id?: string
+          visitor_id?: string
         }
         Relationships: [
           {
@@ -194,6 +200,7 @@ export type Database = {
           sole: string | null
           status: string
           store_id: string
+          updated_at: string
         }
         Insert: {
           brand: string
@@ -210,6 +217,7 @@ export type Database = {
           sole?: string | null
           status?: string
           store_id: string
+          updated_at?: string
         }
         Update: {
           brand?: string
@@ -226,6 +234,7 @@ export type Database = {
           sole?: string | null
           status?: string
           store_id?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -269,36 +278,60 @@ export type Database = {
       stores: {
         Row: {
           accent_color: string | null
+          cover_aspect_ratio: number | null
+          cover_band_ratio: number
+          cover_pos_x: number
+          cover_pos_y: number
+          cover_url: string | null
+          cover_zoom: number
           created_at: string
           hide_sold_out_default: boolean
           id: string
+          instagram: string | null
           logo_url: string | null
           name: string
           owner_id: string
           slug: string
           tagline: string | null
+          timezone: string
         }
         Insert: {
           accent_color?: string | null
+          cover_aspect_ratio?: number | null
+          cover_band_ratio?: number
+          cover_pos_x?: number
+          cover_pos_y?: number
+          cover_url?: string | null
+          cover_zoom?: number
           created_at?: string
           hide_sold_out_default?: boolean
           id?: string
+          instagram?: string | null
           logo_url?: string | null
           name: string
           owner_id: string
           slug: string
           tagline?: string | null
+          timezone?: string
         }
         Update: {
           accent_color?: string | null
+          cover_aspect_ratio?: number | null
+          cover_band_ratio?: number
+          cover_pos_x?: number
+          cover_pos_y?: number
+          cover_url?: string | null
+          cover_zoom?: number
           created_at?: string
           hide_sold_out_default?: boolean
           id?: string
+          instagram?: string | null
           logo_url?: string | null
           name?: string
           owner_id?: string
           slug?: string
           tagline?: string | null
+          timezone?: string
         }
         Relationships: []
       }

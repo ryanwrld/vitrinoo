@@ -73,6 +73,28 @@ export const onboardingSchema = z.object({
    * define este valor explicitamente.
    */
   hideSoldOutDefault: z.enum(["true", "false"]).optional(),
+  /**
+   * Instagram da loja (opcional) — exibido como linha de link no cartão de
+   * perfil da vitrine.
+   *
+   * A validação AQUI é só de comprimento: quem decide se o valor é um handle
+   * válido é `normalizeInstagramHandle` (src/lib/social/instagram.ts), que
+   * aceita as várias formas que o revendedor cola na prática
+   * (`@nome`, `instagram.com/nome`, URL completa com query string) e reduz
+   * todas ao handle canônico. Repetir aquele regex aqui criaria duas
+   * verdades sobre o que é aceitável, e a do formulário rejeitaria coisas
+   * que o servidor sabe normalizar — o pior dos dois mundos para um usuário
+   * não-técnico que colou o link do próprio perfil.
+   *
+   * Optional pelo mesmo motivo de `hideSoldOutDefault`: o wizard de
+   * onboarding não define este campo.
+   */
+  instagram: z
+    .string()
+    .trim()
+    .max(120, "Instagram muito longo — use só o nome de usuário")
+    .optional()
+    .or(z.literal("")),
 });
 
 export type OnboardingInput = z.infer<typeof onboardingSchema>;

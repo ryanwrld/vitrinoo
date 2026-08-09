@@ -11,6 +11,7 @@ import {
   DatabaseBackup,
 } from "lucide-react";
 import { requireCompletedOnboarding } from "@/lib/auth/onboarding-guard";
+import { resolveCoverFrame } from "@/lib/store/cover-frame";
 import { createClient } from "@/lib/supabase/server";
 import { buildStoreUrl } from "@/lib/slug/store-url";
 import { queryRecentActivity, HEADER_FEED_LIMIT } from "@/lib/dashboard/metrics";
@@ -70,7 +71,7 @@ export default async function ConfiguracoesPage({
 
   const { data: store } = await supabase
     .from("stores")
-    .select("id, name, slug, logo_url, accent_color, tagline, hide_sold_out_default")
+    .select("id, name, slug, logo_url, cover_url, cover_aspect_ratio, cover_band_ratio, cover_zoom, cover_pos_x, cover_pos_y, accent_color, tagline, instagram, hide_sold_out_default")
     .eq("owner_id", userData.user!.id)
     .single();
 
@@ -340,8 +341,17 @@ export default async function ConfiguracoesPage({
             store={{
               name: store.name,
               logoUrl: store.logo_url,
+              coverUrl: store.cover_url,
+              coverAspectRatio: store.cover_aspect_ratio,
+              coverFrame: resolveCoverFrame({
+                bandRatio: store.cover_band_ratio,
+                zoom: store.cover_zoom,
+                posX: store.cover_pos_x,
+                posY: store.cover_pos_y,
+              }),
               accentColor: store.accent_color,
               tagline: store.tagline,
+              instagram: store.instagram,
               hideSoldOutDefault: store.hide_sold_out_default,
             }}
             settings={{
