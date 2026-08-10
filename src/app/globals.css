@@ -185,6 +185,30 @@ body:has(.admin-scope) {
 }
 
 /*
+ * `color-scheme` do DOCUMENTO — o que decide a cor de tudo que o navegador
+ * pinta sozinho: barra de rolagem da janela, seleção de texto, controles
+ * nativos.
+ *
+ * Precisa estar no `<html>` (a barra da janela pertence ao documento, não a
+ * um elemento interno), e por isso não dá para resolver dentro do
+ * `.admin-scope` como o resto do tema. `:has(.admin-scope)` é o mesmo truque
+ * já usado logo acima para o fundo do rubber-band: escurece só quando a
+ * página atual É do painel E o tema escolhido é o escuro.
+ *
+ * Fora daí vale o `:root { color-scheme: light }` lá em cima — vitrine
+ * pública, login, cadastro e onboarding ficam claros sempre, inclusive para
+ * quem deixou o painel no escuro e para o visitante com o celular no modo
+ * escuro.
+ *
+ * Isto só funciona porque o ThemeProvider desliga o `enableColorScheme` do
+ * next-themes; ligado, ele escreve `color-scheme` inline no `<html>` e ganha
+ * de qualquer regra daqui. Ver src/components/theme-provider.tsx.
+ */
+html.dark:has(.admin-scope) {
+  color-scheme: dark;
+}
+
+/*
  * Scrollbar nativa escondida no painel admin em telas estreitas (< md,
  * mesmo breakpoint do resto da UI mobile/desktop do painel) — a barra
  * sólida do navegador (visível em simuladores de device/Chrome DevTools e
@@ -306,6 +330,257 @@ input:autofill {
 .animate-fade-in { animation: vt-fade-in 180ms cubic-bezier(.4,0,.2,1); }
 .animate-scale-in { animation: vt-scale-in 280ms cubic-bezier(.2,0,0,1); }
 .animate-slide-up { animation: vt-slide-up 280ms cubic-bezier(.2,0,0,1); }
+
+/*
+ * Bottom-sheet dos filtros da vitrine pública (filter-dropdown.tsx).
+ * Curva com leve overshoot (a folha passa ~1.5% do destino e assenta) —
+ * é o que dá a sensação de "mola" de app nativo. Deliberadamente mais
+ * curta que a duração total percebida: acima de ~350ms a folha começa a
+ * ler como travamento em aparelho fraco, exatamente o público da vitrine.
+ */
+@keyframes vt-sheet-up {
+  from { transform: translateY(100%) }
+  70%  { transform: translateY(-1.5%) }
+  to   { transform: translateY(0) }
+}
+@utility animate-sheet-up {
+  animation: vt-sheet-up 320ms cubic-bezier(.22, 1, .36, 1);
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+/* Saída do bottom-sheet — sem isso o painel PISCA e some, que é o defeito
+   que mais faz uma interface parecer quebrada. Curva acelerada (sai rápido
+   e não volta), diferente da curva de entrada, que desacelera ao assentar. */
+@keyframes vt-sheet-down {
+  from { transform: translateY(0) }
+  to   { transform: translateY(100%) }
+}
+@utility animate-sheet-down {
+  animation: vt-sheet-down 200ms cubic-bezier(.4, 0, 1, 1) both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+@keyframes vt-fade-out { from { opacity: 1 } to { opacity: 0 } }
+.animate-fade-out { animation: vt-fade-out 200ms cubic-bezier(.4,0,1,1) both; }
+
+/*
+ * Popover dos filtros no DESKTOP — abertura "estilo gaveta": a altura se
+ * desdobra a partir da borda do botão, revelando o conteúdo de cima para
+ * baixo. SEM fade de propósito (pedido do usuário): opacidade faria o
+ * painel "materializar no ar", enquanto a gaveta comunica que ele SAI de
+ * dentro do gatilho — que é a conexão que estamos construindo.
+ *
+ * Anima `grid-template-rows: 0fr → 1fr` e NÃO `max-height`. A versão em
+ * max-height tinha um defeito que anulava a animação inteira: o alvo era
+ * fixo (20rem), mas o painel de "Marca" com duas opções mede ~110px. O
+ * max-height ultrapassava a altura real do conteúdo em ~34% da duração —
+ * o painel abria de fato em ~68ms e os 130ms restantes corriam com ele já
+ * completamente visível. Aumentar a duração só alongaria o trecho invisível.
+ * Com `1fr` o alvo é a altura REAL do conteúdo, então a duração declarada é
+ * a duração percebida, qualquer que seja o número de opções.
+ *
+ * Isso exige o wrapper interno com `min-height:0` (ver filter-dropdown.tsx):
+ * sem ele, o item de grade se recusa a encolher abaixo do próprio conteúdo
+ * e a linha nunca chega a 0fr.
+ *
+ * Não usa `transform: scaleY()` (esmagaria o texto) nem `clip-path` (que
+ * recortaria a própria sombra do painel).
+ *
+ * A sombra entra JUNTO, no mesmo keyframe: o painel ganha peso conforme se
+ * materializa em vez de já nascer flutuando. Precisa viver aqui e não numa
+ * transição separada para as duas curvas serem literalmente a mesma.
+ */
+@keyframes vt-drawer-down {
+  from {
+    grid-template-rows: 0fr;
+    box-shadow: 0 0 0 0 rgb(0 0 0 / 0), 0 0 0 0 rgb(0 0 0 / 0);
+  }
+  to {
+    grid-template-rows: 1fr;
+    box-shadow: 0 2px 4px -2px rgb(0 0 0 / 0.06), 0 16px 32px -12px rgb(0 0 0 / 0.2);
+  }
+}
+@keyframes vt-drawer-up {
+  from {
+    grid-template-rows: 1fr;
+    box-shadow: 0 2px 4px -2px rgb(0 0 0 / 0.06), 0 16px 32px -12px rgb(0 0 0 / 0.2);
+  }
+  to {
+    grid-template-rows: 0fr;
+    box-shadow: 0 0 0 0 rgb(0 0 0 / 0), 0 0 0 0 rgb(0 0 0 / 0);
+  }
+}
+/*
+ * 260ms na abertura, 170ms no fechamento (65%). Assimetria proposital: sair
+ * de cena não precisa de cerimônia, e um fechamento tão longo quanto a
+ * abertura é lido como lentidão por quem está trocando de filtro em
+ * sequência. `--vt-drawer-ease` é exportada para o chevron do gatilho girar
+ * na MESMA curva — botão e painel como um mecanismo único, não dois
+ * elementos animando por conta própria.
+ */
+:root {
+  --vt-drawer-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  /*
+   * Largura da gaveta de "Ordenar" — token ÚNICO, consumido pelo gatilho
+   * (estado aberto) e pelo painel. Os dois PRECISAM ser exatamente iguais:
+   * é essa igualdade que faz o círculo virar o topo do painel em vez de
+   * duas peças encostadas. Um número solto em cada lugar sairia de sincronia
+   * no primeiro ajuste.
+   *
+   * 10rem e não os 11rem das outras pílulas: as opções aqui são fixas e
+   * conhecidas ("Mais recentes" é a mais longa, ~134px com o check e os
+   * respiros), então a largura pode ser enxuta sem risco de corte — ao
+   * contrário de Marca, cuja lista vem do banco e pode ter nome longo.
+   */
+  --vt-sort-width: 10rem;
+}
+@utility animate-drawer-down {
+  animation: vt-drawer-down 260ms var(--vt-drawer-ease) both;
+  /* Sem movimento, mas precisa terminar ABERTA — herdar o estado inicial
+     (0fr) deixaria o painel invisível. A sombra também é reafirmada, porque
+     sem a animação ela nunca chegaria ao valor final do keyframe. */
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    grid-template-rows: 1fr;
+    box-shadow: 0 2px 4px -2px rgb(0 0 0 / 0.06), 0 16px 32px -12px rgb(0 0 0 / 0.2);
+  }
+}
+/*
+ * Micro-mergulho da setinha de ordenar na abertura: desce 3px e volta, ecoando
+ * a gaveta que desce logo abaixo. Roda UMA vez, só na entrada — o ícone é a
+ * âncora parada em torno da qual o botão cresce, então qualquer movimento
+ * maior que isso destruiria justamente o ponto fixo do movimento.
+ *
+ * Vive num elemento interno separado do que faz a centralização vertical
+ * (`-translate-y-1/2`): as duas escrevem em `transform` e a última declarada
+ * apagaria a outra.
+ */
+@keyframes vt-icon-dip {
+  /* 45% e não 50%: a descida é mais rápida que a volta, como um peso caindo
+     e sendo puxado de volta — simétrico soaria mecânico. */
+  0%   { transform: translateY(0) }
+  45%  { transform: translateY(3px) }
+  100% { transform: translateY(0) }
+}
+.animate-icon-dip {
+  animation: vt-icon-dip 380ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-icon-dip { animation: none; }
+}
+
+@utility animate-drawer-up {
+  animation: vt-drawer-up 170ms cubic-bezier(0.4, 0, 1, 1) both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    grid-template-rows: 0fr;
+  }
+}
+
+/*
+ * Variante da gaveta para o gatilho SÓ-ÍCONE ("Ordenar"), que é o único que
+ * muda de largura ao abrir: o botão sai de 44px (círculo) e chega nos
+ * `--vt-sort-width` do painel.
+ *
+ * POR QUE PRECISA SER UM KEYFRAME PRÓPRIO
+ *
+ * Antes o painel usava a gaveta genérica, que anima só a ALTURA. Como o
+ * painel já nasce com a largura final, ele ficava com 160px desde o primeiro
+ * quadro enquanto o botão ainda estava em 44px crescendo — no meio da
+ * animação o botão era metade da largura do painel aberto embaixo dele, e o
+ * olho lê isso como o botão chegando atrasado. As durações sempre foram
+ * idênticas (260ms, mesma curva); o que faltava era a largura do painel
+ * também se mover.
+ *
+ * Aqui largura e altura partem juntas, na mesma curva e no mesmo keyframe —
+ * literalmente impossível dessincronizar, porque é uma animação só. O
+ * conteúdo interno fica em largura FIXA (`--vt-sort-width`, ver
+ * filter-dropdown.tsx) e é REVELADO pela borda: sem isso os rótulos
+ * refluiriam a cada quadro, quebrando linha e voltando.
+ */
+@keyframes vt-sort-drawer-down {
+  /* 2.75rem = w-11 = os 44px do círculo fechado. Se a vaga do gatilho no
+     container mudar, este valor muda junto. */
+  from {
+    grid-template-rows: 0fr;
+    width: 2.75rem; /* = w-11, o círculo fechado */
+    box-shadow: 0 0 0 0 rgb(0 0 0 / 0), 0 0 0 0 rgb(0 0 0 / 0);
+  }
+  to {
+    grid-template-rows: 1fr;
+    width: var(--vt-sort-width);
+    box-shadow: 0 2px 4px -2px rgb(0 0 0 / 0.06), 0 16px 32px -12px rgb(0 0 0 / 0.2);
+  }
+}
+/*
+ * FECHAR NÃO É O INVERSO DE ABRIR AQUI — a largura fica PARADA.
+ *
+ * Abrir em dois eixos funciona porque a altura ainda é zero no início: quando
+ * o conteúdo começa a aparecer, a largura já está quase toda lá, e o que se
+ * vê é uma peça se desdobrando. Fechar em dois eixos é outra coisa: o
+ * conteúdo está inteiro VISÍVEL enquanto a borda direita varre ~116px para a
+ * esquerda fatiando os rótulos. É uma varredura lateral grande, bem embaixo
+ * do cursor, chamando atenção para um gesto que deveria ser discreto.
+ *
+ * Então o painel fecha só na vertical, na largura cheia, e o gatilho só volta
+ * a 44px DEPOIS que o painel sumiu (a classe de largura dele troca quando
+ * `isPanelMounted` vira false, ao fim do timer de saída). O encolhimento
+ * lateral continua existindo — só deixa de acontecer ao lado de texto
+ * visível, que era o que incomodava.
+ */
+@keyframes vt-sort-drawer-up {
+  from {
+    grid-template-rows: 1fr;
+    box-shadow: 0 2px 4px -2px rgb(0 0 0 / 0.06), 0 16px 32px -12px rgb(0 0 0 / 0.2);
+  }
+  to {
+    grid-template-rows: 0fr;
+    box-shadow: 0 0 0 0 rgb(0 0 0 / 0), 0 0 0 0 rgb(0 0 0 / 0);
+  }
+}
+@utility animate-sort-drawer-down {
+  animation: vt-sort-drawer-down 260ms var(--vt-drawer-ease) both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    grid-template-rows: 1fr;
+    width: var(--vt-sort-width);
+    box-shadow: 0 2px 4px -2px rgb(0 0 0 / 0.06), 0 16px 32px -12px rgb(0 0 0 / 0.2);
+  }
+}
+/*
+ * Mesma régua de saída das outras gavetas (170ms, curva acelerada): agora que
+ * o fechamento é só vertical, ele é o MESMO movimento que o das pílulas e não
+ * há motivo para ter tempo próprio. A curva acelerada é a correta para saída
+ * — sair de cena não precisa de cerimônia — e só incomodava enquanto havia
+ * encolhimento lateral junto.
+ */
+@utility animate-sort-drawer-up {
+  animation: vt-sort-drawer-up 170ms cubic-bezier(0.4, 0, 1, 1) both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    grid-template-rows: 0fr;
+  }
+}
+
+/*
+ * Entrada escalonada dos cards do grid ao trocar filtro/ordenação. O atraso
+ * por item vem de `--stagger-index` (inline no card), com teto aplicado em
+ * JS — sem teto, o 40º produto entraria mais de um segundo depois do
+ * primeiro e a lista pareceria quebrada, não animada.
+ */
+@keyframes vt-card-in {
+  from { opacity: 0; transform: translateY(10px) scale(.985) }
+  to   { opacity: 1; transform: translateY(0) scale(1) }
+}
+.animate-card-in {
+  animation: vt-card-in 300ms cubic-bezier(.2,0,0,1) both;
+  animation-delay: calc(var(--stagger-index, 0) * 35ms);
+}
 
 /*
  * Diálogos modais (<dialog> + showModal).
@@ -433,6 +708,30 @@ input:autofill {
     animation: none;
   }
 
+  /* Saídas: `animation: none` sozinho manteria o elemento no estado
+     INICIAL do keyframe (visível), e o painel ficaria preso na tela até o
+     desmonte. Zerar a visibilidade explicitamente faz o fechamento ser
+     instantâneo, que é o equivalente sem movimento.
+
+     `animate-sheet-*` e `animate-drawer-*` NÃO entram aqui: são aplicadas
+     sempre com variante (`max-md:`/`md:`), então a classe crua nunca existe
+     no DOM e um seletor `.animate-drawer-up` não alcançaria nada. O
+     tratamento de reduced-motion delas vive dentro do próprio `@utility`
+     (mais acima), que é o único jeito de acompanhar a variante. */
+  .animate-fade-out {
+    animation: none;
+    opacity: 0;
+  }
+
+  /* O card precisa de tratamento próprio: `animation: none` sozinho num
+     keyframe com `both` deixaria o elemento no estado inicial (opacity 0),
+     escondendo o grid inteiro. Zera também o delay do stagger. */
+  .animate-card-in {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
   /* Diálogos: sem transição, mas mantendo os estados finais — o modal
      aparece e some na hora, sem escala nem fade. `transition: none` é o
      suficiente porque opacidade/transform já têm valor definido em cada
@@ -453,6 +752,7 @@ input:autofill {
   .text-balance {
     text-wrap: balance;
   }
+
 
   @keyframes fade-zoom-in {
     0% {

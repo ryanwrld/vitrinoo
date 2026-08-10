@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useRef, useState, useTransition, type MouseEvent } from "react";
+import { startTransition, useRef, useState, useSyncExternalStore, useTransition, type MouseEvent } from "react";
 import Link from "next/link";
 import { ChevronLeft, Copy } from "lucide-react";
 import clsx, { type ClassValue } from "clsx";
@@ -11,6 +11,7 @@ import { formatBRLPrice, formatBRLPriceInput } from "@/lib/currency/brl";
 import { buildOrderMessage, buildWhatsAppUrl } from "@/lib/whatsapp/order-message";
 import { decideOrderAction } from "@/lib/whatsapp/order-guard";
 import { logOrderClick } from "@/lib/products/order-clicks-actions";
+import { resolveVisitorId } from "@/lib/analytics/visitor-id";
 import { ImageWithFallback } from "../image-with-fallback";
 
 /**
@@ -39,9 +40,54 @@ export type ProductOrderPanelProps = {
   productId: string;
   slug: string;
   productUrl: string;
+  /**
+   * "page" (padrão) = rota cheia `/[slug]/[produto]` — link "Voltar",
+   * coluna única, barra de CTA `fixed` no viewport.
+   * "modal" = mesmo conteúdo dentro do diálogo interceptado sobre o grid —
+   * sem "Voltar" (o X/overlay do diálogo já fecha), duas colunas no
+   * desktop e barra de CTA `sticky` DENTRO do diálogo (um `fixed` aqui
+   * grudaria no viewport, fora do card — ver product-modal.tsx).
+   */
+  variant?: "page" | "modal";
 };
 
 const TOOLTIP_DISMISS_MS = 2500;
+
+/**
+ * Aparelho com mouse e tela larga — a única situação em que abrir o WhatsApp
+ * numa aba NOVA é melhor que na mesma aba.
+ *
+ * `pointer: fine` é o teste que importa aqui, não a largura: navegador
+ * in-app do Instagram e do WhatsApp (o canal principal de tráfego da
+ * vitrine) é sempre `pointer: coarse`, e é justamente ele que lida mal com
+ * um novo contexto de navegação. A largura entra só como segunda condição,
+ * para não pegar um tablet grande com caneta.
+ *
+ * Esta é a ÚNICA detecção de aparelho em JS da vitrine, e é uma exceção
+ * justificada: `target` é atributo HTML, não estilo — ao contrário da
+ * paginação adaptativa (`hidden md:flex`), não existe forma de expressar
+ * isso em CSS.
+ */
+const DESKTOP_POINTER_QUERY = "(min-width: 768px) and (pointer: fine)";
+
+/**
+ * `useSyncExternalStore` e não `useState` + efeito (mesmo padrão de
+ * `theme-toggle.tsx` e `notification-bell.tsx`): o snapshot do servidor é
+ * `false`, ou seja, o HTML sempre chega com o comportamento SEGURO (mesma
+ * aba) e só vira aba nova depois da hidratação, num aparelho que já provou
+ * ser desktop. O caminho errado nunca aparece, nem por um quadro.
+ */
+function useOpensInNewTab(): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      const mediaQuery = window.matchMedia(DESKTOP_POINTER_QUERY);
+      mediaQuery.addEventListener("change", onChange);
+      return () => mediaQuery.removeEventListener("change", onChange);
+    },
+    () => window.matchMedia(DESKTOP_POINTER_QUERY).matches,
+    () => false
+  );
+}
 
 /**
  * Painel de pedido da página de detalhe (PED-01/02/03/04, D-02/D-03/D-04/
@@ -83,7 +129,9 @@ export function ProductOrderPanel({
   productId,
   slug,
   productUrl,
+  variant = "page",
 }: ProductOrderPanelProps) {
+  const isModal = variant === "modal";
   const [selectedSize, setSelectedSize] = useState<number | null>(null);
   // Shake key e tooltip são rastreados POR BOTÃO ("order" = Pedir agora,
   // "copy" = Copiar pedido) — cada CTA só sacode/mostra o tooltip acima de
@@ -94,6 +142,7 @@ export function ProductOrderPanel({
   const [copyShakeKey, setCopyShakeKey] = useState(0);
   const [tooltipTarget, setTooltipTarget] = useState<"order" | "copy" | null>(null);
   const [isPending, startCopyTransition] = useTransition();
+  const opensInNewTab = useOpensInNewTab();
 
   const galleryRef = useRef<HTMLDivElement>(null);
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
@@ -172,8 +221,16 @@ export function ProductOrderPanel({
     // garantidamente não-nulo aqui: decideOrderAction só retorna
     // shouldNavigate=true quando há tamanho selecionado.
     if (selectedSize !== null) {
+      // `resolveVisitorId()` tem que rodar AQUI, fora do startTransition:
+      // ele lê `localStorage`, que só existe no cliente, e passar o id
+      // pronto mantém a Server Action sem nenhuma dependência de browser.
+      // É o MESMO id usado pelos trackers de visualização (módulo
+      // compartilhado) — se fossem ids diferentes, a deduplicação por
+      // (visitante, produto, dia) da migration 0012 pararia de casar com a
+      // da 0010 e a taxa de conversão voltaria a comparar réguas distintas.
+      const visitorId = resolveVisitorId();
       startTransition(() => {
-        logOrderClick(storeId, productId, selectedSize).catch(() => {});
+        logOrderClick(storeId, productId, selectedSize, visitorId).catch(() => {});
       });
     }
   }
@@ -204,35 +261,32 @@ export function ProductOrderPanel({
 
   const photosToRender = galleryUrls.length > 0 ? galleryUrls : [coverUrl];
 
-  return (
-    <div className="flex flex-col gap-6 pb-24">
-      <Link href={`/${slug}`} className="flex w-fit items-center gap-1 text-sm text-gray-500">
-        <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-        Voltar
-      </Link>
-
-      <div className="flex flex-col gap-2">
-        <div
-          ref={galleryRef}
-          onScroll={handleGalleryScroll}
-          className="flex snap-x snap-mandatory gap-2 overflow-x-auto"
-        >
-          {photosToRender.map((url, index) => (
-            <div
-              key={url ?? index}
-              className="relative aspect-square w-full shrink-0 snap-center overflow-hidden rounded-xl bg-gray-100"
-            >
-              <ImageWithFallback src={url} alt={product.name} />
-            </div>
-          ))}
-        </div>
-        {photosToRender.length > 1 && (
-          <span className="text-center text-xs text-gray-500">
-            Foto {activePhotoIndex + 1} de {photosToRender.length}
-          </span>
-        )}
+  const gallery = (
+    <div className={cn("flex flex-col gap-2", isModal && "md:w-1/2 md:shrink-0")}>
+      <div
+        ref={galleryRef}
+        onScroll={handleGalleryScroll}
+        className="flex snap-x snap-mandatory gap-2 overflow-x-auto"
+      >
+        {photosToRender.map((url, index) => (
+          <div
+            key={url ?? index}
+            className="relative aspect-square w-full shrink-0 snap-center overflow-hidden rounded-xl bg-gray-100"
+          >
+            <ImageWithFallback src={url} alt={product.name} />
+          </div>
+        ))}
       </div>
+      {photosToRender.length > 1 && (
+        <span className="text-center text-xs text-gray-500">
+          Foto {activePhotoIndex + 1} de {photosToRender.length}
+        </span>
+      )}
+    </div>
+  );
 
+  const details = (
+    <div className={cn("flex flex-col gap-6", isModal && "md:min-w-0 md:flex-1")}>
       <div className="flex flex-col gap-1.5">
         <h1 className="font-display text-xl font-extrabold text-gray-900">{product.name}</h1>
         <span className="font-display text-2xl font-extrabold text-primary">{formatBRLPrice(product.price)}</span>
@@ -261,9 +315,37 @@ export function ProductOrderPanel({
           ))}
         </div>
       </div>
+    </div>
+  );
 
-      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-gray-200 bg-white p-4 shadow-lg">
-        <div className="mx-auto flex w-full max-w-2xl gap-3">
+  return (
+    <div className={cn("flex flex-col", isModal ? "min-h-0 flex-1" : "gap-6 pb-24")}>
+      {!isModal && (
+        <Link href={`/${slug}`} className="flex w-fit items-center gap-1 text-sm text-gray-500">
+          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+          Voltar
+        </Link>
+      )}
+
+      {isModal ? (
+        <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto overscroll-contain p-4 md:flex-row md:gap-6">
+          {gallery}
+          {details}
+        </div>
+      ) : (
+        <>
+          {gallery}
+          {details}
+        </>
+      )}
+
+      <div
+        className={cn(
+          "z-10 border-t border-gray-200 bg-white p-4 shadow-lg",
+          isModal ? "shrink-0" : "fixed inset-x-0 bottom-0"
+        )}
+      >
+        <div className={cn("flex w-full gap-3", !isModal && "mx-auto max-w-2xl")}>
           <div className="relative shrink-0">
             {tooltipTarget === "copy" && (
               <div className="absolute -top-10 left-0 whitespace-nowrap rounded-md bg-gray-900 px-3 py-1.5 text-xs text-white">
@@ -295,8 +377,17 @@ export function ProductOrderPanel({
             <a
               key={`order-${orderShakeKey}`}
               href={href}
-              target="_blank"
-              rel="noopener noreferrer"
+              /* Aba nova SÓ no desktop com mouse (ver `useOpensInNewTab`).
+                 No celular fica na mesma aba de propósito: `_blank` abre um
+                 novo contexto de navegação, e é exatamente isso que os
+                 navegadores in-app do Instagram e do WhatsApp — o canal
+                 principal de tráfego da vitrine — tratam mal. Na mesma aba,
+                 quem intercepta o `wa.me` é o sistema operacional, e o app
+                 assume por cima com a aba do navegador intacta atrás.
+                 No desktop não existe esse risco e sair da vitrine seria
+                 perda pura, então lá o `_blank` volta. */
+              target={opensInNewTab ? "_blank" : undefined}
+              rel={opensInNewTab ? "noopener noreferrer" : undefined}
               onClick={handleOrderClick}
               className={cn(
                 "block min-h-11 w-full rounded-md bg-whatsapp px-4 py-2 text-center text-sm font-semibold text-white transition-all duration-150 hover:bg-whatsapp-hover active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2",

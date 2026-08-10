@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Manrope, Inter } from "next/font/google";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import { DialogScrollGuard } from "@/components/dialog-scroll-guard";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -39,6 +40,10 @@ export default function RootLayout({
         <ThemeProvider>
           {children}
           <Toaster richColors position="top-center" />
+          {/* Compensa a barra de rolagem que o navegador remove ao abrir um
+              `<dialog>` nativo — sem isto o layout salta ~15px. Ver
+              dialog-scroll-guard.tsx. */}
+          <DialogScrollGuard />
         </ThemeProvider>
       </body>
     </html>

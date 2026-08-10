@@ -9,6 +9,7 @@ import { buildSearchRegistry, filterRegistry, PRIMARY_NAV_IDS, type SearchEntry 
 import { searchProducts, type ProductSearchResult } from "@/lib/search/actions";
 import { getRecentSearches, addRecentSearch, removeRecentSearch, clearRecentSearches } from "@/lib/search/recent-searches";
 import { formatBRLPrice } from "@/lib/currency/brl";
+import { lockScroll } from "@/lib/ui/scroll-lock";
 
 /**
  * Busca global do painel — command palette central (modal) com atalho pra
@@ -142,13 +143,12 @@ function SearchPalette({
   }, []);
 
   // Foca o input e trava o scroll do body enquanto o modal existe.
+  // `lockScroll` compensa a largura da barra de rolagem que some junto com a
+  // trava — sem isso o painel inteiro desloca 15px ao abrir a busca (ver
+  // src/lib/ui/scroll-lock.ts).
   useEffect(() => {
     inputRef.current?.focus();
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
+    return lockScroll();
   }, []);
 
   // Pré-carrega as rotas internas na abertura — quem abriu a busca provavelmente

@@ -14,7 +14,21 @@ import type { ReactNode } from "react";
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   return (
-    <NextThemesProvider attribute="class" defaultTheme="system" enableSystem>
+    // `enableColorScheme={false}` é o que impede o tema do painel de vazar
+    // para a vitrine pública.
+    //
+    // Ligado (padrão da biblioteca), o next-themes escreve
+    // `style="color-scheme: dark"` DIRETO no `<html>` — fora de qualquer
+    // escopo, e com prioridade de estilo inline, ou seja, por cima do
+    // `:root { color-scheme: light }` do globals.css. `color-scheme` é o que
+    // decide a cor dos elementos pintados pelo NAVEGADOR, e a barra de
+    // rolagem da janela é um deles: quem escolhia o modo escuro no painel
+    // continuava vendo barra escura na vitrine, que é clara por design.
+    //
+    // A classe `dark` continua sendo aplicada normalmente — ela é escopada ao
+    // `.admin-scope` (ver @custom-variant em globals.css) e nunca vazou. Quem
+    // passa a declarar `color-scheme` é o CSS, também escopado ao painel.
+    <NextThemesProvider attribute="class" defaultTheme="system" enableSystem enableColorScheme={false}>
       {children}
     </NextThemesProvider>
   );
