@@ -44,7 +44,10 @@ export type Database = {
           click_date: string
           created_at: string
           id: string
-          product_id: string
+          // NULL = produto excluído pelo revendedor após o clique
+          // (ON DELETE SET NULL, migration 0021) — a linha do evento
+          // sobrevive à exclusão do produto.
+          product_id: string | null
           size: number
           store_id: string
           visitor_id: string
@@ -53,7 +56,7 @@ export type Database = {
           click_date: string
           created_at?: string
           id?: string
-          product_id: string
+          product_id?: string | null
           size: number
           store_id: string
           visitor_id: string
@@ -62,7 +65,7 @@ export type Database = {
           click_date?: string
           created_at?: string
           id?: string
-          product_id?: string
+          product_id?: string | null
           size?: number
           store_id?: string
           visitor_id?: string

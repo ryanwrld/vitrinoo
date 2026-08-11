@@ -343,8 +343,20 @@ export async function queryRecentActivity(
       .limit(overfetch),
   ]);
 
+  // `product_id` é nullable em order_clicks desde a migration 0021 (NULL =
+  // produto excluído pelo revendedor DEPOIS do clique, ON DELETE SET NULL —
+  // ver comentário da migration). Um clique órfão não tem nome nem link
+  // válido pra mostrar ("Alguém clicou em Pedir agora — Produto" apontando
+  // pra um `/admin/produtos/<id>/editar` que 404, se algum dia esse link for
+  // adicionado, seria pior do que simplesmente omitir a linha) — o feed de
+  // atividade filtra esses eventos fora, igual `pageviews` já fazia pro
+  // acesso ao grid (`.not("product_id", "is", null)` na query acima).
+  const clickRowsWithProduct = (clickRows ?? []).filter(
+    (row): row is { id: string; product_id: string; created_at: string } => row.product_id !== null
+  );
+
   const productIds = new Set<string>();
-  for (const row of clickRows ?? []) productIds.add(row.product_id);
+  for (const row of clickRowsWithProduct) productIds.add(row.product_id);
   for (const row of viewRows ?? []) if (row.product_id) productIds.add(row.product_id);
 
   const { data: products } =
@@ -353,7 +365,7 @@ export async function queryRecentActivity(
       : { data: [] as { id: string; name: string }[] };
   const nameById = new Map((products ?? []).map((p) => [p.id, p.name]));
 
-  const clickItems: ActivityFeedItem[] = (clickRows ?? []).map((row) => ({
+  const clickItems: ActivityFeedItem[] = clickRowsWithProduct.map((row) => ({
     type: "click",
     productId: row.product_id,
     productName: nameById.get(row.product_id) ?? "Produto",
