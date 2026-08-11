@@ -416,8 +416,28 @@ export default async function DashboardPage({
   ]);
   const maxSizeDemand = Math.max(...sizeDemand.map((item) => item.count), 1);
 
-  const disponiveis = produtos.filter((product) => product.disponivel).length;
-  const esgotados = produtos.length - disponiveis;
+  // Só produtos PUBLICADOS entram no placar de Disponíveis/Esgotados — a
+  // mesma régua que a vitrine pública usa (`status = 'published'`, RLS de
+  // 0004). `produtos` acima é intencionalmente TODOS os status (inclui
+  // rascunho), porque é ele que decide o empty state ("Sua loja ainda não
+  // tem produtos") logo acima; um revendedor com só rascunhos em progresso
+  // ainda deve ver o dashboard normal, não a tela de "comece agora".
+  //
+  // Mas um rascunho sem tamanhos marcados nasce automaticamente "esgotado"
+  // (é assim que `disponivel` é derivado em `queryProducts` — EXISTS em
+  // product_sizes.available=true) simplesmente por ainda não ter sido
+  // terminado, não porque faltou estoque de um produto que está no ar. Sem
+  // este filtro, cadastrar 5 chuteiras aos poucos (foto hoje, tamanho
+  // amanhã — fluxo normal, ver "Voltar para rascunho" em product-form.tsx)
+  // infla "Produtos esgotados" com anúncios que NUNCA estiveram visíveis
+  // pro cliente final, misturando "preciso repor estoque" (ação real) com
+  // "ainda não terminei de cadastrar" (não é problema nenhum) sob o mesmo
+  // rótulo. O revendedor não tem como distinguir os dois só olhando o
+  // número, e a palavra "esgotado" no vocabulário dele significa
+  // especificamente o primeiro caso.
+  const produtosPublicados = produtos.filter((product) => product.status === "published");
+  const disponiveis = produtosPublicados.filter((product) => product.disponivel).length;
+  const esgotados = produtosPublicados.length - disponiveis;
 
   const resolveCover = (path: string | null) =>
     path ? supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl : null;
