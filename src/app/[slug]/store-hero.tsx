@@ -177,6 +177,7 @@ export function StoreHero({ store, stats }: { store: StoreHeroData; stats: Store
             <QrCodeButton
               url={buildStoreUrl(store.slug)}
               storeName={store.name}
+              accentColor={accent}
               className={actionButtonClass}
             />
             <ShareVitrineButton

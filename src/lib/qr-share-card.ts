@@ -1,9 +1,10 @@
 import QRCode from "qrcode";
+import { getContrastTextColor, isLegibleOnWhite } from "@/lib/color/contrast";
 
 /**
- * Desenha o "cartão de divulgação" da vitrine num `<canvas>`: moldura azul da
- * marca, painel branco arredondado, QR code com o logo do Vitrinoo no centro,
- * nome da loja e o link escrito.
+ * Desenha o "cartão de divulgação" da vitrine num `<canvas>`: moldura
+ * colorida, painel branco arredondado, QR code com o logo do Vitrinoo no
+ * centro, nome da loja e o link escrito.
  *
  * Por que canvas e não uma imagem gerada no servidor: o QR já é gerado no
  * cliente (o pacote `qrcode` está no bundle desde o MVP) e o cartão é
@@ -11,9 +12,17 @@ import QRCode from "qrcode";
  * rota de imagem, uma dependência de renderização (satori/sharp) ou um
  * round-trip de rede só para compor formas e texto.
  *
- * O cartão é SEMPRE azul-sobre-branco, independente do tema do painel: é um
- * arquivo que o lojista posta no Instagram/WhatsApp, não uma parte da
- * interface. Tema escuro aqui só produziria um cartão preto que ninguém pediu.
+ * O cartão é SEMPRE claro-sobre-branco (nunca o tema escuro do painel), mas a
+ * cor de destaque É variável — ver `accentColor` em `ShareCardOptions`.
+ * Tema escuro aqui só produziria um cartão preto que ninguém pediu; a cor da
+ * loja é outra decisão, independente do tema.
+ *
+ * `accentColor` é opcional só por segurança de tipo (loja sem cor escolhida
+ * ainda, `stores.accent_color IS NULL`) — na prática as DUAS chamadas
+ * existentes (o pop-up de QR da vitrine pública e a prévia em
+ * `/admin/configuracoes`) sempre passam a cor da loja. É a mesma peça nos
+ * dois lugares: a prévia do admin PRECISA ser o que o cliente final vê ao
+ * escanear, senão o revendedor baixa/confere uma coisa e entrega outra.
  */
 
 const CARD_WIDTH = 1080;
@@ -21,6 +30,28 @@ const CARD_HEIGHT = 1350; // 4:5 — máxima área permitida no feed do Instagra
 
 const BRAND_BLUE = "#0D21A1"; // --color-primary
 const WHITE = "#FFFFFF";
+// Texto escuro usado quando a cor de destaque é clara demais para texto
+// branco (ver `resolveFrameColor`) — não é preto puro para não destoar do
+// resto da paleta neutra do produto (mesmo tom usado em `text-gray-900`).
+const DARK_TEXT = "#111827";
+
+const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
+
+/**
+ * Resolve a cor da moldura do cartão a partir de `accentColor`.
+ *
+ * `accentColor` vem direto do banco (`stores.accent_color`, hex livre
+ * escolhido pelo revendedor via `<input type="color">`) — nunca confiar nele
+ * sem validar o formato. `undefined`/`null`/hex inválido caem no azul do
+ * Vitrinoo: o mesmo fallback usado em `store-hero.tsx`/`store-sticky-bar.tsx`
+ * para uma loja que ainda não escolheu cor nenhuma.
+ */
+function resolveFrameColor(accentColor: string | null | undefined): string {
+  if (accentColor && HEX_COLOR_PATTERN.test(accentColor.trim())) {
+    return accentColor.trim();
+  }
+  return BRAND_BLUE;
+}
 
 /**
  * Arredondamento da moldura externa, desenhado NO CANVAS (não via CSS).
@@ -65,6 +96,8 @@ const TEXT_MAX_WIDTH = PANEL_SIZE;
 export type ShareCardOptions = {
   publicUrl: string;
   storeName: string | null;
+  // Opcional: só a vitrine pública passa isto (ver `resolveFrameColor`).
+  accentColor?: string | null;
 };
 
 /**
@@ -79,8 +112,15 @@ export type ShareCardOptions = {
  *
  * As coordenadas abaixo são as do viewBox 28×28 do componente original,
  * escaladas por `size / 28`. Se o logo mudar lá, precisa mudar aqui.
+ *
+ * `fillColor` acompanha os módulos do QR (`moduleColor`), não é mais fixo em
+ * `BRAND_BLUE` — pedido explícito: o selo no centro deve ler como PARTE do
+ * código (mesma cor, mesmo material), não como uma marca-d'água do Vitrinoo
+ * destoando da cor que a loja escolheu. Como `moduleColor` já passou pela
+ * trava de contraste em `drawShareCard`, o selo herda a mesma garantia de
+ * legibilidade — nunca uma cor clara demais sobre o branco do furo.
  */
-function drawLogoMark(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, size: number) {
+function drawLogoMark(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, size: number, fillColor: string) {
   const scale = size / 28;
   const x = centerX - size / 2;
   const y = centerY - size / 2;
@@ -92,7 +132,7 @@ function drawLogoMark(ctx: CanvasRenderingContext2D, centerX: number, centerY: n
   // <rect width="28" height="28" rx="7" fill="#0D21A1" />
   ctx.beginPath();
   ctx.roundRect(0, 0, 28, 28, 7);
-  ctx.fillStyle = BRAND_BLUE;
+  ctx.fillStyle = fillColor;
   ctx.fill();
 
   // As três hastes brancas do "V" em perspectiva.
@@ -174,16 +214,17 @@ function fitText(
  *
  * `errorCorrectionLevel: "H"` (30% de recuperação) é o que torna o logo
  * central possível — o padrão do projeto até aqui era "M" (15%), registrado
- * com a nota "sem logo". Módulos em azul da marca, não preto: o contraste
- * do #0D21A1 sobre branco é ~18:1, muito acima do que qualquer leitor exige.
+ * com a nota "sem logo". Módulos coloridos, não pretos: o contraste do azul
+ * da marca sobre branco é ~18:1, muito acima do que qualquer leitor exige —
+ * há folga de sobra pra usar a cor de destaque da loja em vez de preto puro.
  */
-async function renderQrToOffscreenCanvas(publicUrl: string): Promise<HTMLCanvasElement> {
+async function renderQrToOffscreenCanvas(publicUrl: string, moduleColor: string): Promise<HTMLCanvasElement> {
   const offscreen = document.createElement("canvas");
   await QRCode.toCanvas(offscreen, publicUrl, {
     width: QR_SIZE,
     margin: 0,
     errorCorrectionLevel: "H",
-    color: { dark: BRAND_BLUE, light: WHITE },
+    color: { dark: moduleColor, light: WHITE },
   });
   return offscreen;
 }
@@ -194,9 +235,25 @@ async function renderQrToOffscreenCanvas(publicUrl: string): Promise<HTMLCanvasE
  */
 export async function drawShareCard(
   canvas: HTMLCanvasElement,
-  { publicUrl, storeName }: ShareCardOptions
+  { publicUrl, storeName, accentColor }: ShareCardOptions
 ): Promise<void> {
-  const qrCanvas = await renderQrToOffscreenCanvas(publicUrl);
+  const frameColor = resolveFrameColor(accentColor);
+
+  // Os módulos do QR (o que a câmera precisa ler) NÃO podem herdar uma cor de
+  // destaque clara demais — accent_color é hex livre, e um revendedor pode
+  // escolher um amarelo pastel ou quase-branco. `isLegibleOnWhite` garante
+  // pelo menos 3:1 de contraste (mínimo WCAG pra elementos gráficos); abaixo
+  // disso cai pra preto puro, sempre legível, em vez de arriscar um código
+  // que a câmera do cliente não reconhece.
+  const moduleColor = isLegibleOnWhite(frameColor) ? frameColor : "#000000";
+  // Nome e link ficam sobre a MOLDURA (frameColor), não sobre o painel branco
+  // — por isso usam o par claro/escuro (não o de `moduleColor`, que só serve
+  // pro que fica sobre fundo branco).
+  const frameTextIsDark = getContrastTextColor(frameColor) === "dark";
+  const nameColor = frameTextIsDark ? DARK_TEXT : WHITE;
+  const linkColor = frameTextIsDark ? "rgba(17,24,39,0.72)" : "rgba(255,255,255,0.72)";
+
+  const qrCanvas = await renderQrToOffscreenCanvas(publicUrl, moduleColor);
 
   // Sem isso, o primeiro desenho pode acontecer antes da Manrope estar
   // disponível e o cartão sai com a fonte de fallback — visível só no PNG
@@ -223,7 +280,7 @@ export async function drawShareCard(
   // quem publica, não algo controlado aqui.
   ctx.beginPath();
   ctx.roundRect(0, 0, CARD_WIDTH, CARD_HEIGHT, CARD_RADIUS);
-  ctx.fillStyle = BRAND_BLUE;
+  ctx.fillStyle = frameColor;
   ctx.fill();
 
   ctx.beginPath();
@@ -241,14 +298,16 @@ export async function drawShareCard(
   ctx.fillStyle = WHITE;
   ctx.fill();
 
-  drawLogoMark(ctx, qrCenterX, qrCenterY, LOGO_SIZE);
+  // Cor dos módulos, não mais o azul fixo do Vitrinoo — o selo lê como parte
+  // do próprio código (ver a nota em `drawLogoMark`).
+  drawLogoMark(ctx, qrCenterX, qrCenterY, LOGO_SIZE, moduleColor);
 
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
 
   const name = storeName?.trim() || "Minha vitrine";
   const nameText = fitText(ctx, name, fontFamily, 800, NAME_MAX_SIZE, NAME_MIN_SIZE, TEXT_MAX_WIDTH);
-  ctx.fillStyle = WHITE;
+  ctx.fillStyle = nameColor;
   ctx.fillText(nameText, CARD_WIDTH / 2, NAME_BASELINE);
 
   // Link sem o protocolo: "https://" não ajuda ninguém a digitar e rouba
@@ -262,7 +321,7 @@ export async function drawShareCard(
     24,
     TEXT_MAX_WIDTH
   );
-  ctx.fillStyle = "rgba(255,255,255,0.72)";
+  ctx.fillStyle = linkColor;
   ctx.fillText(linkText, CARD_WIDTH / 2, LINK_BASELINE);
 }
 

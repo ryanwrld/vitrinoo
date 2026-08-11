@@ -19,6 +19,31 @@ export function getContrastTextColor(hex: string): "light" | "dark" {
   return luminance > 0.5 ? "dark" : "light";
 }
 
+/**
+ * Se `hex` tem contraste suficiente para ser usado como PRIMEIRO PLANO sobre
+ * um fundo branco — caso do cartão de divulgação (`qr-share-card.ts`), onde
+ * os módulos do QR code em si podem herdar a cor de destaque da loja.
+ *
+ * Diferente de `getContrastTextColor` (que escolhe entre duas opções fixas,
+ * texto claro OU escuro, para um fundo qualquer), aqui a pergunta é "essa cor
+ * arbitrária, sozinha, é escura o bastante sobre BRANCO?" — relevante porque
+ * `accent_color` é hex livre: um revendedor pode escolher um amarelo pastel
+ * ou quase-branco, que sobre fundo branco os módulos do QR ficariam com
+ * contraste baixo demais para o alcance de leitura normal de uma câmera.
+ *
+ * Limiar de 3:1 é o mínimo do WCAG 1.4.11 (contraste não-textual) — o mesmo
+ * patamar recomendado para ícones e elementos gráficos, categoria em que um
+ * módulo de QR se encaixa melhor do que em texto (que exigiria 4,5:1).
+ */
+export function isLegibleOnWhite(hex: string, minRatio = 3): boolean {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return false;
+
+  const luminance = relativeLuminance(rgb);
+  const ratio = (1 + 0.05) / (luminance + 0.05);
+  return ratio >= minRatio;
+}
+
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   const match = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
   if (!match) return null;

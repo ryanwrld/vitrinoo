@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { Download, QrCode, X } from "lucide-react";
+import { QrCode, X } from "lucide-react";
 import { drawShareCard, SHARE_CARD_HEIGHT, SHARE_CARD_WIDTH } from "@/lib/qr-share-card";
 import { lockScroll } from "@/lib/ui/scroll-lock";
 
@@ -10,17 +10,21 @@ export type QrCodeButtonProps = {
   url: string;
   storeName: string;
   className?: string;
+  // Cor de destaque da loja (`stores.accent_color`). `null` (ainda não
+  // escolhida) cai no azul do Vitrinoo — mesmo fallback usado no hero e na
+  // barra fixa (`store-hero.tsx`, `store-sticky-bar.tsx`).
+  accentColor?: string | null;
 };
 
 /**
  * Botão de QR code da vitrine pública (ao lado do compartilhar) + o diálogo
  * que ele abre.
  *
- * O que aparece no diálogo é o MESMO cartão de divulgação que o lojista baixa
- * em `/admin/configuracoes` (`drawShareCard`) — não um QR cru. Duas artes
- * diferentes para a mesma loja é o tipo de inconsistência que só aparece
- * depois, quando o cliente compara o print da vitrine com o cartão que o
- * lojista postou no story.
+ * O cartão desenhado aqui usa a MESMA função de `/admin/configuracoes`
+ * (`drawShareCard`) E A MESMA COR (`accentColor`, a cor que o revendedor
+ * escolheu em Configurações) — de propósito: a prévia que o lojista vê lá é
+ * o que o cliente final vê ao escanear este pop-up. Arte, cor e cartão são
+ * uma coisa só, em todo lugar que aparecem.
  *
  * O canvas só é montado quando o diálogo abre: gerar o QR + esperar
  * `document.fonts.ready` no primeiro paint da vitrine custa trabalho para
@@ -33,7 +37,7 @@ export type QrCodeButtonProps = {
  * é o `createPortal`: este componente vive dentro do `<header>`, então sem o
  * portal o overlay ficaria preso ao contexto de empilhamento do cabeçalho.
  */
-export function QrCodeButton({ url, storeName, className }: QrCodeButtonProps) {
+export function QrCodeButton({ url, storeName, className, accentColor }: QrCodeButtonProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -53,6 +57,7 @@ export function QrCodeButton({ url, storeName, className }: QrCodeButtonProps) {
         <QrCodeDialog
           url={url}
           storeName={storeName}
+          accentColor={accentColor ?? "#0D21A1"}
           triggerRef={triggerRef}
           onClose={() => {
             setOpen(false);
@@ -100,11 +105,13 @@ const VEIL_OPAQUE = { backgroundColor: "rgba(0,0,0,0.3)" };
 function QrCodeDialog({
   url,
   storeName,
+  accentColor,
   triggerRef,
   onClose,
 }: {
   url: string;
   storeName: string;
+  accentColor: string;
   triggerRef: RefObject<HTMLButtonElement | null>;
   onClose: () => void;
 }) {
@@ -123,8 +130,22 @@ function QrCodeDialog({
    * Recalculado a cada uso, nunca memorizado: o cabeçalho rola e o painel muda
    * de largura na virada de breakpoint, então um valor guardado na abertura
    * mandaria o fechamento para onde o botão ESTAVA.
+   *
+   * O piso de escala SÓ vale pra abertura. Medido: botão de 40px contra painel
+   * de 276px dá uma proporção real de ~0,145 — crescer 1/0,145 (~7×) nesse
+   * intervalo faz o painel atravessar a tela rápido demais, sem curva que
+   * suavize. Por isso a ENTRADA usa um piso de 0,3 (crescimento de ~3,3×).
+   *
+   * O FECHAMENTO não pode herdar esse piso: com ele, a curva de saída passa a
+   * encolher rumo a 0,3× (82×122px) em vez do tamanho real do botão — quase o
+   * dobro do botão em cada eixo. Como a curva desacelera forte no fim
+   * (EASE), os últimos ~100ms do encolhimento mal mudam de tamanho: o painel
+   * para visivelmente maior que o botão, parado, e só então some no
+   * desmonte — lê como um corte brusco, não como um encolhimento completo.
+   * Sem piso, a saída usa a proporção real e termina de fato dentro do
+   * botão.
    */
-  const collapsedTransform = useCallback((): string | null => {
+  const collapsedTransform = useCallback((floor: number): string | null => {
     const trigger = triggerRef.current;
     const panel = panelRef.current;
     if (!trigger || !panel) return null;
@@ -135,12 +156,7 @@ function QrCodeDialog({
 
     // Escala única (não uma por eixo): distorcer a proporção deformaria o
     // cartão do QR junto.
-    //
-    // O piso de 0,3 é o que separa "expandir" de "explodir": um botão de 40px
-    // contra um painel de 324px daria 0,12, e crescer 8× no mesmo intervalo
-    // obriga o painel a atravessar a tela numa velocidade que nenhuma curva
-    // suaviza.
-    const scale = Math.max(t.width / p.width, 0.3);
+    const scale = Math.max(t.width / p.width, floor);
 
     const dx = t.left + t.width / 2 - (p.left + p.width / 2);
     const dy = t.top + t.height / 2 - (p.top + p.height / 2);
@@ -157,7 +173,7 @@ function QrCodeDialog({
     closingRef.current = true;
 
     const panel = panelRef.current;
-    const collapsed = collapsedTransform();
+    const collapsed = collapsedTransform(0);
     if (!panel || !collapsed || !ready || prefersReducedMotion()) {
       onClose();
       return;
@@ -173,9 +189,19 @@ function QrCodeDialog({
 
     overlayRef.current?.animate([VEIL_OPAQUE, VEIL_TRANSPARENT], options);
 
-    // Só `transform`. Nem aqui nem no véu pode haver animação de opacidade —
-    // ela apagaria o `backdrop-filter` do card (ver a nota em VEIL_*).
-    const animation = panel.animate([{ transform: "none" }, { transform: collapsed }], options);
+    // Aqui SIM pode animar opacidade — a nota em VEIL_* é sobre um ANCESTRAL
+    // ficar semi-opaco e virar "backdrop root", isolando o que um
+    // DESCENDENTE com `backdrop-filter` consegue amostrar. O painel é quem
+    // TEM o `backdrop-filter`, não um descendente sofrendo o efeito de um
+    // ancestral — a própria opacidade dele não desencadeia esse bug.
+    //
+    // Sem isso, o fim do fechamento não lia como "sumir": a curva de saída
+    // desacelera forte no fim (EASE), então o card passava os últimos ~100ms
+    // do encolhimento quase sem mudar de tamanho — um cartão pequeno mas
+    // 100% opaco, parado sobre o botão — e só então desmontava, um corte seco
+    // em vez de um desaparecimento. Desvanecer junto com o encolhimento faz
+    // o card ficar imperceptível ANTES do desmonte, não só pequeno.
+    const animation = panel.animate([{ transform: "none", opacity: 1 }, { transform: collapsed, opacity: 0 }], options);
 
     animation.finished.then(onClose, onClose);
   }, [collapsedTransform, onClose, ready]);
@@ -191,17 +217,24 @@ function QrCodeDialog({
    *
    * Véu e painel compartilham `duration` e `easing` pelo mesmo motivo: são um
    * movimento só.
+   *
+   * O painel também nasce de opacidade 0 — simétrico ao fechamento. Sem isso
+   * ele "nascia" 100% opaco já no primeiro quadro, pequeno em cima do botão,
+   * e só então crescia — o oposto do fechamento (que agora desvanece
+   * enquanto encolhe). Nascer transparente e ganhar opacidade junto com o
+   * crescimento faz a abertura ler como o inverso exato do fechamento, não
+   * como dois movimentos diferentes.
    */
   useEffect(() => {
     const panel = panelRef.current;
-    const collapsed = collapsedTransform();
+    const collapsed = collapsedTransform(0.3);
     if (!panel || !collapsed || !ready || prefersReducedMotion()) return;
 
     const options: KeyframeAnimationOptions = { duration: ENTER_MS, easing: EASE };
 
     overlayRef.current?.animate([VEIL_TRANSPARENT, VEIL_OPAQUE], options);
 
-    panel.animate([{ transform: collapsed }, { transform: "none" }], options);
+    panel.animate([{ transform: collapsed, opacity: 0 }, { transform: "none", opacity: 1 }], options);
   }, [collapsedTransform, ready]);
 
   /**
@@ -231,7 +264,7 @@ function QrCodeDialog({
     panelRef.current?.focus();
 
     let cancelled = false;
-    drawShareCard(canvas, { publicUrl: url, storeName })
+    drawShareCard(canvas, { publicUrl: url, storeName, accentColor })
       .then(() => {
         if (!cancelled) setReady(true);
       })
@@ -242,16 +275,7 @@ function QrCodeDialog({
     return () => {
       cancelled = true;
     };
-  }, [url, storeName]);
-
-  function handleDownload() {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const link = document.createElement("a");
-    link.download = "cartao-vitrine.png";
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-  }
+  }, [url, storeName, accentColor]);
 
   // O diálogo só é montado por um clique, então este ramo nunca acontece na
   // renderização do servidor — a guarda existe só para o `document` do portal.
@@ -325,8 +349,8 @@ function QrCodeDialog({
           </button>
 
           {/* `width`/`height` são a resolução real do arquivo (1080×1350); o
-              CSS só reduz a exibição — é o mesmo canvas do painel admin, então
-              o que está na tela é literalmente o PNG que o botão baixa. */}
+              CSS só reduz a exibição — é o mesmo canvas do painel admin
+              (`qr-code-panel.tsx`), que é quem tem o botão de baixar. */}
           <canvas
             ref={canvasRef}
             width={SHARE_CARD_WIDTH}
@@ -337,32 +361,17 @@ function QrCodeDialog({
           />
 
           {/* `text-balance`: em 220px a frase quebra em duas linhas, e sem
-              balanceamento a segunda fica com uma palavra solta. */}
+              balanceamento a segunda fica com uma palavra solta.
+
+              SEM botão de download aqui — removido de propósito. Quem abre
+              este pop-up é o CLIENTE FINAL na vitrine pública, não o
+              revendedor; ninguém escaneia com o próprio celular só pra baixar
+              o PNG do QR na galeria dele. Baixar o cartão é tarefa de quem
+              divulga a loja (o revendedor), que já tem o botão equivalente em
+              `/admin/configuracoes` (`qr-code-panel.tsx`). */}
           <p className="text-balance text-center text-sm leading-snug text-white/60">
             Aponte a câmera do celular para abrir a vitrine.
           </p>
-
-          {/* Azul da marca com texto branco — o mesmo par de cores do cartão
-              logo acima, e o mesmo botão primário do resto do produto.
-              `rounded-xl` (12px) em vez de `rounded-md` (6px): o cartão logo
-              acima arredonda ~11px na escala em que é exibido, e dois raios
-              diferentes empilhados a 14px de distância leem como desalinho.
-
-              `hidden sm:flex`: no celular quem abre isto está com a câmera de
-              OUTRO aparelho apontada para a tela, ou vai usar o compartilhar
-              ao lado — baixar o PNG para a galeria do próprio telefone que já
-              está na vitrine não leva a lugar nenhum. `display:none` também
-              tira o botão do leitor de tela, ao contrário de escondê-lo por
-              opacidade. */}
-          <button
-            type="button"
-            onClick={handleDownload}
-            disabled={!ready}
-            className="hidden w-full items-center justify-center gap-2 rounded-xl bg-primary p-3 sm:flex text-sm font-semibold text-white transition-all duration-150 hover:bg-primary-hover active:bg-primary-active active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent disabled:bg-white/20 disabled:text-white/40 disabled:pointer-events-none"
-          >
-            <Download className="h-4 w-4" aria-hidden="true" />
-            Baixar imagem
-          </button>
         </div>
       </div>
     </div>,

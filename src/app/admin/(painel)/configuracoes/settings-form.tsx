@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { AsYouType } from "libphonenumber-js";
-import { ChevronDown, Paintbrush, MessageCircle, SlidersHorizontal, Eye } from "lucide-react";
+import { ChevronDown, Paintbrush, MessageCircle, SlidersHorizontal, Eye, Link as LinkIcon } from "lucide-react";
 import { onboardingSchema, type OnboardingInput } from "@/lib/validation/onboarding";
 import { checkSlugAvailability, saveStoreSettings, updateStoreSlug } from "@/lib/settings/actions";
 import { getContrastTextColor } from "@/lib/color/contrast";
@@ -18,6 +18,8 @@ import { slugify } from "@/lib/slug/slugify";
 import { slugSchema } from "@/lib/slug/validation";
 import { useDebouncedValue } from "@/lib/hooks/use-debounce";
 import { SlugFieldProvider, type SlugAvailabilityStatus } from "./slug-field-context";
+import { SlugEditor } from "./slug-editor";
+import { QrCodePanel } from "./qr-code-panel";
 
 /**
  * Formulário de edição pós-onboarding (Loja + WhatsApp), escrito do zero
@@ -52,15 +54,29 @@ export type SettingsFormProps = {
   /** Slug atual da loja — base de comparação para saber se ele mudou. */
   currentSlug: string;
   /**
-   * Coluna da direita da grade (card "Link e QR code da vitrine"), passada
-   * como prop em vez de ser irmã no `page.tsx`: o `SlugEditor` que vive lá
-   * dentro precisa estar na árvore React deste formulário para enxergar o
-   * `SlugFieldProvider`. No DOM nada muda — o `<form>` é `display: contents`.
+   * URL pública da vitrine (`buildStoreUrl`, calculada no Server Component
+   * `page.tsx`) — só o dado bruto. A seção "Link e QR code da vitrine" em si
+   * (`SlugEditor` + `QrCodePanel`, ver o JSX no fim deste componente) é
+   * renderizada AQUI DENTRO, não recebida pronta de `page.tsx`.
+   *
+   * Duas razões, as duas exigem que a seção viva na árvore deste Client
+   * Component:
+   * 1) O `SlugEditor` precisa do `SlugFieldProvider` logo abaixo — um
+   *    elemento montado no Server Component nunca enxergaria esse contexto.
+   * 2) A prévia do `QrCodePanel` precisa de `accentColorValue`
+   *    (`watch("accentColor")`) para acompanhar a cor ENQUANTO o revendedor
+   *    arrasta no seletor, antes de salvar — esse valor só existe aqui.
+   *    (Chegou a ser uma função `(accentColor) => ReactNode` passada como
+   *    prop, mas Server → Client Component não pode passar FUNÇÃO nenhuma,
+   *    só dado serializável e elementos já construídos — React derruba a
+   *    árvore inteira com "Functions cannot be passed directly to Client
+   *    Components". Só dá pra resolver morando dos dois lados da fronteira:
+   *    o dado (`publicUrl`) atravessa, o comportamento (a função) não.)
    */
-  aside: ReactNode;
+  publicUrl: string;
 };
 
-export function SettingsForm({ store, settings, currentSlug, aside }: SettingsFormProps) {
+export function SettingsForm({ store, settings, currentSlug, publicUrl }: SettingsFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const confirmSlugDialogRef = useRef<HTMLDialogElement>(null);
@@ -792,7 +808,22 @@ export function SettingsForm({ store, settings, currentSlug, aside }: SettingsFo
           status: slugStatus,
         }}
       >
-        {aside}
+        {/* `lg:col-start-2 lg:row-start-1`: posição explícita porque, com o
+            form em `display: contents`, esta seção vem DEPOIS do botão
+            "Salvar alterações" no DOM — a auto-colocação da grade a jogaria
+            para a linha de baixo. */}
+        <section className="flex flex-col gap-5 rounded-lg border border-gray-200 bg-white p-5 lg:col-start-2 lg:row-start-1 lg:h-full dark:border-gray-800 dark:bg-gray-900">
+          <div className="flex items-center gap-2 text-gray-900 dark:text-gray-50">
+            <LinkIcon className="h-5 w-5" />
+            <h2 className="font-display font-bold">Link e QR code da vitrine</h2>
+          </div>
+
+          <SlugEditor />
+
+          <hr className="border-gray-100 dark:border-gray-800" />
+
+          <QrCodePanel publicUrl={publicUrl} storeName={store.name} accentColor={accentColorValue} />
+        </section>
       </SlugFieldProvider>
 
       {/* Linha de ações. O `order`/`col-start` que antes vivia no botão de

@@ -4,7 +4,6 @@ import {
   UserCircle,
   Shield,
   Paintbrush,
-  Link as LinkIcon,
   AlertTriangle,
   LogOut,
   MonitorSmartphone,
@@ -19,8 +18,6 @@ import { HeaderActions } from "@/components/header-actions";
 import { ProfileForm } from "./profile-form";
 import { ThemeToggle } from "./theme-toggle";
 import { SettingsForm } from "./settings-form";
-import { SlugEditor } from "./slug-editor";
-import { QrCodePanel } from "./qr-code-panel";
 import { DeleteAccountPanel } from "./delete-account-panel";
 import { ChangePasswordPanel } from "./change-password-panel";
 import { SignOutAllPanel } from "./sign-out-all-panel";
@@ -359,36 +356,14 @@ export default async function ConfiguracoesPage({
               messageTemplate: settings?.message_template ?? "",
             }}
             currentSlug={store.slug}
-            // Coluna da direita passada como PROP, não como irmã: o
-            // `SlugEditor` lá dentro perdeu o botão próprio e agora é salvo
-            // pelo "Salvar alterações" do formulário, então precisa enxergar
-            // o `SlugFieldProvider` — o que só acontece se estiver na árvore
-            // React do `SettingsForm`. No DOM nada muda, porque o `<form>` é
-            // `display: contents`.
-            //
-            // Slug e QR num card ÚNICO: tratam do mesmo assunto (o link
-            // público — o QR nada mais é do que esse link em imagem), e
-            // separados o card do slug ficaria raso demais ao lado da coluna
-            // do formulário.
-            //
-            // `lg:col-start-2 lg:row-start-1`: posição explícita porque, com
-            // o form em `display: contents`, este <section> vem DEPOIS do
-            // botão "Salvar alterações" no DOM — a auto-colocação da grade o
-            // jogaria para a linha de baixo.
-            aside={
-              <section className="flex flex-col gap-5 rounded-lg border border-gray-200 bg-white p-5 lg:col-start-2 lg:row-start-1 lg:h-full dark:border-gray-800 dark:bg-gray-900">
-                <div className="flex items-center gap-2 text-gray-900 dark:text-gray-50">
-                  <LinkIcon className="h-5 w-5" />
-                  <h2 className="font-display font-bold">Link e QR code da vitrine</h2>
-                </div>
-
-                <SlugEditor />
-
-                <hr className="border-gray-100 dark:border-gray-800" />
-
-                <QrCodePanel publicUrl={publicUrl} storeName={store.name} />
-              </section>
-            }
+            // Só o dado (`publicUrl`, string serializável) atravessa a
+            // fronteira Server → Client. A seção "Link e QR code da vitrine"
+            // (`SlugEditor` + `QrCodePanel`) é renderizada DENTRO do
+            // `SettingsForm` agora — ver a nota na prop `publicUrl` lá
+            // (`SlugEditor` precisa do `SlugFieldProvider` da árvore do
+            // formulário, e a prévia do QR precisa do `watch("accentColor")`
+            // ao vivo; nenhum dos dois existe aqui no Server Component).
+            publicUrl={publicUrl}
           />
         </div>
       )}

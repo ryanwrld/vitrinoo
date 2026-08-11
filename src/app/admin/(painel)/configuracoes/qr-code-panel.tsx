@@ -10,31 +10,58 @@ import { drawShareCard, SHARE_CARD_HEIGHT, SHARE_CARD_WIDTH } from "@/lib/qr-sha
 export type QrCodePanelProps = {
   publicUrl: string;
   storeName: string | null;
+  // Cor de destaque da loja (`stores.accent_color`) — mesma fonte que pinta a
+  // capa e a barra fixa da vitrine pública. `null` (ainda não escolhida) cai
+  // no azul do Vitrinoo dentro do próprio `drawShareCard`.
+  accentColor: string | null;
 };
 
 /**
  * Painel do QR + URL pública (D-09–D-13, LOJA-03/LOJA-04).
  *
  * A prévia deixou de ser o QR cru e passou a ser o CARTÃO DE DIVULGAÇÃO
- * inteiro (moldura azul, logo do Vitrinoo no centro do código, nome da loja e
- * link) — o mesmo arquivo que o botão baixa. Prévia e produto precisam ser a
- * mesma coisa; mostrar um QR simples e entregar um cartão seria surpresa no
- * download.
+ * inteiro (moldura na cor de destaque da loja, logo do Vitrinoo no centro do
+ * código, nome da loja e link) — o mesmo arquivo que o botão baixa, E O MESMO
+ * que aparece no pop-up de QR da própria vitrine pública (`qr-code-button.tsx`).
+ * Três lugares, uma arte só: a prévia aqui precisa ser literalmente o que o
+ * cliente final vê ao escanear o pop-up da vitrine — inclusive a cor —, não só
+ * o mesmo arquivo que o botão baixa.
  *
  * O QR cru continua disponível num segundo botão, para quem quer montar o
  * próprio material (colar num banner, mandar para a gráfica) — nesse caso ele
- * é gerado sob demanda em 1024px, não lido da prévia.
+ * é gerado sob demanda em 1024px, sempre preto-sobre-branco (não é uma peça de
+ * marca, é insumo pra terceiros montarem a própria arte), não lido da prévia.
  */
-export function QrCodePanel({ publicUrl, storeName }: QrCodePanelProps) {
+export function QrCodePanel({ publicUrl, storeName, accentColor }: QrCodePanelProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isCopying, startCopyTransition] = useTransition();
   const [isDownloadingQr, startQrDownloadTransition] = useTransition();
+
+  /**
+   * `accentColor` agora chega AO VIVO do `<input type="color">" (via
+   * `aside(accentColorValue)` em `settings-form.tsx`), não só do valor salvo
+   * — e o nativo dispara o evento `input` continuamente enquanto o
+   * revendedor arrasta no seletor do sistema, não só ao soltar. Sem
+   * amortecer, cada pixel arrastado dispararia um redesenho completo do
+   * canvas (regerar o QR incluso) — na prática ainda rápido o bastante pra
+   * não travar, mas gera trabalho redundante que uma pausa de 50ms elimina
+   * sem o olho humano notar atraso (abaixo do limiar de ~100ms em que uma
+   * atualização começa a "sentir" lenta).
+   */
+  const [debouncedAccentColor, setDebouncedAccentColor] = useState(accentColor);
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedAccentColor(accentColor), 50);
+    return () => clearTimeout(id);
+  }, [accentColor]);
 
   // Chave de "o que está desenhado" — não um `setState` síncrono dentro do
   // efeito (mesmo padrão de slug-editor.tsx, react-hooks/set-state-in-effect).
   // Inclui `storeName` porque o nome faz parte do cartão: trocar o nome da
   // loja precisa invalidar o desenho tanto quanto trocar o slug.
-  const drawKey = `${publicUrl}::${storeName ?? ""}`;
+  // `debouncedAccentColor` pelo mesmo motivo: mudar a cor de destaque em
+  // Configurações precisa redesenhar a prévia, senão ela mostra a cor antiga
+  // até um reload.
+  const drawKey = `${publicUrl}::${storeName ?? ""}::${debouncedAccentColor ?? ""}`;
   const [readyKey, setReadyKey] = useState<string | null>(null);
   const cardReady = readyKey === drawKey;
 
@@ -43,7 +70,7 @@ export function QrCodePanel({ publicUrl, storeName }: QrCodePanelProps) {
     if (!canvas) return;
 
     let cancelled = false;
-    drawShareCard(canvas, { publicUrl, storeName })
+    drawShareCard(canvas, { publicUrl, storeName, accentColor: debouncedAccentColor })
       .then(() => {
         if (!cancelled) setReadyKey(drawKey);
       })
@@ -54,7 +81,7 @@ export function QrCodePanel({ publicUrl, storeName }: QrCodePanelProps) {
     return () => {
       cancelled = true;
     };
-  }, [publicUrl, storeName, drawKey]);
+  }, [publicUrl, storeName, debouncedAccentColor, drawKey]);
 
   function triggerDownload(dataUrl: string, filename: string) {
     const link = document.createElement("a");
