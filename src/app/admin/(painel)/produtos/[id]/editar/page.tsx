@@ -87,13 +87,8 @@ export default async function EditarProdutoPage({ params }: PageProps) {
   };
 
   return (
-    // Mesmo respiro do Dashboard e sem `mx-auto` no CONTAINER — ver
-    // configuracoes/page.tsx. O `max-w-6xl 2xl:max-w-7xl` desceu pro wrapper
-    // do form (mesma técnica de configuracoes): o cabeçalho fica colado à
-    // sidebar em qualquer largura, só o conteúdo (form + painel de fotos)
-    // ganha teto e centraliza dentro do espaço restante — precisa da largura
-    // real pro painel de fotos ter onde existir ao lado do form em xl.
-    <div className="flex w-full flex-col gap-6 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
+    // Mesmo respiro do Dashboard e sem `mx-auto` — ver configuracoes/page.tsx.
+    <div className="flex w-full max-w-3xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
       <div className="flex items-start justify-between gap-4">
         <div>
           <Link href="/admin/produtos" className="text-sm text-gray-500 transition-colors duration-150 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50">
@@ -112,14 +107,12 @@ export default async function EditarProdutoPage({ params }: PageProps) {
         </span>
       </div>
 
-      <div className="mx-auto w-full max-w-6xl 2xl:max-w-7xl">
-        <ProductForm
-          productId={product.id}
-          status={product.status}
-          initialPhotos={photos}
-          defaultValues={defaultValues}
-        />
-      </div>
+      <ProductForm
+        productId={product.id}
+        status={product.status}
+        initialPhotos={photos}
+        defaultValues={defaultValues}
+      />
     </div>
   );
 }

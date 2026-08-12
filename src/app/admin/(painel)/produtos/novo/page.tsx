@@ -11,9 +11,8 @@ export default async function NovoProdutoPage() {
   await requireCompletedOnboarding();
 
   return (
-    // Mesmo respiro do Dashboard e sem `mx-auto` no CONTAINER — ver
-    // configuracoes/page.tsx e produtos/[id]/editar/page.tsx (mesma técnica).
-    <div className="flex w-full flex-col gap-6 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
+    // Mesmo respiro do Dashboard e sem `mx-auto` — ver configuracoes/page.tsx.
+    <div className="flex w-full max-w-3xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
       <div>
         <Link href="/admin/produtos" className="text-sm text-gray-500 transition-colors duration-150 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50">
           ← Voltar
@@ -24,9 +23,7 @@ export default async function NovoProdutoPage() {
         </p>
       </div>
 
-      <div className="mx-auto w-full max-w-6xl 2xl:max-w-7xl">
-        <ProductForm />
-      </div>
+      <ProductForm />
     </div>
   );
 }

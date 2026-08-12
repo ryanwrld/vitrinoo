@@ -2,13 +2,12 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { resolveCoverFrame } from "@/lib/store/cover-frame";
 import { queryPublicProducts, resolveSort } from "@/lib/products/public-list";
-import { queryFavoriteProducts, parseFavoriteIds } from "@/lib/products/public-favorites";
+import { parseFavoriteIds } from "@/lib/products/public-favorites";
 import { queryStorefrontProfile, EMPTY_PROFILE } from "@/lib/store/storefront-profile";
 import { EmptyState } from "@/components/empty-state";
 import { StoreHero } from "./store-hero";
 import { ProductGrid } from "./product-grid";
 import { FilterBar } from "./filter-bar";
-import { FavoritesView } from "./favorites-view";
 import { ClearFiltersButton } from "./clear-filters-button";
 import { LoadMoreButton } from "./load-more-button";
 import { PaginationNumbered } from "./pagination-numbered";
@@ -86,36 +85,31 @@ export default async function LojaPublicaPage({ params, searchParams }: PageProp
     notFound();
   }
 
-  // Aba Favoritos (Nível 2 do roadmap de valor): `?ids=` presente e válido
-  // troca o modo de exibição inteiro — bypassa busca/marca/solado/entrega/
-  // paginação, que não fazem sentido sobre uma lista fixa de favoritos.
+  // "Favoritos" (Nível 2 do roadmap de valor): `?ids=` presente e válido é
+  // MAIS UM filtro combinável com busca/marca/solado/entrega/ordenar — não
+  // um modo de exibição à parte. `.in("id", favoriteIds)` entra na MESMA
+  // query paginada de queryPublicProducts (ver public-list.ts), só a exceção
+  // de "esgotado continua visível" é exclusiva de produtos favoritados.
   // `parseFavoriteIds` já filtra qualquer valor que não seja UUID antes de
   // qualquer `.in()` (mesma disciplina de VALID_BRANDS em public-list.ts).
   const favoriteIds = parseFavoriteIds(sp.ids);
   const favoritesActive = favoriteIds.length > 0;
-  const favoritesQueryString = favoritesActive ? `ids=${favoriteIds.join(",")}` : "";
 
   const brands = toArray(sp.brand);
   const soles = toArray(sp.sole);
   const fulfillments = toArray(sp.fulfillment);
   const page = Number(sp.page ?? "1") || 1;
   const sort = resolveSort(sp.sort);
-  const filters = { q: sp.q, brand: brands, sole: soles, fulfillment: fulfillments, sort };
+  const filters = {
+    q: sp.q,
+    brand: brands,
+    sole: soles,
+    fulfillment: fulfillments,
+    sort,
+    favoriteIds: favoritesActive ? favoriteIds : undefined,
+  };
 
-  const { products, hasMore } = favoritesActive
-    ? { products: [], hasMore: false }
-    : await queryPublicProducts(supabase, store.id, { ...filters, page }, store.hide_sold_out_default);
-
-  let favoriteProducts: Awaited<ReturnType<typeof queryFavoriteProducts>> = [];
-  let favoritesWhatsappE164 = "";
-  if (favoritesActive) {
-    const [products, { data: storeSettings }] = await Promise.all([
-      queryFavoriteProducts(supabase, store.id, favoriteIds),
-      supabase.from("store_settings").select("whatsapp_e164").eq("store_id", store.id).single(),
-    ]);
-    favoriteProducts = products;
-    favoritesWhatsappE164 = storeSettings?.whatsapp_e164 ?? "";
-  }
+  const { products, hasMore } = await queryPublicProducts(supabase, store.id, { ...filters, page }, store.hide_sold_out_default);
 
   const productsWithCoverUrl = products.map((product) => ({
     ...product,
@@ -147,17 +141,20 @@ export default async function LojaPublicaPage({ params, searchParams }: PageProp
 
   // Distingue "loja vazia" de "filtro sem resultado": o empty state do
   // segundo caso precisa oferecer a saída (limpar filtros), não só informar.
+  // Favoritos entra aqui como QUALQUER outro filtro — não é mais um modo à
+  // parte, então "só favoritos ativo e zero resultado" cai no mesmo ramo.
   const hasActiveFilters =
-    Boolean(sp.q) || brands.length > 0 || soles.length > 0 || fulfillments.length > 0;
+    Boolean(sp.q) || brands.length > 0 || soles.length > 0 || fulfillments.length > 0 || favoritesActive;
 
-  // Query string atual (filtros) SEM "page" — reusada pela paginação numerada
-  // (anterior/próxima) e pelos cards do grid (link "?produto=<id>" preserva
-  // o filtro ativo ao abrir o modal).
+  // Query string atual (filtros, incluindo "ids") SEM "page" — reusada pela
+  // paginação numerada (anterior/próxima) e pelos cards do grid (link
+  // "?produto=<id>" preserva o filtro ativo ao abrir o modal).
   const filterSearchParams = new URLSearchParams();
   if (sp.q) filterSearchParams.set("q", sp.q);
   brands.forEach((value) => filterSearchParams.append("brand", value));
   soles.forEach((value) => filterSearchParams.append("sole", value));
   fulfillments.forEach((value) => filterSearchParams.append("fulfillment", value));
+  if (favoritesActive) filterSearchParams.set("ids", favoriteIds.join(","));
   const searchParamsString = filterSearchParams.toString();
 
   // Modal do produto: query param `produto`, resolvido com o MESMO helper
@@ -205,7 +202,7 @@ export default async function LojaPublicaPage({ params, searchParams }: PageProp
         {hasAnyPublished && (
           <FilterBar
             slug={slug}
-            currentParams={{ q: sp.q, brand: brands, sole: soles, fulfillment: fulfillments, sort }}
+            currentParams={{ q: sp.q, brand: brands, sole: soles, fulfillment: fulfillments, sort, ids: favoriteIds }}
             brandFacets={profile.brandFacets}
             accentColor={store.accent_color ?? "#000000"}
             resultCount={productsWithCoverUrl.length}
@@ -213,27 +210,7 @@ export default async function LojaPublicaPage({ params, searchParams }: PageProp
           />
         )}
 
-        {favoritesActive ? (
-          favoriteProducts.length > 0 ? (
-            <FavoritesView
-              slug={slug}
-              whatsappE164={favoritesWhatsappE164}
-              products={favoriteProducts}
-              query={favoritesQueryString}
-              accentColor={store.accent_color ?? "#000000"}
-            />
-          ) : (
-            // ids veio preenchido mas nenhum produto casou: os favoritos
-            // guardados no navegador do comprador foram excluídos/viraram
-            // rascunho — distinto de "nunca favoritou nada" (esse caso nem
-            // chega aqui, o toggle da filter-bar bloqueia a navegação antes).
-            <EmptyState
-              icon="search"
-              title="Nenhum favorito encontrado"
-              description="Os produtos que você favoritou não estão mais disponíveis nesta loja."
-            />
-          )
-        ) : hasFilteredResults ? (
+        {hasFilteredResults ? (
           <>
             <ProductGrid products={productsWithCoverUrl} slug={slug} query={searchParamsString} />
 
@@ -245,12 +222,23 @@ export default async function LojaPublicaPage({ params, searchParams }: PageProp
             </div>
           </>
         ) : hasActiveFilters ? (
-          <EmptyState
-            icon="search"
-            title="Nenhum produto com esses filtros"
-            description="Tente remover algum filtro ou buscar outro termo."
-            action={<ClearFiltersButton slug={slug} accentColor={store.accent_color ?? "#000000"} />}
-          />
+          // "Só favoritos" ativo e zero resultado: os favoritos guardados no
+          // navegador do comprador foram excluídos/viraram rascunho —
+          // mensagem distinta de "filtro sem resultado" genérico.
+          favoritesActive && !sp.q && brands.length === 0 && soles.length === 0 && fulfillments.length === 0 ? (
+            <EmptyState
+              icon="search"
+              title="Nenhum favorito encontrado"
+              description="Os produtos que você favoritou não estão mais disponíveis nesta loja."
+            />
+          ) : (
+            <EmptyState
+              icon="search"
+              title="Nenhum produto com esses filtros"
+              description="Tente remover algum filtro ou buscar outro termo."
+              action={<ClearFiltersButton slug={slug} accentColor={store.accent_color ?? "#000000"} />}
+            />
+          )
         ) : hasAnyPublished ? (
           // Sem filtro ativo e sem resultado: a loja publicou produtos, mas
           // todos estão esgotados e ocultos pela regra de visibilidade —

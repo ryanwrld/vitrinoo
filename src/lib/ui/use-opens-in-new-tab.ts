@@ -3,12 +3,11 @@
 import { useSyncExternalStore } from "react";
 
 /**
- * Extraído de `product-order-panel.tsx` (T-05-11) — agora reusado também
- * pela barra "Pedir tudo" da aba Favoritos (`favorites-view.tsx`), mesmo CTA
- * de WhatsApp, mesma regra. Duplicar esta lógica por cópia manual arriscaria
- * as duas cópias divergirem silenciosamente (ex.: alguém ajusta o breakpoint
- * num lugar e esquece do outro) — extração comum de verdade, não abstração
- * prematura.
+ * Extraído de `product-order-panel.tsx` (T-05-11), único consumidor atual —
+ * mantido como hook à parte (não inline no componente) porque a mesma regra
+ * de "aba nova só em desktop com mouse" se aplica a qualquer CTA de WhatsApp
+ * futuro na vitrine, sem arriscar duas cópias divergirem silenciosamente
+ * (ex.: alguém ajusta o breakpoint num lugar e esquece do outro).
  *
  * Aparelho com mouse e tela larga é a ÚNICA situação em que abrir o WhatsApp
  * numa aba NOVA é melhor que na mesma aba: `pointer: fine` é o teste que

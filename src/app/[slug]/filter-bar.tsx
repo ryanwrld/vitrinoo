@@ -18,6 +18,9 @@ export type FilterBarParams = {
   sole: string[];
   fulfillment: string[];
   sort: string;
+  /** Ids favoritados ativos como filtro (`?ids=`) — ver comentário do toggle
+   *  "Favoritos" abaixo. */
+  ids: string[];
 };
 
 export type FilterBarProps = {
@@ -62,23 +65,22 @@ export function FilterBar({ slug, currentParams, brandFacets, accentColor, resul
   const { ids: favoriteIds, count: favoritesCount } = useFavorites(slug);
 
   /**
-   * Toggle "Favoritos" (Nível 2 do roadmap de valor) — NÃO é um filtro como
-   * os outros (brand/sole/fulfillment): ele troca a página inteira pra
-   * `?ids=<favoritos>`, que o Server Component (page.tsx) trata como um modo
-   * de exibição à parte (favorites-view.tsx), não como mais um `.in()` na
-   * mesma query. Por isso não passa por `navigate()`/`currentParams` — os
-   * dois modos são mutuamente exclusivos de propósito.
+   * Toggle "Favoritos" (Nível 2 do roadmap de valor) — filtro combinável
+   * como qualquer outro (brand/sole/fulfillment): entra em `?ids=` via
+   * `navigate()`, na MESMA query paginada de queryPublicProducts
+   * (public-list.ts), preservando busca/marca/tipo de campo/entrega/ordenar
+   * já ativos. NÃO troca de página/modo de exibição.
    */
   function handleFavoritesToggle() {
     if (favoritesActive) {
-      router.push(`/${slug}`, { scroll: false });
+      navigate({ ids: [] });
       return;
     }
     if (favoriteIds.length === 0) {
       toast.error("Você ainda não favoritou nenhum produto.");
       return;
     }
-    router.push(`/${slug}?ids=${favoriteIds.join(",")}`, { scroll: false });
+    navigate({ ids: favoriteIds });
   }
 
   useEffect(() => {
@@ -109,6 +111,7 @@ export function FilterBar({ slug, currentParams, brandFacets, accentColor, resul
     (merged.brand ?? []).forEach((value) => search.append("brand", value));
     (merged.sole ?? []).forEach((value) => search.append("sole", value));
     (merged.fulfillment ?? []).forEach((value) => search.append("fulfillment", value));
+    if ((merged.ids ?? []).length > 0) search.set("ids", merged.ids.join(","));
     // Ordenação padrão não suja a URL — `/loja` e `/loja?sort=recentes` são
     // a mesma coisa, e o link que o revendedor compartilha fica limpo.
     if (merged.sort && merged.sort !== DEFAULT_SORT) search.set("sort", merged.sort);
@@ -189,11 +192,11 @@ export function FilterBar({ slug, currentParams, brandFacets, accentColor, resul
             mesma linha, com a busca elástica; abaixo disso a busca ocupa a
             largura toda e os dropdowns viram uma faixa rolável.
 
-            O toggle "Favoritos" fica FORA desse par — sempre visível, os
-            dois modos (catálogo filtrado x lista de favoritos) são
-            mutuamente exclusivos, então busca/marca/solado/entrega/ordenar
-            somem quando ele está ativo (não fazem sentido sobre uma lista
-            que já não vem do `.range()` paginado). */}
+            O toggle "Favoritos" fica FORA desse par, à esquerda — mas é UM
+            FILTRO como os outros (busca/marca/solado/entrega/ordenar ficam
+            visíveis e funcionais com ele ativo, e combinam livremente: dá
+            pra buscar/filtrar DENTRO dos favoritos, igual a qualquer chip de
+            marca ou entrega). */}
         {/* `items-start`, não `items-center`: abaixo de `md` a busca e a
             faixa de dropdowns empilham em 2 linhas dentro do wrapper
             flex-1 (ver comentário abaixo), e centralizar o pill "Favoritos"
@@ -227,109 +230,105 @@ export function FilterBar({ slug, currentParams, brandFacets, accentColor, resul
             )}
           </button>
 
-          {!favoritesActive && (
-            <div className="flex flex-1 flex-col gap-2.5 md:flex-row md:items-center md:gap-3">
-              <div className="flex min-h-11 items-center gap-2.5 rounded-full border border-gray-300 bg-white px-4 transition-colors duration-150 focus-within:border-gray-900 md:flex-1">
-                <Search className="h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
-                <input
-                  type="search"
-                  value={searchInput}
-                  onChange={(event) => setSearchInput(event.target.value)}
-                  placeholder="Buscar por nome…"
-                  aria-label="Buscar produtos por nome"
-                  /* `text-base` (16px) não é escolha estética: abaixo disso o
-                     Safari no iOS dá zoom automático ao focar o campo e
-                     desmonta o layout da vitrine. */
-                  className="w-full bg-transparent py-2 text-base text-gray-900 outline-none placeholder:text-gray-400 [&::-webkit-search-cancel-button]:hidden"
-                />
-                {searchInput && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchInput("")}
-                    aria-label="Limpar busca"
-                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-700"
-                  >
-                    <X className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                )}
-              </div>
+          <div className="flex flex-1 flex-col gap-2.5 md:flex-row md:items-center md:gap-3">
+            <div className="flex min-h-11 items-center gap-2.5 rounded-full border border-gray-300 bg-white px-4 transition-colors duration-150 focus-within:border-gray-900 md:flex-1">
+              <Search className="h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
+              <input
+                type="search"
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
+                placeholder="Buscar por nome…"
+                aria-label="Buscar produtos por nome"
+                /* `text-base` (16px) não é escolha estética: abaixo disso o
+                   Safari no iOS dá zoom automático ao focar o campo e
+                   desmonta o layout da vitrine. */
+                className="w-full bg-transparent py-2 text-base text-gray-900 outline-none placeholder:text-gray-400 [&::-webkit-search-cancel-button]:hidden"
+              />
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={() => setSearchInput("")}
+                  aria-label="Limpar busca"
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-700"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
+              )}
+            </div>
 
-              {/* `-mx-4 px-4` devolve o sangramento até a borda da tela: sem
-                  isso, o último dropdown some sob o padding e o cliente não
-                  percebe que a faixa rola. `[scrollbar-width:none]` esconde a
-                  barra no desktop, onde ela não some sozinha. */}
-              <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] md:mx-0 md:overflow-visible md:px-0 md:pb-0 [&::-webkit-scrollbar]:hidden">
-                {brandOptions.length > 0 && (
+            {/* `-mx-4 px-4` devolve o sangramento até a borda da tela: sem
+                isso, o último dropdown some sob o padding e o cliente não
+                percebe que a faixa rola. `[scrollbar-width:none]` esconde a
+                barra no desktop, onde ela não some sozinha. */}
+            <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] md:mx-0 md:overflow-visible md:px-0 md:pb-0 [&::-webkit-scrollbar]:hidden">
+              {brandOptions.length > 0 && (
+                <FilterDropdown
+                  label="Marca"
+                  options={brandOptions}
+                  selected={currentParams.brand}
+                  onToggle={(value) => toggleMulti("brand", value)}
+                  onClear={() => navigate({ brand: [] })}
+                  multiple
+                  accentColor={accentColor}
+                />
+              )}
+
               <FilterDropdown
-                label="Marca"
-                options={brandOptions}
-                selected={currentParams.brand}
-                onToggle={(value) => toggleMulti("brand", value)}
-                onClear={() => navigate({ brand: [] })}
+                label="Tipo de campo"
+                options={soleOptions}
+                selected={currentParams.sole}
+                onToggle={(value) => toggleMulti("sole", value)}
+                onClear={() => navigate({ sole: [] })}
                 multiple
                 accentColor={accentColor}
               />
-            )}
 
-            <FilterDropdown
-              label="Tipo de campo"
-              options={soleOptions}
-              selected={currentParams.sole}
-              onToggle={(value) => toggleMulti("sole", value)}
-              onClear={() => navigate({ sole: [] })}
-              multiple
-              accentColor={accentColor}
-            />
+              <FilterDropdown
+                label="Entrega"
+                options={fulfillmentOptions}
+                selected={currentParams.fulfillment}
+                onToggle={(value) => toggleMulti("fulfillment", value)}
+                onClear={() => navigate({ fulfillment: [] })}
+                multiple
+                accentColor={accentColor}
+              />
 
-            <FilterDropdown
-              label="Entrega"
-              options={fulfillmentOptions}
-              selected={currentParams.fulfillment}
-              onToggle={(value) => toggleMulti("fulfillment", value)}
-              onClear={() => navigate({ fulfillment: [] })}
-              multiple
-              accentColor={accentColor}
-            />
+              {/* Separador visual: ordenar não é filtro, e agrupá-lo junto
+                  sugeriria que também limita o resultado. Só no desktop, onde
+                  há espaço horizontal para a distinção ser lida. */}
+              <span className="hidden h-6 w-px shrink-0 bg-gray-200 md:block" aria-hidden="true" />
 
-            {/* Separador visual: ordenar não é filtro, e agrupá-lo junto
-                sugeriria que também limita o resultado. Só no desktop, onde
-                há espaço horizontal para a distinção ser lida. */}
-            <span className="hidden h-6 w-px shrink-0 bg-gray-200 md:block" aria-hidden="true" />
-
-            <FilterDropdown
-              label="Ordenar"
-              options={SORT_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
-              selected={currentParams.sort !== DEFAULT_SORT ? [currentParams.sort] : []}
-              onToggle={(value) => navigate({ sort: value })}
-              onClear={() => navigate({ sort: DEFAULT_SORT })}
-              multiple={false}
-              accentColor={accentColor}
-              triggerVariant="icon"
-              triggerIcon={ArrowDownWideNarrow}
-            />
-              </div>
+              <FilterDropdown
+                label="Ordenar"
+                options={SORT_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+                selected={currentParams.sort !== DEFAULT_SORT ? [currentParams.sort] : []}
+                onToggle={(value) => navigate({ sort: value })}
+                onClear={() => navigate({ sort: DEFAULT_SORT })}
+                multiple={false}
+                accentColor={accentColor}
+                triggerVariant="icon"
+                triggerIcon={ArrowDownWideNarrow}
+              />
             </div>
-          )}
+          </div>
         </div>
       </div>
 
-      {!favoritesActive && (
-        <div className="flex flex-col gap-2.5">
-          <ActiveFilters chips={activeChips} onRemove={removeChip} onClearAll={clearAll} />
+      <div className="flex flex-col gap-2.5">
+        <ActiveFilters chips={activeChips} onRemove={removeChip} onClearAll={clearAll} />
 
-          {/* `aria-live` para leitor de tela anunciar a mudança de resultado —
-              sem isso, quem não enxerga a tela filtra e não recebe retorno
-              nenhum. Mostra o que ESTÁ renderizado, nunca um total prometido:
-              a regra de esconder esgotado roda em memória depois da
-              paginação (ver isVisible em public-list.ts), então uma contagem
-              do banco mentiria para mais. */}
-          {resultCount > 0 && (
-            <p aria-live="polite" className="text-sm text-gray-500">
-              {resultCount} {resultCount === 1 ? "produto" : "produtos"}
-            </p>
-          )}
-        </div>
-      )}
+        {/* `aria-live` para leitor de tela anunciar a mudança de resultado —
+            sem isso, quem não enxerga a tela filtra e não recebe retorno
+            nenhum. Mostra o que ESTÁ renderizado, nunca um total prometido:
+            a regra de esconder esgotado roda em memória depois da
+            paginação (ver isVisible em public-list.ts), então uma contagem
+            do banco mentiria para mais. */}
+        {resultCount > 0 && (
+          <p aria-live="polite" className="text-sm text-gray-500">
+            {resultCount} {resultCount === 1 ? "produto" : "produtos"}
+          </p>
+        )}
+      </div>
     </>
   );
 }

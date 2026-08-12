@@ -54,6 +54,7 @@ export function LoadMoreButton({ slug, initialPage, initialHasMore, filters }: L
   (filters.brand ?? []).forEach((value) => query.append("brand", value));
   (filters.sole ?? []).forEach((value) => query.append("sole", value));
   (filters.fulfillment ?? []).forEach((value) => query.append("fulfillment", value));
+  if (filters.favoriteIds && filters.favoriteIds.length > 0) query.set("ids", filters.favoriteIds.join(","));
   if (filters.sort && filters.sort !== DEFAULT_SORT) query.set("sort", filters.sort);
   const queryString = query.toString();
 

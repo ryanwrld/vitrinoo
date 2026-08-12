@@ -189,25 +189,7 @@ export function ProductForm({ defaultValues, productId, status, initialPhotos }:
 
   return (
     <>
-      {/*
-        `xl:grid` (não `lg:`, medido ao vivo: a 1024px o vão já não sobra —
-        ver product-form.tsx histórico) — abaixo de 1280px é `flex-col`
-        normal e o painel de Fotos entra no meio do fluxo, na MESMA posição
-        visual de sempre (depois de Tamanhos, antes de Descrição), porque a
-        ordem no grid abaixo é só de DOM: coluna 1 parte A, Fotos, coluna 1
-        parte B, botões. A partir de `xl`, cada bloco recebe sua célula
-        (`xl:col-start`/`xl:row-start`) e Fotos vira uma coluna à direita que
-        cobre as 3 linhas da esquerda (`xl:row-span-3`) — é isso que permite
-        `xl:sticky` funcionar: o item some da coluna 1 e a célula dele na
-        coluna 2 fica alta o bastante pra grudar durante todo o scroll do
-        formulário, não só na altura de um card.
-      */}
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        noValidate
-        className="flex w-full flex-col gap-6 xl:grid xl:grid-cols-[minmax(0,48rem)_1fr] xl:items-start xl:gap-x-8 xl:gap-y-6"
-      >
-        <div className="flex flex-col gap-6 xl:col-start-1 xl:row-start-1">
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex w-full flex-col gap-6">
         <div className="flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
           <h2 className="font-display font-bold text-gray-900 dark:text-gray-50">Identificação</h2>
 
@@ -390,16 +372,13 @@ export function ProductForm({ defaultValues, productId, status, initialPhotos }:
       </div>
 
       <SizeGrid control={control} productId={productId} />
-      </div>
 
       <PhotoUploader
         productId={productId}
         initialPhotos={initialPhotos}
         onPendingFilesChange={setPendingPhotoFiles}
-        className="xl:col-start-2 xl:row-start-1 xl:row-span-3 xl:sticky xl:top-6 xl:self-start"
       />
 
-      <div className="flex flex-col gap-6 xl:col-start-1 xl:row-start-2">
       <div className="flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
         <h2 className="font-display font-bold text-gray-900 dark:text-gray-50">Descrição</h2>
 
@@ -418,7 +397,6 @@ export function ProductForm({ defaultValues, productId, status, initialPhotos }:
           )}
         </div>
       </div>
-      </div>
 
       {/*
         Três combinações (D-10, revisado): produto novo ou rascunho em edição
@@ -427,7 +405,7 @@ export function ProductForm({ defaultValues, productId, status, initialPhotos }:
         publicado tem uma única ação primária de salvar, com "Voltar para
         rascunho" como saída secundária de baixo risco (T-03-12).
       */}
-      <div className="flex flex-col gap-3 sm:flex-row xl:col-start-1 xl:row-start-3">
+      <div className="flex flex-col gap-3 sm:flex-row">
         {currentStatus === "published" ? (
           <>
             <button

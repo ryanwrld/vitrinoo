@@ -32,6 +32,14 @@ export type QueryPublicProductsParams = {
   sole?: string[];
   fulfillment?: string[];
   sort?: string;
+  /** Filtro "Favoritos" (ids do localStorage do comprador, ver
+   *  favorite-button.tsx) — combina com os demais filtros via `.in("id", …)`
+   *  em vez de trocar para uma consulta/página à parte. Produto favoritado
+   *  que ficou esgotado é a ÚNICA exceção à regra de visibilidade abaixo
+   *  (decisão do usuário): continua aparecendo mesmo com "ocultar esgotados"
+   *  ativo, pra não sumir sem explicação da lista que o comprador já
+   *  favoritou. */
+  favoriteIds?: string[];
 };
 
 const VALID_BRANDS = new Set<string>(BRANDS);
@@ -152,6 +160,10 @@ export async function queryPublicProducts(
     query = query.ilike("name", `%${params.q}%`);
   }
 
+  if (params.favoriteIds && params.favoriteIds.length > 0) {
+    query = query.in("id", params.favoriteIds);
+  }
+
   // Desempate por created_at em toda ordenação de preço: dois produtos com o
   // mesmo preço teriam ordem indefinida entre páginas, o que faz um item
   // repetir ou sumir no "carregar mais".
@@ -199,8 +211,11 @@ export async function queryPublicProducts(
   // Filtra sobre os produtos CRUS (com hide_when_sold_out) antes de montar o
   // shape público — nunca expõe hide_when_sold_out na UI (product-card.tsx
   // nunca recebe esse campo), e a regra fica resolvida em um único lugar.
-  const visibleProducts = products.filter((product) =>
-    isVisible(product.hide_when_sold_out, availableProductIds.has(product.id), storeHideSoldOutDefault)
+  const favoriteIdSet = new Set(params.favoriteIds ?? []);
+  const visibleProducts = products.filter(
+    (product) =>
+      favoriteIdSet.has(product.id) ||
+      isVisible(product.hide_when_sold_out, availableProductIds.has(product.id), storeHideSoldOutDefault)
   );
 
   const mappedProducts: PublicProduct[] = visibleProducts.map((product) => ({

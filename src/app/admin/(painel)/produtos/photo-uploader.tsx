@@ -15,33 +15,23 @@ import {
 import {
   SortableContext,
   arrayMove,
-  verticalListSortingStrategy,
+  horizontalListSortingStrategy,
   sortableKeyboardCoordinates,
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { PhotoPreview } from "./photo-preview";
 import { Plus, X, GripVertical, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { addProductPhotos, updatePhotoOrder, removePhoto } from "@/lib/products/actions";
 
 /**
- * Painel de fotos do produto (até 5, D-11–D-13, PROD-03). Fixo/sticky ao lado
- * do formulário em telas largas (product-form.tsx cuida do posicionamento via
- * `className`), empilhado como mais uma seção em telas estreitas.
- *
- * Lista VERTICAL (não um hero + tira de miniaturas): a coluna lateral é alta
- * e estreita, e uma foto grande "hero" forçada a preencher essa altura toda
- * ou vira letterboxing (contain, sobra vão) ou corta a foto de um jeito
- * estranho (cover numa proporção retrato extrema). Uma lista vertical cresce
- * NATURALMENTE com a altura disponível (mais fotos = coluna mais alta, do
- * mesmo jeito que o formulário fica mais alto com mais tamanhos/descrição) e
- * cada foto já aparece grande o bastante pra examinar — não tem "selecionar
- * qual foto ver", todas ficam visíveis ao mesmo tempo. Isso também elimina a
- * distinção entre "grade de upload" e "tira de preview" que existia antes:
- * um único cartão por foto já reordena (arrastar), remove (X), marca capa
- * (badge na primeira) e mostra a foto inteira, sem esconder nem cortar nada
- * relevante.
+ * Uploader de até 5 fotos por produto (D-11–D-13, PROD-03,
+ * 03-UI-SPEC.md §Photo uploader). Compressão client-side via
+ * `browser-image-compression` (Web Worker, correção EXIF automática —
+ * Pitfall 4/A1 de 03-RESEARCH.md: NUNCA reprocessar orientação em outra
+ * camada) e reordenação touch-friendly via `@dnd-kit/sortable`.
  *
  * Dois modos, mesma UI:
  * - **Criação** (sem `productId`): fotos comprimidas ficam como File[] em
@@ -66,7 +56,7 @@ export type PhotoUploaderProps = {
   productId?: string;
   initialPhotos?: SavedPhoto[];
   onPendingFilesChange?: (files: File[]) => void;
-  className?: string;
+  onClickPhoto?: (url: string | null) => void;
 };
 
 function slotKey(slot: Slot): string {
@@ -116,10 +106,11 @@ async function refreshSavedPhotos(productId: string): Promise<SavedPhoto[]> {
   }));
 }
 
-export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange, className }: PhotoUploaderProps) {
+export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange }: PhotoUploaderProps) {
   const [slots, setSlots] = useState<Slot[]>(() =>
     (initialPhotos ?? []).map((photo) => ({ kind: "saved" as const, id: photo.id, url: photo.url }))
   );
+  const [activePhotoIndex, setActivePhotoIndex] = useState<number | null>(null);
   const [processingCount, setProcessingCount] = useState(0);
   const [, startBackgroundTransition] = useTransition();
 
@@ -128,7 +119,7 @@ export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange, 
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  const canAddMore = slots.length + processingCount < MAX_PHOTOS;
+  const emptySlotCount = Math.max(0, MAX_PHOTOS - slots.length - processingCount);
 
   // Notifica o form pai (modo criação) DEPOIS do commit, nunca de dentro do
   // updater de `setSlots` — chamar o setState do pai ali dentro disparava
@@ -251,19 +242,21 @@ export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange, 
   }
 
   return (
-    <div
-      className={`flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 ${className ?? ""}`}
-    >
-      <div>
-        <h2 className="font-display font-bold text-gray-900 dark:text-gray-50">Fotos</h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400">Até 5 fotos. A primeira é a capa da sua vitrine.</p>
-      </div>
+    <div className="flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+      <h2 className="font-display font-bold text-gray-900 dark:text-gray-50">Fotos</h2>
+      <p className="text-xs text-gray-500 dark:text-gray-400">Até 5 fotos. A primeira é a capa da sua vitrine.</p>
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={slots.map(slotKey)} strategy={verticalListSortingStrategy}>
-          <div className="flex flex-col gap-3">
+        <SortableContext items={slots.map(slotKey)} strategy={horizontalListSortingStrategy}>
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
             {slots.map((slot, index) => (
-              <PhotoListItem key={slotKey(slot)} slot={slot} isCover={index === 0} onRemove={() => handleRemove(slot)} />
+              <PhotoSlotItem
+                key={slotKey(slot)}
+                slot={slot}
+                isCover={index === 0}
+                onRemove={() => handleRemove(slot)}
+                onClickPhoto={() => setActivePhotoIndex(index)}
+              />
             ))}
 
             {Array.from({ length: processingCount }).map((_, index) => (
@@ -278,38 +271,43 @@ export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange, 
               </div>
             ))}
 
-            {canAddMore && (
+            {Array.from({ length: emptySlotCount }).map((_, index) => (
               <label
-                className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-gray-300 text-gray-400 dark:border-gray-700 dark:text-gray-600 ${
-                  slots.length === 0 ? "aspect-square" : "py-6"
-                }`}
+                key={`empty-${index}`}
+                className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-gray-300 text-gray-400 dark:border-gray-700 dark:text-gray-600"
               >
                 <Plus className="h-5 w-5" aria-hidden="true" />
                 <span className="text-xs">Adicionar foto</span>
                 <input type="file" multiple accept={ACCEPTED_TYPES} className="sr-only" onChange={handleFilesSelected} />
               </label>
-            )}
+            ))}
           </div>
         </SortableContext>
       </DndContext>
+
+      <PhotoPreview
+        urls={slots.map((s) => (s.kind === "saved" ? s.url : s.previewUrl))}
+        activeIndex={activePhotoIndex}
+        onChange={setActivePhotoIndex}
+        onClose={() => setActivePhotoIndex(null)}
+      />
     </div>
   );
 }
 
-type PhotoListItemProps = {
+type PhotoSlotItemProps = {
   slot: Slot;
   isCover: boolean;
   onRemove: () => void;
+  onClickPhoto?: () => void;
 };
 
 /**
- * Cartão de foto em largura total (não mais uma miniatura pequena numa
- * grade) — os alvos de toque de 44px de reordenar/remover ficam nos cantos
- * de um cartão bem maior agora, então não há mais risco de eles se
- * sobrepor ao centro clicável (bug encontrado e corrigido na versão anterior
- * deste componente, com a grade de miniaturas estreita).
+ * Slot preenchido (empty/uploading vêm de PhotoUploader diretamente).
+ * `useSortable` só participa da grade quando o slot está preenchido — slots
+ * vazios não são drop targets (03-UI-SPEC.md §Photo uploader).
  */
-function PhotoListItem({ slot, isCover, onRemove }: PhotoListItemProps) {
+function PhotoSlotItem({ slot, isCover, onRemove, onClickPhoto }: PhotoSlotItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: slotKey(slot) });
 
   const style = {
@@ -321,28 +319,35 @@ function PhotoListItem({ slot, isCover, onRemove }: PhotoListItemProps) {
     <div
       ref={setNodeRef}
       style={style}
-      className={`relative aspect-square w-full overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800 ${isDragging ? "opacity-50" : ""}`}
+      onClick={onClickPhoto}
+      className={`relative aspect-square cursor-pointer overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800 ${isDragging ? "opacity-50" : ""}`}
     >
       {slot.kind === "saved" ? (
-        <Image src={slot.url} alt="" fill sizes="(min-width: 1280px) 33vw, 90vw" className="object-cover" />
+        <Image src={slot.url} alt="" fill sizes="20vw" className="object-cover" />
       ) : (
         // eslint-disable-next-line @next/next/no-img-element -- preview de object URL local (blob:), next/image não serve esse esquema
         <img src={slot.previewUrl} alt="" className="h-full w-full object-cover" />
       )}
 
       {isCover && (
-        <span className="absolute left-2 top-2 rounded-full bg-primary px-2 py-0.5 text-xs text-white">Capa</span>
+        <span className="absolute left-1 top-1 rounded-full bg-primary px-2 py-0.5 text-xs text-white">Capa</span>
       )}
 
+      {/*
+        Área de toque (botão) mantém 44x44px cheio — mínimo recomendado para
+        alvo tocável no mobile — mas o círculo VISÍVEL dentro dela é bem menor,
+        para não tampar a miniatura da foto. Sombra + leve zoom no hover dá um
+        alvo preciso e discreto pro usuário de mouse/desktop também.
+      */}
       <button
         type="button"
         {...attributes}
         {...listeners}
         aria-label="Reordenar foto"
-        className="group absolute bottom-1 left-1 flex h-11 w-11 items-center justify-center"
+        className="group absolute bottom-0 left-0 flex h-11 w-11 items-center justify-center"
       >
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-gray-900 shadow-sm transition group-hover:scale-110 group-hover:bg-white dark:bg-gray-800/90 dark:text-gray-50 dark:group-hover:bg-gray-800">
-          <GripVertical className="h-3.5 w-3.5" aria-hidden="true" />
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/85 text-gray-900 shadow-sm transition group-hover:scale-110 group-hover:bg-white dark:bg-gray-800/85 dark:text-gray-50 dark:group-hover:bg-gray-800">
+          <GripVertical className="h-3 w-3" aria-hidden="true" />
         </span>
       </button>
 
@@ -350,10 +355,10 @@ function PhotoListItem({ slot, isCover, onRemove }: PhotoListItemProps) {
         type="button"
         onClick={onRemove}
         aria-label="Remover foto"
-        className="group absolute right-1 top-1 flex h-11 w-11 items-center justify-center"
+        className="group absolute right-0 top-0 flex h-11 w-11 items-center justify-center"
       >
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-error-solid shadow-sm transition group-hover:scale-110 group-hover:bg-white dark:bg-gray-800/90 dark:group-hover:bg-gray-800">
-          <X className="h-3.5 w-3.5" aria-hidden="true" />
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/85 text-error-solid shadow-sm transition group-hover:scale-110 group-hover:bg-white dark:bg-gray-800/85 dark:group-hover:bg-gray-800">
+          <X className="h-3 w-3" aria-hidden="true" />
         </span>
       </button>
     </div>
