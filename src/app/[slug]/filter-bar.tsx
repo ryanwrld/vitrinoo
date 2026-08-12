@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowDownWideNarrow, Search, X } from "lucide-react";
+import { ArrowDownWideNarrow, Heart, Search, X } from "lucide-react";
 import clsx from "clsx";
+import { toast } from "sonner";
 import { useDebouncedValue } from "@/lib/hooks/use-debounce";
 import { SOLES, SOLE_LABELS, PUBLIC_FULFILLMENTS, SORT_OPTIONS, DEFAULT_SORT } from "@/lib/products/constants";
 import type { BrandFacet } from "@/lib/products/public-facets";
+import { useFavorites } from "@/lib/favorites/use-favorites";
 import { FilterDropdown, type DropdownOption } from "./filter-dropdown";
 import { ActiveFilters, type ActiveFilterChip } from "./active-filters";
 
@@ -26,6 +28,8 @@ export type FilterBarProps = {
   accentColor: string;
   /** Quantidade de produtos renderizados na página atual. */
   resultCount: number;
+  /** `true` quando `?ids=...` está presente — a aba Favoritos está ativa. */
+  favoritesActive: boolean;
 };
 
 /**
@@ -49,12 +53,33 @@ export type FilterBarProps = {
  * modal aberto deve mostrar o resultado novo, não manter o produto anterior
  * por cima dele.
  */
-export function FilterBar({ slug, currentParams, brandFacets, accentColor, resultCount }: FilterBarProps) {
+export function FilterBar({ slug, currentParams, brandFacets, accentColor, resultCount, favoritesActive }: FilterBarProps) {
   const router = useRouter();
   const [searchInput, setSearchInput] = useState(currentParams.q ?? "");
   const debouncedSearch = useDebouncedValue(searchInput, 400);
   const [stuck, setStuck] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const { ids: favoriteIds, count: favoritesCount } = useFavorites(slug);
+
+  /**
+   * Toggle "Favoritos" (Nível 2 do roadmap de valor) — NÃO é um filtro como
+   * os outros (brand/sole/fulfillment): ele troca a página inteira pra
+   * `?ids=<favoritos>`, que o Server Component (page.tsx) trata como um modo
+   * de exibição à parte (favorites-view.tsx), não como mais um `.in()` na
+   * mesma query. Por isso não passa por `navigate()`/`currentParams` — os
+   * dois modos são mutuamente exclusivos de propósito.
+   */
+  function handleFavoritesToggle() {
+    if (favoritesActive) {
+      router.push(`/${slug}`, { scroll: false });
+      return;
+    }
+    if (favoriteIds.length === 0) {
+      toast.error("Você ainda não favoritou nenhum produto.");
+      return;
+    }
+    router.push(`/${slug}?ids=${favoriteIds.join(",")}`, { scroll: false });
+  }
 
   useEffect(() => {
     const currentQ = currentParams.q ?? "";
@@ -156,45 +181,85 @@ export function FilterBar({ slug, currentParams, brandFacets, accentColor, resul
 
       <div
         className={clsx(
-          "sticky top-0 z-30 -mx-4 flex flex-col gap-3 bg-white px-4 py-3 transition-shadow duration-200 sm:-mx-6 sm:px-6",
+          "sticky top-0 z-30 -mx-4 flex flex-col gap-3 bg-white px-4 py-3 transition-shadow duration-200 sm:-mx-6 sm:px-6 md:-mx-12 md:px-12 lg:-mx-20 lg:px-20 xl:-mx-24 xl:px-24 2xl:-mx-28 2xl:px-28",
           stuck && "shadow-[0_1px_0_0_rgb(0_0_0/0.06),0_4px_12px_-4px_rgb(0_0_0/0.08)]"
         )}
       >
         {/* Linha de controles. No desktop (md+) busca e dropdowns dividem a
             mesma linha, com a busca elástica; abaixo disso a busca ocupa a
-            largura toda e os dropdowns viram uma faixa rolável. */}
-        <div className="flex flex-col gap-2.5 md:flex-row md:items-center md:gap-3">
-          <div className="flex min-h-11 items-center gap-2.5 rounded-full border border-gray-300 bg-white px-4 transition-colors duration-150 focus-within:border-gray-900 md:flex-1">
-            <Search className="h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
-            <input
-              type="search"
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-              placeholder="Buscar por nome…"
-              aria-label="Buscar produtos por nome"
-              /* `text-base` (16px) não é escolha estética: abaixo disso o
-                 Safari no iOS dá zoom automático ao focar o campo e
-                 desmonta o layout da vitrine. */
-              className="w-full bg-transparent py-2 text-base text-gray-900 outline-none placeholder:text-gray-400 [&::-webkit-search-cancel-button]:hidden"
-            />
-            {searchInput && (
-              <button
-                type="button"
-                onClick={() => setSearchInput("")}
-                aria-label="Limpar busca"
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-700"
-              >
-                <X className="h-4 w-4" aria-hidden="true" />
-              </button>
-            )}
-          </div>
+            largura toda e os dropdowns viram uma faixa rolável.
 
-          {/* `-mx-4 px-4` devolve o sangramento até a borda da tela: sem
-              isso, o último dropdown some sob o padding e o cliente não
-              percebe que a faixa rola. `[scrollbar-width:none]` esconde a
-              barra no desktop, onde ela não some sozinha. */}
-          <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] md:mx-0 md:overflow-visible md:px-0 md:pb-0 [&::-webkit-scrollbar]:hidden">
-            {brandOptions.length > 0 && (
+            O toggle "Favoritos" fica FORA desse par — sempre visível, os
+            dois modos (catálogo filtrado x lista de favoritos) são
+            mutuamente exclusivos, então busca/marca/solado/entrega/ordenar
+            somem quando ele está ativo (não fazem sentido sobre uma lista
+            que já não vem do `.range()` paginado). */}
+        {/* `items-start`, não `items-center`: abaixo de `md` a busca e a
+            faixa de dropdowns empilham em 2 linhas dentro do wrapper
+            flex-1 (ver comentário abaixo), e centralizar o pill "Favoritos"
+            contra a altura combinada das duas linhas o deixava flutuando no
+            meio do vão entre elas — nem alinhado com a busca, nem com os
+            filtros. A partir de `md` busca+filtros voltam a ser UMA linha só
+            da mesma altura do pill, então não muda nada aí. */}
+        <div className="flex items-start gap-2.5 md:items-center md:gap-3">
+          <button
+            type="button"
+            onClick={handleFavoritesToggle}
+            aria-pressed={favoritesActive}
+            aria-label={favoritesActive ? "Voltar ao catálogo" : "Ver favoritos"}
+            style={favoritesActive ? { backgroundColor: accentColor, borderColor: accentColor } : undefined}
+            className={clsx(
+              "flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2",
+              favoritesActive ? "text-white" : "border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50"
+            )}
+          >
+            <Heart className={clsx("h-4 w-4 shrink-0", favoritesCount > 0 && !favoritesActive && "fill-red-500 text-red-500")} aria-hidden="true" />
+            <span className="hidden sm:inline">Favoritos</span>
+            {favoritesCount > 0 && (
+              <span
+                className={clsx(
+                  "flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs font-bold tabular-nums",
+                  favoritesActive ? "bg-white/25 text-white" : "bg-gray-100 text-gray-700"
+                )}
+              >
+                {favoritesCount}
+              </span>
+            )}
+          </button>
+
+          {!favoritesActive && (
+            <div className="flex flex-1 flex-col gap-2.5 md:flex-row md:items-center md:gap-3">
+              <div className="flex min-h-11 items-center gap-2.5 rounded-full border border-gray-300 bg-white px-4 transition-colors duration-150 focus-within:border-gray-900 md:flex-1">
+                <Search className="h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
+                <input
+                  type="search"
+                  value={searchInput}
+                  onChange={(event) => setSearchInput(event.target.value)}
+                  placeholder="Buscar por nome…"
+                  aria-label="Buscar produtos por nome"
+                  /* `text-base` (16px) não é escolha estética: abaixo disso o
+                     Safari no iOS dá zoom automático ao focar o campo e
+                     desmonta o layout da vitrine. */
+                  className="w-full bg-transparent py-2 text-base text-gray-900 outline-none placeholder:text-gray-400 [&::-webkit-search-cancel-button]:hidden"
+                />
+                {searchInput && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchInput("")}
+                    aria-label="Limpar busca"
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-700"
+                  >
+                    <X className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                )}
+              </div>
+
+              {/* `-mx-4 px-4` devolve o sangramento até a borda da tela: sem
+                  isso, o último dropdown some sob o padding e o cliente não
+                  percebe que a faixa rola. `[scrollbar-width:none]` esconde a
+                  barra no desktop, onde ela não some sozinha. */}
+              <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] md:mx-0 md:overflow-visible md:px-0 md:pb-0 [&::-webkit-scrollbar]:hidden">
+                {brandOptions.length > 0 && (
               <FilterDropdown
                 label="Marca"
                 options={brandOptions}
@@ -242,25 +307,29 @@ export function FilterBar({ slug, currentParams, brandFacets, accentColor, resul
               triggerVariant="icon"
               triggerIcon={ArrowDownWideNarrow}
             />
-          </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="flex flex-col gap-2.5">
-        <ActiveFilters chips={activeChips} onRemove={removeChip} onClearAll={clearAll} />
+      {!favoritesActive && (
+        <div className="flex flex-col gap-2.5">
+          <ActiveFilters chips={activeChips} onRemove={removeChip} onClearAll={clearAll} />
 
-        {/* `aria-live` para leitor de tela anunciar a mudança de resultado —
-            sem isso, quem não enxerga a tela filtra e não recebe retorno
-            nenhum. Mostra o que ESTÁ renderizado, nunca um total prometido:
-            a regra de esconder esgotado roda em memória depois da
-            paginação (ver isVisible em public-list.ts), então uma contagem
-            do banco mentiria para mais. */}
-        {resultCount > 0 && (
-          <p aria-live="polite" className="text-sm text-gray-500">
-            {resultCount} {resultCount === 1 ? "produto" : "produtos"}
-          </p>
-        )}
-      </div>
+          {/* `aria-live` para leitor de tela anunciar a mudança de resultado —
+              sem isso, quem não enxerga a tela filtra e não recebe retorno
+              nenhum. Mostra o que ESTÁ renderizado, nunca um total prometido:
+              a regra de esconder esgotado roda em memória depois da
+              paginação (ver isVisible em public-list.ts), então uma contagem
+              do banco mentiria para mais. */}
+          {resultCount > 0 && (
+            <p aria-live="polite" className="text-sm text-gray-500">
+              {resultCount} {resultCount === 1 ? "produto" : "produtos"}
+            </p>
+          )}
+        </div>
+      )}
     </>
   );
 }

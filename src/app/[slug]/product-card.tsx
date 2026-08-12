@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import { formatBRLPrice } from "@/lib/currency/brl";
 import { ImageWithFallback } from "./image-with-fallback";
+import { FavoriteButton } from "./favorite-button";
 
 export type PublicProductCardData = {
   id: string;
@@ -63,6 +64,13 @@ export function ProductCard({
           src={product.coverUrl}
           alt={product.name}
           sizes="(min-width: 1600px) 190px, (min-width: 1280px) 12.5vw, (min-width: 1024px) 16.6vw, (min-width: 768px) 20vw, (min-width: 640px) 25vw, 33vw"
+        />
+        <FavoriteButton
+          slug={slug}
+          productId={product.id}
+          productName={product.name}
+          variant="overlay"
+          className="absolute right-2 top-2 z-10"
         />
       </div>
 

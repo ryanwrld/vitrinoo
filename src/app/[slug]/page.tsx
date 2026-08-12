@@ -2,11 +2,13 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { resolveCoverFrame } from "@/lib/store/cover-frame";
 import { queryPublicProducts, resolveSort } from "@/lib/products/public-list";
+import { queryFavoriteProducts, parseFavoriteIds } from "@/lib/products/public-favorites";
 import { queryStorefrontProfile, EMPTY_PROFILE } from "@/lib/store/storefront-profile";
 import { EmptyState } from "@/components/empty-state";
 import { StoreHero } from "./store-hero";
 import { ProductGrid } from "./product-grid";
 import { FilterBar } from "./filter-bar";
+import { FavoritesView } from "./favorites-view";
 import { ClearFiltersButton } from "./clear-filters-button";
 import { LoadMoreButton } from "./load-more-button";
 import { PaginationNumbered } from "./pagination-numbered";
@@ -53,6 +55,10 @@ type LojaSearchParams = {
   sort?: string;
   /** Abre o produto como modal sobre o grid quando presente (UUID). */
   produto?: string;
+  /** Lista de ids favoritados (localStorage do comprador, ver
+   *  favorites-store.ts) separados por vírgula — presente = aba Favoritos
+   *  ativa em vez do catálogo filtrado normal. */
+  ids?: string;
 };
 
 type PageProps = {
@@ -80,6 +86,15 @@ export default async function LojaPublicaPage({ params, searchParams }: PageProp
     notFound();
   }
 
+  // Aba Favoritos (Nível 2 do roadmap de valor): `?ids=` presente e válido
+  // troca o modo de exibição inteiro — bypassa busca/marca/solado/entrega/
+  // paginação, que não fazem sentido sobre uma lista fixa de favoritos.
+  // `parseFavoriteIds` já filtra qualquer valor que não seja UUID antes de
+  // qualquer `.in()` (mesma disciplina de VALID_BRANDS em public-list.ts).
+  const favoriteIds = parseFavoriteIds(sp.ids);
+  const favoritesActive = favoriteIds.length > 0;
+  const favoritesQueryString = favoritesActive ? `ids=${favoriteIds.join(",")}` : "";
+
   const brands = toArray(sp.brand);
   const soles = toArray(sp.sole);
   const fulfillments = toArray(sp.fulfillment);
@@ -87,12 +102,20 @@ export default async function LojaPublicaPage({ params, searchParams }: PageProp
   const sort = resolveSort(sp.sort);
   const filters = { q: sp.q, brand: brands, sole: soles, fulfillment: fulfillments, sort };
 
-  const { products, hasMore } = await queryPublicProducts(
-    supabase,
-    store.id,
-    { ...filters, page },
-    store.hide_sold_out_default
-  );
+  const { products, hasMore } = favoritesActive
+    ? { products: [], hasMore: false }
+    : await queryPublicProducts(supabase, store.id, { ...filters, page }, store.hide_sold_out_default);
+
+  let favoriteProducts: Awaited<ReturnType<typeof queryFavoriteProducts>> = [];
+  let favoritesWhatsappE164 = "";
+  if (favoritesActive) {
+    const [products, { data: storeSettings }] = await Promise.all([
+      queryFavoriteProducts(supabase, store.id, favoriteIds),
+      supabase.from("store_settings").select("whatsapp_e164").eq("store_id", store.id).single(),
+    ]);
+    favoriteProducts = products;
+    favoritesWhatsappE164 = storeSettings?.whatsapp_e164 ?? "";
+  }
 
   const productsWithCoverUrl = products.map((product) => ({
     ...product,
@@ -173,11 +196,12 @@ export default async function LojaPublicaPage({ params, searchParams }: PageProp
           de 116px; 1600px é o ponto escolhido entre margem visível (~160px de
           cada lado numa tela de 1920px) e card legível (~184px). Abaixo de
           1600px o teto nem entra em jogo e a página usa a largura inteira.
-          Este valor e o padding (`px-4 sm:px-6`) são os MESMOS do cabeçalho e
+          Este valor e o padding (`px-4 sm:px-6 md:px-12 lg:px-20 xl:px-24
+          2xl:px-28`) são os MESMOS do cabeçalho e
           da barra fixa de propósito: é o par que define a coluna onde logo,
           nome da loja, busca e primeiro produto se alinham. Mudar um sem os
           outros desalinha a página inteira. */}
-      <div className="mx-auto flex w-full max-w-[100rem] flex-col gap-5 px-4 py-5 sm:px-6">
+      <div className="mx-auto flex w-full max-w-[100rem] flex-col gap-5 px-4 py-5 sm:px-6 md:px-12 lg:px-20 xl:px-24 2xl:px-28">
         {hasAnyPublished && (
           <FilterBar
             slug={slug}
@@ -185,10 +209,31 @@ export default async function LojaPublicaPage({ params, searchParams }: PageProp
             brandFacets={profile.brandFacets}
             accentColor={store.accent_color ?? "#000000"}
             resultCount={productsWithCoverUrl.length}
+            favoritesActive={favoritesActive}
           />
         )}
 
-        {hasFilteredResults ? (
+        {favoritesActive ? (
+          favoriteProducts.length > 0 ? (
+            <FavoritesView
+              slug={slug}
+              whatsappE164={favoritesWhatsappE164}
+              products={favoriteProducts}
+              query={favoritesQueryString}
+              accentColor={store.accent_color ?? "#000000"}
+            />
+          ) : (
+            // ids veio preenchido mas nenhum produto casou: os favoritos
+            // guardados no navegador do comprador foram excluídos/viraram
+            // rascunho — distinto de "nunca favoritou nada" (esse caso nem
+            // chega aqui, o toggle da filter-bar bloqueia a navegação antes).
+            <EmptyState
+              icon="search"
+              title="Nenhum favorito encontrado"
+              description="Os produtos que você favoritou não estão mais disponíveis nesta loja."
+            />
+          )
+        ) : hasFilteredResults ? (
           <>
             <ProductGrid products={productsWithCoverUrl} slug={slug} query={searchParamsString} />
 

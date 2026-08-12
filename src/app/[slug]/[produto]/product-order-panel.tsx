@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useRef, useState, useSyncExternalStore, useTransition, type MouseEvent } from "react";
+import { startTransition, useRef, useState, useTransition, type MouseEvent } from "react";
 import Link from "next/link";
 import { ChevronLeft, Copy } from "lucide-react";
 import clsx, { type ClassValue } from "clsx";
@@ -12,7 +12,9 @@ import { buildOrderMessage, buildWhatsAppUrl } from "@/lib/whatsapp/order-messag
 import { decideOrderAction } from "@/lib/whatsapp/order-guard";
 import { logOrderClick } from "@/lib/products/order-clicks-actions";
 import { resolveVisitorId } from "@/lib/analytics/visitor-id";
+import { useOpensInNewTab } from "@/lib/ui/use-opens-in-new-tab";
 import { ImageWithFallback } from "../image-with-fallback";
+import { FavoriteButton } from "../favorite-button";
 
 /**
  * Composição condicional de className — mesmo `cn()` local de
@@ -52,42 +54,6 @@ export type ProductOrderPanelProps = {
 };
 
 const TOOLTIP_DISMISS_MS = 2500;
-
-/**
- * Aparelho com mouse e tela larga — a única situação em que abrir o WhatsApp
- * numa aba NOVA é melhor que na mesma aba.
- *
- * `pointer: fine` é o teste que importa aqui, não a largura: navegador
- * in-app do Instagram e do WhatsApp (o canal principal de tráfego da
- * vitrine) é sempre `pointer: coarse`, e é justamente ele que lida mal com
- * um novo contexto de navegação. A largura entra só como segunda condição,
- * para não pegar um tablet grande com caneta.
- *
- * Esta é a ÚNICA detecção de aparelho em JS da vitrine, e é uma exceção
- * justificada: `target` é atributo HTML, não estilo — ao contrário da
- * paginação adaptativa (`hidden md:flex`), não existe forma de expressar
- * isso em CSS.
- */
-const DESKTOP_POINTER_QUERY = "(min-width: 768px) and (pointer: fine)";
-
-/**
- * `useSyncExternalStore` e não `useState` + efeito (mesmo padrão de
- * `theme-toggle.tsx` e `notification-bell.tsx`): o snapshot do servidor é
- * `false`, ou seja, o HTML sempre chega com o comportamento SEGURO (mesma
- * aba) e só vira aba nova depois da hidratação, num aparelho que já provou
- * ser desktop. O caminho errado nunca aparece, nem por um quadro.
- */
-function useOpensInNewTab(): boolean {
-  return useSyncExternalStore(
-    (onChange) => {
-      const mediaQuery = window.matchMedia(DESKTOP_POINTER_QUERY);
-      mediaQuery.addEventListener("change", onChange);
-      return () => mediaQuery.removeEventListener("change", onChange);
-    },
-    () => window.matchMedia(DESKTOP_POINTER_QUERY).matches,
-    () => false
-  );
-}
 
 /**
  * Painel de pedido da página de detalhe (PED-01/02/03/04, D-02/D-03/D-04/
@@ -288,7 +254,19 @@ export function ProductOrderPanel({
   const details = (
     <div className={cn("flex flex-col gap-6", isModal && "md:min-w-0 md:flex-1")}>
       <div className="flex flex-col gap-1.5">
-        <h1 className="font-display text-xl font-extrabold text-gray-900">{product.name}</h1>
+        {/* `gap-2` grudado no nome, NUNCA `justify-between`: no modal,
+            desktop põe galeria e detalhes lado a lado (`md:flex-row` mais
+            abaixo), então esta linha nasce rente ao topo da coluna — a
+            MESMA posição do "X" de fechar do modal
+            (`absolute right-3 top-3`, ProductModal). Com `justify-between`
+            o coração ia pro canto direito da linha e caía exatamente sobre
+            o X (as duas caixas de ~36px se sobrepunham por completo,
+            coração invisível e inclicável). Grudado no nome ele nunca
+            chega perto daquele canto, em nenhuma largura de tela. */}
+        <div className="flex items-start gap-2">
+          <h1 className="font-display text-xl font-extrabold text-gray-900">{product.name}</h1>
+          <FavoriteButton slug={slug} productId={productId} productName={product.name} variant="inline" className="shrink-0" />
+        </div>
         <span className="font-display text-2xl font-extrabold text-primary">{formatBRLPrice(product.price)}</span>
       </div>
 

@@ -156,7 +156,7 @@ export function StoreHero({ store, stats }: { store: StoreHeroData; stats: Store
         )}
       </div>
 
-      <div className="mx-auto w-full max-w-[100rem] px-4 pb-6 sm:px-6 sm:pb-7">
+      <div className="mx-auto w-full max-w-[100rem] px-4 pb-6 sm:px-6 sm:pb-7 md:px-12 lg:px-20 xl:px-24 2xl:px-28">
         {/* Avatar e ações na MESMA linha, alinhados pela BASE (`items-end`).
             Antes as ações flutuavam no topo do bloco sem se alinhar a
             elemento nenhum — a borda inferior do avatar dá a elas uma linha

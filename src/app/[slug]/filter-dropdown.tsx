@@ -1,6 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState, type ComponentType, type CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentType,
+  type CSSProperties,
+} from "react";
 import { Check, ChevronDown } from "lucide-react";
 import clsx from "clsx";
 import { getContrastTextColor } from "@/lib/color/contrast";
@@ -25,6 +34,28 @@ const EXIT_DURATION_MS = 220;
  * A folga de 20ms é a mesma disciplina de `EXIT_DURATION_MS`.
  */
 const SETTLE_DURATION_MS = 280;
+
+/**
+ * = `--vt-sort-width` (10rem, ver globals.css) convertido para px. Duplicado
+ * de propósito — MESMO acoplamento explícito que o keyframe
+ * `vt-sort-drawer-down` já assume lá ("2.75rem = w-11 = os 44px do círculo
+ * fechado. Se a vaga do gatilho no container mudar, este valor muda junto.").
+ * Usado só para decidir, em JS, se o painel de "Ordenar" cabe crescendo para
+ * a direita sem estourar a viewport — ver `growLeft` abaixo.
+ */
+const SORT_PANEL_WIDTH_PX = 160;
+
+/**
+ * Piso de largura do painel de "Ordenar" quando nem empurrar os vizinhos
+ * (até o limite seguro — ver `useLayoutEffect` abaixo) abre espaço
+ * suficiente pros 160px cheios. ~134px é o que "Menor preço"/"Maior preço"
+ * (as opções mais longas) precisam com o check e os respiros — MESMO número
+ * já citado no comentário de `--vt-sort-width` em globals.css. Abaixo disso
+ * os rótulos quebrariam linha, então o painel para de encolher aqui mesmo
+ * que ainda sobre pouco espaço (preferível a um resíduo de sobreposição em
+ * telas muito apertadas do que texto cortado).
+ */
+const MIN_SORT_PANEL_WIDTH_PX = 136;
 
 export type DropdownOption = {
   value: string;
@@ -92,6 +123,15 @@ export function FilterDropdown({
   const [closing, setClosing] = useState(false);
   // `true` só depois que a gaveta terminou de abrir — ver SETTLE_DURATION_MS.
   const [settled, setSettled] = useState(false);
+  // Só importa no gatilho SÓ-ÍCONE ("Ordenar"): decide se o painel cresce
+  // para a DIREITA (comportamento padrão, o mesmo de sempre) ou, quando não
+  // há espaço, para a ESQUERDA. Ver o `useLayoutEffect` de medição abaixo.
+  const [growLeft, setGrowLeft] = useState(false);
+  // `null` = usa `--vt-sort-width` padrão (160px). Um número sobrescreve essa
+  // variável só neste container quando, mesmo empurrando os vizinhos até o
+  // limite seguro (sem invadir a busca), ainda falta espaço — ver
+  // `useLayoutEffect` abaixo.
+  const [sortPanelWidthPx, setSortPanelWidthPx] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -166,6 +206,184 @@ export function FilterDropdown({
     const timer = setTimeout(() => setSettled(true), SETTLE_DURATION_MS);
     return () => clearTimeout(timer);
   }, [open, closing]);
+
+  // Detecção de colisão do painel de "Ordenar" com a borda da viewport.
+  // `useLayoutEffect` (não `useEffect`): mede e decide o lado ANTES do
+  // navegador pintar o primeiro quadro da abertura, senão o painel nasceria
+  // crescendo para a direita por um quadro e só depois "pularia" para a
+  // esquerda — o próprio flip ficaria visível.
+  //
+  // POR QUE ISSO E NÃO UM FLIP ESTÁTICO: "Ordenar" é hoje o último controle
+  // da barra, mas em telas grandes sobra ~480px+ de margem à direita da
+  // barra — crescer para a esquerda ali sobreporia "Entrega" à toa. Medindo
+  // o espaço real, o painel só troca de lado quando genuinamente não cabe.
+  useLayoutEffect(() => {
+    if (!open || triggerVariant !== "icon") return;
+    if (typeof window === "undefined") return;
+
+    // Busca encolhida pra abrir espaço real pro painel crescer pra DIREITA
+    // (sem precisar flipar) — ver `measure` abaixo. Guardado aqui (não em
+    // estado) porque é um efeito colateral direto no DOM de um elemento que
+    // este componente NÃO renderiza (é irmão dentro da mesma barra, em
+    // filter-bar.tsx) — não há por que re-renderizar por causa disso, e
+    // precisamos limpar exatamente esse nó no cleanup.
+    let shrunkSearchEl: HTMLElement | null = null;
+
+    function clearSearchShrink() {
+      if (!shrunkSearchEl) return;
+      shrunkSearchEl.style.flex = "";
+      shrunkSearchEl.style.transition = "";
+      shrunkSearchEl = null;
+    }
+
+    function measure() {
+      const el = containerRef.current;
+      if (!el) return;
+
+      // Sempre remede a partir do estado NEUTRO (sem encolher nada) — senão
+      // um encolhimento de uma medição anterior somaria com o da próxima a
+      // cada resize.
+      clearSearchShrink();
+
+      // 48rem = 768px = breakpoint `md`. Abaixo disso "Ordenar" é o
+      // bottom-sheet mobile (`max-md:fixed inset-x-0 bottom-0`) — o
+      // círculo/painel desktop nem está posicionado por `left`/`right`, e
+      // medir/encolher a busca ali não faz sentido nenhum (o painel mobile
+      // não compete por espaço horizontal com mais nada). Recalculado a
+      // cada chamada (não só na primeira) porque `measure` também roda em
+      // `resize` — sem isso, girar o celular ou redimensionar a janela pela
+      // borda do breakpoint deixaria a decisão presa no valor de quando o
+      // painel abriu.
+      const isDesktopViewport = window.matchMedia("(min-width: 48rem)").matches;
+      if (!isDesktopViewport) {
+        setGrowLeft(false);
+        setSortPanelWidthPx(null);
+        return;
+      }
+
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const shrinkTransition = reduceMotion ? "none" : "flex 200ms var(--vt-drawer-ease)";
+
+      // Ancoragem padrão cresce a partir da borda ESQUERDA do container
+      // (mesma origem de sempre); cabe se essa borda + a largura total do
+      // painel não ultrapassar a viewport. 8px de folga: o mesmo respiro
+      // visual que qualquer popover deveria manter da borda da tela.
+      //
+      // `document.documentElement.clientWidth`, NÃO `window.innerWidth`: o
+      // segundo inclui a barra de rolagem vertical (~14-17px no Chrome
+      // desktop), então usá-lo aqui deixava o painel "achar" que cabia
+      // crescendo pra direita com uns 6-14px de sobra que na verdade eram a
+      // própria barra de rolagem — resultado: um overflow residual pequeno
+      // (o mesmo defeito original, só que bem menor).
+      const rect = el.getBoundingClientRect();
+      const viewportWidth = document.documentElement.clientWidth;
+      let overflow = rect.left + SORT_PANEL_WIDTH_PX + 8 - viewportWidth;
+
+      if (overflow > 0) {
+        // Primeira tentativa: encolher a BUSCA (não empurrar mais ninguém —
+        // ela é o único elemento genuinamente elástico da barra, `md:flex-1`
+        // por design, então dar espaço é o papel dela). Isso desloca TUDO
+        // que vem depois dela — inclusive o próprio "Ordenar" — pra esquerda
+        // via reflow real do flex, não transform: se abrir espaço suficiente,
+        // "Ordenar" nem precisa flipar. `MIN_SEARCH_WIDTH_PX` evita a busca
+        // sumir num caso extremo de tela muito estreita.
+        const MIN_SEARCH_WIDTH_PX = 160;
+        // A busca é IRMÃ da faixa de pílulas (não filha) — as duas vivem
+        // lado a lado sob um wrapper comum (`flex-col md:flex-row` em
+        // filter-bar.tsx). Sobe os ancestrais até achar um que CONTENHA um
+        // `<input>` em algum lugar dentro, em vez de assumir uma
+        // profundidade fixa — sobrevive a filter-bar.tsx ganhar/perder
+        // wrappers no meio (ex.: o toggle "Favoritos" novo).
+        let searchScope: HTMLElement | null = el.parentElement;
+        let searchInput: HTMLInputElement | null = null;
+        for (let hops = 0; searchScope && hops < 6 && !searchInput; hops++) {
+          searchInput = searchScope.querySelector("input");
+          if (!searchInput) searchScope = searchScope.parentElement;
+        }
+        const searchEl = searchInput?.parentElement as HTMLElement | null;
+        if (searchEl) {
+          const searchWidth = searchEl.getBoundingClientRect().width;
+          const shrink = Math.max(0, Math.min(overflow, searchWidth - MIN_SEARCH_WIDTH_PX));
+          if (shrink > 0) {
+            // Duas escritas, não uma: transicionar o SHORTHAND `flex` direto
+            // de `flex-1` (1 1 0%) pro alvo (0 0 Npx) anima `flex-grow` e
+            // `flex-basis` AO MESMO TEMPO, e a largura renderizada sob
+            // `flex-grow` não é um valor fixo — é recalculada pelo algoritmo
+            // de flex a cada quadro, então o meio do caminho não é "meio
+            // termo" nenhum. Medido ao vivo: a busca encolhia até 345px
+            // (bem abaixo do alvo de 442px) antes de voltar pra cima — uma
+            // curva em V, não uma transição limpa.
+            //
+            // Primeiro passo: CONGELA a largura atual (sem transição,
+            // `flex-grow`/`shrink` já em 0) — a busca não se move neste
+            // instante, só troca de "elástica" pra "largura fixa" na largura
+            // que já tinha. `void searchEl.offsetWidth` força o navegador a
+            // aplicar esse quadro ANTES do próximo passo, senão as duas
+            // escritas colapsariam numa só e a transição pegaria o `flex-1`
+            // original de novo como ponto de partida.
+            searchEl.style.transition = "none";
+            searchEl.style.flex = `0 0 ${searchWidth}px`;
+            void searchEl.offsetWidth;
+            // Segundo passo: agora é só `flex-basis` andando de um px fixo
+            // pro outro — interpolação monotônica garantida, sem o
+            // algoritmo de flex redistribuindo espaço no meio do caminho.
+            searchEl.style.transition = shrinkTransition;
+            searchEl.style.flex = `0 0 ${searchWidth - shrink}px`;
+            shrunkSearchEl = searchEl;
+            // Calculado, não remedido: encolher a busca em X sempre desloca
+            // tudo depois dela em X, então `overflow -= shrink` é exato — e
+            // não depende de reler o layout no meio de uma transição CSS
+            // recém-disparada, onde o valor "atual" de largura pode não ter
+            // se assentado ainda (o `rect.left` fica desatualizado até o
+            // reflow do quadro seguinte).
+            overflow -= shrink;
+          }
+        }
+      }
+
+      const fitsGrowingRight = overflow <= 0;
+      setGrowLeft(!fitsGrowingRight);
+
+      if (fitsGrowingRight) {
+        setSortPanelWidthPx(null); // encolher a busca já foi suficiente (ou nem precisou).
+        return;
+      }
+
+      // Encolher a busca até o piso não foi suficiente: flipa. Mede se cabe
+      // exatamente entre a borda ancorada (direita do círculo, + os 6px do
+      // `-right-1.5` do gatilho/painel — ver className abaixo) e o elemento
+      // anterior de verdade na barra (pula o separador `aria-hidden`; por
+      // trás dele está "Entrega"/"Tipo de campo"/etc — sem hardcodar QUAL
+      // pílula é). 12px de respiro: suficiente pra ler como duas camadas
+      // separadas.
+      const GAP_PX = 12;
+      const ANCHOR_INSET_PX = 6; // = `-right-1.5` em px
+      let boundaryEl = el.previousElementSibling as HTMLElement | null;
+      while (boundaryEl && boundaryEl.getAttribute("aria-hidden") === "true") {
+        boundaryEl = boundaryEl.previousElementSibling as HTMLElement | null;
+      }
+      const anchorRight = rect.right + ANCHOR_INSET_PX;
+      const boundaryRight = boundaryEl ? boundaryEl.getBoundingClientRect().right : 0;
+      const available = anchorRight - boundaryRight - GAP_PX;
+      const deficit = SORT_PANEL_WIDTH_PX - available;
+
+      // Último recurso: encolhe só o PAINEL (piso legível, ver
+      // `MIN_SORT_PANEL_WIDTH_PX`) — nunca empurra nenhuma pílula. Em telas
+      // muito apertadas ainda pode sobrar uma sobreposição pequena com o
+      // vizinho; nunca mais com a busca (essa já foi resolvida acima).
+      setSortPanelWidthPx(deficit > 0 ? Math.max(MIN_SORT_PANEL_WIDTH_PX, SORT_PANEL_WIDTH_PX - deficit) : null);
+    }
+
+    measure();
+    // Cobre resize/rotação de tela com o painel já aberto — caso raro, mas
+    // sem isso o painel ficaria preso do lado errado (ou com um encolhimento
+    // desatualizado) até fechar e reabrir.
+    window.addEventListener("resize", measure);
+    return () => {
+      window.removeEventListener("resize", measure);
+      clearSearchShrink();
+    };
+  }, [open, triggerVariant]);
 
   function handleDragStart(clientY: number) {
     const now = performance.now();
@@ -280,6 +498,12 @@ export function FilterDropdown({
         // para largura zero e a barra inteira se reorganizaria a cada clique.
         triggerVariant === "icon" && "md:h-11 md:w-11"
       )}
+      // Sobrescreve `--vt-sort-width` (globals.css) só NESTE subtree, só no
+      // caso residual em que nem empurrar os vizinhos até o limite seguro
+      // abre os 160px inteiros (ver `sortPanelWidthPx`/`useLayoutEffect`
+      // acima). `undefined` remove a propriedade — volta a herdar os 160px
+      // padrão do `:root`.
+      style={sortPanelWidthPx != null ? ({ "--vt-sort-width": `${sortPanelWidthPx}px` } as CSSProperties) : undefined}
     >
       {triggerVariant === "icon" && TriggerIcon ? (
         // Gatilho só-ícone (Ordenar): sem pílula, sem texto visível — o
@@ -298,12 +522,29 @@ export function FilterDropdown({
           aria-label={iconAriaLabel}
           className={clsx(
             "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-[1.375rem] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2",
-            // DESKTOP: sai do fluxo e cresce PARA A DIREITA, com a borda
-            // esquerda ancorada. Crescer dentro do fluxo empurraria os
-            // filtros vizinhos a cada abertura — o container mantém uma vaga
-            // fixa de 44px (`md:h-11 md:w-11`, mais abaixo) e o botão se
-            // expande por cima dela sem tocar no layout de ninguém.
-            "md:absolute md:left-0 md:top-0 md:overflow-hidden",
+            // DESKTOP: sai do fluxo e cresce para um dos lados, com a borda
+            // OPOSTA ancorada — por padrão para a DIREITA (comportamento
+            // original: a borda esquerda fica parada e tudo cresce a partir
+            // dela), crescendo pra ESQUERDA só quando `growLeft` (medido no
+            // `useLayoutEffect` acima) detecta que os 116px extras (160px do
+            // painel menos os 44px do círculo) não cabem sem passar da borda
+            // direita da viewport — o bug relatado (scroll horizontal em
+            // telas ~1700px ou menos). Flip ESTÁTICO (sempre pra esquerda)
+            // foi cogitado e descartado: sobreporia "Entrega" à toa em telas
+            // grandes, onde sobra espaço de sobra à direita. Crescer dentro
+            // do fluxo empurraria os filtros vizinhos a cada abertura — o
+            // container mantém uma vaga fixa de 44px (`md:h-11 md:w-11`,
+            // mais abaixo) e o botão se expande por cima dela sem tocar no
+            // layout de ninguém.
+            // `-right-1.5` (não `right-0`) no lado flipado: empurra a caixa
+            // 6px para DENTRO da margem da página (que agora sempre sobra —
+            // ver o padding responsivo em page.tsx), abrindo um respiro do
+            // mesmo tanto entre o painel e a pílula "Entrega" vizinha. Sem
+            // isso as duas bordas se tocavam sem nenhuma folga, lendo como
+            // colisão em vez de uma camada flutuando por cima.
+            growLeft
+              ? "md:absolute md:-right-1.5 md:top-0 md:overflow-hidden"
+              : "md:absolute md:left-0 md:top-0 md:overflow-hidden",
             // Borda sempre presente (só muda de cor): pintá-la apenas ao
             // abrir mudaria a caixa em 1px e o ícone tremeria.
             //
@@ -338,7 +579,8 @@ export function FilterDropdown({
                 : "duration-150"
           )}
         >
-          {/* Rótulo que preenche o espaço novo. Absoluto e à esquerda: no
+          {/* Rótulo que preenche o espaço novo. Absoluto e do lado OPOSTO ao
+              ícone (que ancora do mesmo lado do botão, ver `growLeft`): no
               fluxo ele disputaria largura com o ícone e empurraria a âncora.
               Entra com atraso na abertura — aparecer antes de existir espaço
               o mostraria cortado pelo `overflow-hidden`; na saída some na
@@ -347,7 +589,8 @@ export function FilterDropdown({
           <span
             aria-hidden="true"
             className={clsx(
-              "pointer-events-none absolute left-10 top-1/2 hidden -translate-y-1/2 whitespace-nowrap text-sm font-medium text-gray-700 transition-opacity md:block",
+              "pointer-events-none absolute top-1/2 hidden -translate-y-1/2 whitespace-nowrap text-sm font-medium text-gray-700 transition-opacity md:block",
+              growLeft ? "right-10" : "left-10",
               isPanelMounted && !closing
                 ? "opacity-100 duration-150 delay-[90ms]"
                 : "opacity-0 duration-[90ms]"
@@ -356,12 +599,19 @@ export function FilterDropdown({
             Ordenar por
           </span>
 
-          {/* Âncora: 11px da borda esquerda = exatamente o centro dos 44px
-              fechados (1px de borda + 11 + 10 de meio-ícone = 22). O ícone
-              não se move em nenhum quadro da abertura — tudo cresce à direita
-              dele. O span externo posiciona, o interno mergulha: as duas
-              coisas escrevem em `transform` e uma apagaria a outra. */}
-          <span className="pointer-events-none md:absolute md:left-[11px] md:top-1/2 md:-translate-y-1/2">
+          {/* Âncora: 11px da borda ancorada (esquerda por padrão, direita
+              quando `growLeft`) = exatamente o centro dos 44px fechados
+              (1px de borda + 11 + 10 de meio-ícone = 22), simétrico dos dois
+              lados porque a caixa fechada é 44×44. O ícone não se move em
+              nenhum quadro da abertura — tudo cresce do lado oposto a ele.
+              O span externo posiciona, o interno mergulha: as duas coisas
+              escrevem em `transform` e uma apagaria a outra. */}
+          <span
+            className={clsx(
+              "pointer-events-none md:absolute md:top-1/2 md:-translate-y-1/2",
+              growLeft ? "md:right-[11px]" : "md:left-[11px]"
+            )}
+          >
             <span className={clsx("block", open && !closing && "animate-icon-dip")}>
               <TriggerIcon
                 className="h-5 w-5"
@@ -495,21 +745,47 @@ export function FilterDropdown({
               // passam a ler como UMA peça contínua, não uma janela solta
               // pairando embaixo (era `mt-2` + `rounded-xl` nos 4 cantos).
               "md:absolute md:top-full md:max-h-80 md:rounded-b-xl md:rounded-t-none md:border md:border-t-0 md:border-gray-200",
-              // Ordenar ancora pela borda ESQUERDA e abre para a direita
-              // (decisão do usuário), na largura enxuta do token — a MESMA
-              // que o gatilho aberto assume, que é o que faz o círculo virar
-              // o topo do painel em vez de duas peças encostadas. Antes tinha
-              // `md:rounded-tl-xl md:border-t`, ou seja, os quatro cantos
-              // arredondados e borda completa — lia como cartão flutuante
-              // solto embaixo do círculo, que é o vão que estamos matando.
-              // Os demais herdam a largura exata da própria pílula.
+              // Ordenar ancora pela mesma borda do gatilho (ver `growLeft`),
+              // na largura enxuta do token — a MESMA que o gatilho aberto
+              // assume, que é o que faz o círculo virar o topo do painel em
+              // vez de duas peças encostadas. Por padrão ancora pela
+              // ESQUERDA (cresce pra direita, comportamento original); só
+              // ancora pela direita (cresce pra esquerda) quando o
+              // `useLayoutEffect` acima detecta que os 116px extras (160px
+              // do painel menos os 44px do círculo) não cabem sem passar da
+              // borda direita da viewport — "Ordenar" é o último controle da
+              // barra, então em telas menores esses 116px vazavam para fora
+              // da página, empurrando o documento inteiro e criando scroll
+              // horizontal. Um flip ESTÁTICO (sempre pela direita) resolveria
+              // o overflow mas sobreporia "Entrega" também em telas grandes,
+              // onde nunca faltou espaço — por isso a decisão é medida, não
+              // fixa. Antes tinha `md:rounded-tl-xl md:border-t`, ou seja, os
+              // quatro cantos arredondados e borda completa — lia como
+              // cartão flutuante solto embaixo do círculo, que é o vão que
+              // estamos matando. Os demais herdam a largura exata da própria
+              // pílula.
+              // `-right-1.5`, não `right-0`, quando flipado: mesma folga de
+              // 6px do gatilho acima — as duas caixas precisam mover
+              // JUNTAS, senão o círculo aberto (que É o topo do painel)
+              // ficaria desalinhado da gaveta que abre embaixo dele.
               triggerVariant === "icon"
-                ? "md:left-0 md:w-[var(--vt-sort-width)]"
+                ? clsx("md:w-[var(--vt-sort-width)]", growLeft ? "md:-right-1.5" : "md:left-0")
                 : "md:left-0 md:w-full",
               // Sombra em duas camadas: uma curta e densa (contato) e uma
               // longa e difusa (ambiente) — é o que separa um painel com
-              // presença física de uma "caixa flutuante" genérica.
-              "md:shadow-[0_2px_4px_-2px_rgb(0_0_0/0.06),0_16px_32px_-12px_rgb(0_0_0/0.20)]",
+              // presença física de uma "caixa flutuante" genérica. O VALOR
+              // vem de `--vt-sort-shadow` (globals.css), lido pelos
+              // keyframes `vt-sort-drawer-*` — não um `shadow-[...]` fixo
+              // aqui, porque o componente precisa poder reforçá-lo.
+              growLeft &&
+                triggerVariant === "icon" &&
+                // Reforçada só quando o painel flipa por cima de "Entrega":
+                // a calibragem padrão (pensada pra pairar sobre a lista de
+                // produtos, fundo branco vazio) some visualmente quando
+                // encosta em outra pílula com borda própria — as duas bordas
+                // ficam com o mesmo peso e a sobreposição lê como colisão,
+                // não como uma camada flutuando por cima.
+                "[--vt-sort-shadow:0_2px_8px_-2px_rgb(0_0_0/0.10),0_24px_48px_-8px_rgb(0_0_0/0.30)]",
               // Gaveta: a altura se desdobra a partir da borda do botão.
               // Sem fade, de propósito — ver os keyframes em globals.css.
               // Ordenar usa a variante PAREADA da gaveta, que anima largura e

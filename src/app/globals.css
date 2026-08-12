@@ -438,6 +438,16 @@ input:autofill {
    * contrário de Marca, cuja lista vem do banco e pode ter nome longo.
    */
   --vt-sort-width: 10rem;
+  /*
+   * Sombra final da gaveta de "Ordenar" — variável (não valor fixo no
+   * keyframe) para o componente poder reforçá-la quando o painel flipa por
+   * cima da pílula "Entrega" (`growLeft`, ver filter-dropdown.tsx). A sombra
+   * calibrada pra pairar sobre a lista de produtos (fundo branco vazio) some
+   * visualmente quando o painel encosta em outra pílula com borda própria —
+   * as duas bordas têm o mesmo peso. O componente sobrescreve esta variável
+   * só nesse estado; o padrão abaixo vale pra todo o resto.
+   */
+  --vt-sort-shadow: 0 2px 4px -2px rgb(0 0 0 / 0.06), 0 16px 32px -12px rgb(0 0 0 / 0.2);
 }
 @utility animate-drawer-down {
   animation: vt-drawer-down 260ms var(--vt-drawer-ease) both;
@@ -514,7 +524,7 @@ input:autofill {
   to {
     grid-template-rows: 1fr;
     width: var(--vt-sort-width);
-    box-shadow: 0 2px 4px -2px rgb(0 0 0 / 0.06), 0 16px 32px -12px rgb(0 0 0 / 0.2);
+    box-shadow: var(--vt-sort-shadow);
   }
 }
 /*
@@ -536,7 +546,7 @@ input:autofill {
 @keyframes vt-sort-drawer-up {
   from {
     grid-template-rows: 1fr;
-    box-shadow: 0 2px 4px -2px rgb(0 0 0 / 0.06), 0 16px 32px -12px rgb(0 0 0 / 0.2);
+    box-shadow: var(--vt-sort-shadow);
   }
   to {
     grid-template-rows: 0fr;
@@ -549,7 +559,7 @@ input:autofill {
     animation: none;
     grid-template-rows: 1fr;
     width: var(--vt-sort-width);
-    box-shadow: 0 2px 4px -2px rgb(0 0 0 / 0.06), 0 16px 32px -12px rgb(0 0 0 / 0.2);
+    box-shadow: var(--vt-sort-shadow);
   }
 }
 /*
@@ -776,24 +786,11 @@ input:autofill {
     }
   }
 
-  @keyframes slide-left {
-    0% {
-      transform: translateX(100%);
-    }
-    100% {
-      transform: translateX(0);
-    }
-  }
-
   .animate-fade-zoom-in {
     animation: fade-zoom-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
   .animate-fade-in {
     animation: fade-in 0.3s ease-out forwards;
-  }
-
-  .animate-slide-left {
-    animation: slide-left 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 }

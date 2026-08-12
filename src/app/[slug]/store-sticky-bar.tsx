@@ -86,7 +86,7 @@ export function StoreStickyBar({ name, slug, logoUrl, accentColor, instagram }: 
         aria-hidden={!visible}
         style={{ backgroundColor: accent, height: STICKY_BAR_HEIGHT_PX }}
         className={clsx(
-          "fixed inset-x-0 top-0 z-40 flex items-center gap-3 px-4 shadow-[0_1px_0_0_rgb(0_0_0/0.08),0_8px_20px_-8px_rgb(0_0_0/0.25)] sm:px-6",
+          "fixed inset-x-0 top-0 z-40 flex items-center gap-3 px-4 shadow-[0_1px_0_0_rgb(0_0_0/0.08),0_8px_20px_-8px_rgb(0_0_0/0.25)] sm:px-6 md:px-12 lg:px-20 xl:px-24 2xl:px-28",
           // `motion-reduce:transition-none` e não a supressão global do
           // globals.css: aqui o movimento é a própria informação de que a
           // barra chegou, então quem pediu menos movimento recebe o estado
