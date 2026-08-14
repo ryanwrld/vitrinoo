@@ -5,12 +5,14 @@ import Image from "next/image";
 import imageCompression from "browser-image-compression";
 import {
   DndContext,
+  DragOverlay,
   closestCenter,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -20,8 +22,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { PhotoPreview } from "./photo-preview";
-import { Plus, X, GripVertical, Loader2 } from "lucide-react";
+import { Plus, X, Loader2, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { addProductPhotos, updatePhotoOrder, removePhoto } from "@/lib/products/actions";
@@ -42,6 +43,11 @@ import { addProductPhotos, updatePhotoOrder, removePhoto } from "@/lib/products/
  *   (adicionar/remover/reordenar) chama imediatamente a Server Action
  *   dedicada (`addProductPhotos`/`removePhoto`/`updatePhotoOrder`) — os
  *   slots são sempre "saved" (id real + URL pública).
+ *
+ * Layout:
+ * - Preview grande fixo no topo: mostra a foto ativa (capa por padrão).
+ *   Clicar numa miniatura atualiza o preview. Nenhum painel lateral.
+ * - Grade de miniaturas abaixo do preview, com drag-and-drop.
  */
 const MAX_PHOTOS = 5;
 const ACCEPTED_TYPES = "image/png,image/jpeg,image/webp";
@@ -56,11 +62,14 @@ export type PhotoUploaderProps = {
   productId?: string;
   initialPhotos?: SavedPhoto[];
   onPendingFilesChange?: (files: File[]) => void;
-  onClickPhoto?: (url: string | null) => void;
 };
 
 function slotKey(slot: Slot): string {
   return slot.kind === "saved" ? slot.id : slot.localId;
+}
+
+function slotUrl(slot: Slot): string {
+  return slot.kind === "saved" ? slot.url : slot.previewUrl;
 }
 
 /**
@@ -110,7 +119,16 @@ export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange }
   const [slots, setSlots] = useState<Slot[]>(() =>
     (initialPhotos ?? []).map((photo) => ({ kind: "saved" as const, id: photo.id, url: photo.url }))
   );
-  const [activePhotoIndex, setActivePhotoIndex] = useState<number | null>(null);
+  // Índice da foto ativa no preview grande — por padrão a capa (0).
+  const [activeIndex, setActiveIndex] = useState<number>(0);
+  // Id do slot sendo arrastado no momento — alimenta o `DragOverlay` (ver
+  // abaixo). Sem overlay, o dnd-kit só move o próprio item via CSS transform
+  // DENTRO do fluxo normal do documento: arrastar pra fora da grade fazia a
+  // miniatura flutuar por cima de campos do formulário sem elevação nem
+  // limite de área, parecendo quebrado. O overlay renderiza um clone fixo
+  // (portal) que segue o ponteiro livremente, e o item original na grade
+  // continua só com a opacidade reduzida (`isDragging`) no lugar dele.
+  const [draggingId, setDraggingId] = useState<string | null>(null);
   const [processingCount, setProcessingCount] = useState(0);
   const [, startBackgroundTransition] = useTransition();
 
@@ -120,6 +138,14 @@ export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange }
   );
 
   const emptySlotCount = Math.max(0, MAX_PHOTOS - slots.length - processingCount);
+
+  // Se o activeIndex aponta para um slot que foi removido, volta para 0.
+  const safeActiveIndex = slots.length > 0 ? Math.min(activeIndex, slots.length - 1) : 0;
+  const activeSlot = slots[safeActiveIndex] ?? null;
+  const activeUrl = activeSlot ? slotUrl(activeSlot) : null;
+
+  const draggingIndex = draggingId ? slots.findIndex((slot) => slotKey(slot) === draggingId) : -1;
+  const draggingSlot = draggingIndex !== -1 ? slots[draggingIndex] : null;
 
   // Notifica o form pai (modo criação) DEPOIS do commit, nunca de dentro do
   // updater de `setSlots` — chamar o setState do pai ali dentro disparava
@@ -206,7 +232,13 @@ export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange }
     });
   }
 
+  function handleDragStart(event: DragStartEvent) {
+    setDraggingId(String(event.active.id));
+  }
+
   function handleDragEnd(event: DragEndEvent) {
+    setDraggingId(null);
+
     const { active, over } = event;
     if (!over || active.id === over.id) {
       return;
@@ -223,6 +255,11 @@ export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange }
     // Server Action de persistência caso o updater rode 2x (Strict Mode).
     const reordered = arrayMove(slots, oldIndex, newIndex);
     setSlots(reordered);
+
+    // Ajusta o activeIndex para seguir a foto que estava ativa.
+    const movedKey = slotKey(slots[oldIndex]);
+    const newActive = reordered.findIndex((s) => slotKey(s) === movedKey);
+    if (newActive !== -1) setActiveIndex(newActive);
 
     if (productId) {
       const order = reordered
@@ -243,19 +280,60 @@ export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange }
 
   return (
     <div className="flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
-      <h2 className="font-display font-bold text-gray-900 dark:text-gray-50">Fotos</h2>
-      <p className="text-xs text-gray-500 dark:text-gray-400">Até 5 fotos. A primeira é a capa da sua vitrine.</p>
+      <h2 className="font-display font-bold text-gray-900 dark:text-gray-50">Imagens do produto</h2>
 
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      {/* ── Preview grande fixo ──────────────────────────────────────────────
+          Mostra a foto ativa em tamanho real. Enquanto não há fotos, exibe
+          um placeholder com ícone + label para convidar o upload.
+          aspect-[4/3] mantém proporção consistente independente da foto.
+      ─────────────────────────────────────────────────────────────────────── */}
+      <div className="relative w-full overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800" style={{ aspectRatio: "1/1" }}>
+        {activeUrl ? (
+          <Image
+            key={activeUrl}
+            src={activeUrl}
+            alt="Preview da foto ativa"
+            fill
+            sizes="(min-width: 1024px) 40vw, 100vw"
+            className="object-contain"
+            priority
+          />
+        ) : (
+          <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-gray-400 dark:text-gray-600">
+            <ImageIcon className="h-10 w-10" aria-hidden="true" />
+            <span className="text-sm">Nenhuma foto adicionada</span>
+          </div>
+        )}
+      </div>
+
+      {/* ── Grade de miniaturas ──────────────────────────────────────────────
+          `id` fixo é obrigatório aqui, não cosmético. Sem ele, o dnd-kit gera o
+          `aria-describedby` de cada item por um contador GLOBAL de módulo
+          (`useUniqueId` em @dnd-kit/utilities): no processo do servidor esse
+          contador acumula entre requisições, enquanto no navegador ele sempre
+          começa do zero. O resultado era um erro de hidratação intermitente
+          ("DndDescribedBy-3" no servidor vs "DndDescribedBy-0" no cliente) que
+          aparecia no overlay do Next só de vez em quando. Passar um `id`
+          curto-circuita o contador e torna os ids determinísticos.
+      ─────────────────────────────────────────────────────────────────────── */}
+      <DndContext
+        id="product-photos"
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={() => setDraggingId(null)}
+      >
         <SortableContext items={slots.map(slotKey)} strategy={horizontalListSortingStrategy}>
-          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+          <div className="grid grid-cols-5 gap-2">
             {slots.map((slot, index) => (
               <PhotoSlotItem
                 key={slotKey(slot)}
                 slot={slot}
                 isCover={index === 0}
+                isActive={index === safeActiveIndex}
                 onRemove={() => handleRemove(slot)}
-                onClickPhoto={() => setActivePhotoIndex(index)}
+                onSelect={() => setActiveIndex(index)}
               />
             ))}
 
@@ -274,23 +352,36 @@ export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange }
             {Array.from({ length: emptySlotCount }).map((_, index) => (
               <label
                 key={`empty-${index}`}
-                className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-gray-300 text-gray-400 dark:border-gray-700 dark:text-gray-600"
+                className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-gray-300 text-gray-400 transition-colors hover:border-primary hover:text-primary dark:border-gray-700 dark:text-gray-600 dark:hover:border-blue-500 dark:hover:text-blue-400"
               >
                 <Plus className="h-5 w-5" aria-hidden="true" />
-                <span className="text-xs">Adicionar foto</span>
+                <span className="text-[10px] text-center leading-tight">Adicionar</span>
                 <input type="file" multiple accept={ACCEPTED_TYPES} className="sr-only" onChange={handleFilesSelected} />
               </label>
             ))}
           </div>
         </SortableContext>
-      </DndContext>
 
-      <PhotoPreview
-        urls={slots.map((s) => (s.kind === "saved" ? s.url : s.previewUrl))}
-        activeIndex={activePhotoIndex}
-        onChange={setActivePhotoIndex}
-        onClose={() => setActivePhotoIndex(null)}
-      />
+        {/*
+          Clone flutuante (portal, fora do fluxo do documento) que segue o
+          ponteiro livremente — inclusive por cima de qualquer outro campo
+          do formulário — com elevação própria. Sem isso, arrastar pra fora
+          da grade deixava o item real (preso ao layout da grade) flutuando
+          sem sombra/z-index por cima de campos do form, parecendo quebrado.
+        */}
+        <DragOverlay>
+          {draggingSlot ? (
+            <div className="h-24 w-24 cursor-grabbing overflow-hidden rounded-lg border-2 border-primary shadow-xl">
+              {draggingSlot.kind === "saved" ? (
+                <Image src={draggingSlot.url} alt="" width={96} height={96} className="h-full w-full object-cover" />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element -- preview de object URL local (blob:), next/image não serve esse esquema
+                <img src={draggingSlot.previewUrl} alt="" className="h-full w-full object-cover" />
+              )}
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
     </div>
   );
 }
@@ -298,16 +389,21 @@ export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange }
 type PhotoSlotItemProps = {
   slot: Slot;
   isCover: boolean;
+  isActive: boolean;
   onRemove: () => void;
-  onClickPhoto?: () => void;
+  onSelect: () => void;
 };
 
 /**
- * Slot preenchido (empty/uploading vêm de PhotoUploader diretamente).
- * `useSortable` só participa da grade quando o slot está preenchido — slots
- * vazios não são drop targets (03-UI-SPEC.md §Photo uploader).
+ * Miniatura individual com drag-and-drop.
+ * Clicar na imagem seleciona a foto no preview grande (onSelect); segurar e
+ * arrastar a MESMA imagem reordena — sem handle dedicado. O `PointerSensor`
+ * tem `activationConstraint: { distance: 4 }` (ver mais acima), então um
+ * toque/clique curto sempre vira `onSelect` e só um arraste de fato dispara
+ * o drag do dnd-kit; os dois gestos não competem.
+ * O anel azul indica qual foto está ativa no preview.
  */
-function PhotoSlotItem({ slot, isCover, onRemove, onClickPhoto }: PhotoSlotItemProps) {
+function PhotoSlotItem({ slot, isCover, isActive, onRemove, onSelect }: PhotoSlotItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: slotKey(slot) });
 
   const style = {
@@ -319,45 +415,45 @@ function PhotoSlotItem({ slot, isCover, onRemove, onClickPhoto }: PhotoSlotItemP
     <div
       ref={setNodeRef}
       style={style}
-      onClick={onClickPhoto}
-      className={`relative aspect-square cursor-pointer overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800 ${isDragging ? "opacity-50" : ""}`}
+      className={`group relative aspect-square overflow-hidden rounded-lg border-2 transition-all duration-150 ${
+        isDragging ? "opacity-50" : ""
+      } ${
+        isActive
+          ? "border-primary shadow-md shadow-primary/20"
+          : "border-transparent"
+      }`}
     >
-      {slot.kind === "saved" ? (
-        <Image src={slot.url} alt="" fill sizes="20vw" className="object-cover" />
-      ) : (
-        // eslint-disable-next-line @next/next/no-img-element -- preview de object URL local (blob:), next/image não serve esse esquema
-        <img src={slot.previewUrl} alt="" className="h-full w-full object-cover" />
-      )}
-
-      {isCover && (
-        <span className="absolute left-1 top-1 rounded-full bg-primary px-2 py-0.5 text-xs text-white">Capa</span>
-      )}
-
-      {/*
-        Área de toque (botão) mantém 44x44px cheio — mínimo recomendado para
-        alvo tocável no mobile — mas o círculo VISÍVEL dentro dela é bem menor,
-        para não tampar a miniatura da foto. Sombra + leve zoom no hover dá um
-        alvo preciso e discreto pro usuário de mouse/desktop também.
-      */}
+      {/* Clique seleciona no preview grande; arraste reordena. */}
       <button
         type="button"
+        onClick={onSelect}
         {...attributes}
         {...listeners}
-        aria-label="Reordenar foto"
-        className="group absolute bottom-0 left-0 flex h-11 w-11 items-center justify-center"
+        className="absolute inset-0 z-0 h-full w-full touch-none"
+        aria-label={`Ver foto${isCover ? " (capa)" : ""} — arraste para reordenar`}
       >
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/85 text-gray-900 shadow-sm transition group-hover:scale-110 group-hover:bg-white dark:bg-gray-800/85 dark:text-gray-50 dark:group-hover:bg-gray-800">
-          <GripVertical className="h-3 w-3" aria-hidden="true" />
-        </span>
+        {slot.kind === "saved" ? (
+          <Image src={slot.url} alt="" fill sizes="20vw" className="object-cover" />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element -- preview de object URL local (blob:), next/image não serve esse esquema
+          <img src={slot.previewUrl} alt="" className="h-full w-full object-cover" />
+        )}
       </button>
 
+      {isCover && (
+        <span className="absolute left-1 top-1 z-10 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-semibold text-white pointer-events-none">
+          Capa
+        </span>
+      )}
+
+      {/* Botão de remover */}
       <button
         type="button"
-        onClick={onRemove}
+        onClick={(e) => { e.stopPropagation(); onRemove(); }}
         aria-label="Remover foto"
-        className="group absolute right-0 top-0 flex h-11 w-11 items-center justify-center"
+        className="group/rm absolute right-0 top-0 z-20 flex h-9 w-9 items-center justify-center opacity-0 transition-opacity group-hover:opacity-100"
       >
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/85 text-error-solid shadow-sm transition group-hover:scale-110 group-hover:bg-white dark:bg-gray-800/85 dark:group-hover:bg-gray-800">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-error-solid shadow-sm transition group-hover/rm:scale-110 dark:bg-gray-800/90">
           <X className="h-3 w-3" aria-hidden="true" />
         </span>
       </button>
