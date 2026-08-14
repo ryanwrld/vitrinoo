@@ -428,7 +428,7 @@ export default async function DashboardPage({
   // product_sizes.available=true) simplesmente por ainda não ter sido
   // terminado, não porque faltou estoque de um produto que está no ar. Sem
   // este filtro, cadastrar 5 chuteiras aos poucos (foto hoje, tamanho
-  // amanhã — fluxo normal, ver "Voltar para rascunho" em product-form.tsx)
+  // amanhã — fluxo normal, ver o botão "Rascunho" em product-form.tsx)
   // infla "Produtos esgotados" com anúncios que NUNCA estiveram visíveis
   // pro cliente final, misturando "preciso repor estoque" (ação real) com
   // "ainda não terminei de cadastrar" (não é problema nenhum) sob o mesmo

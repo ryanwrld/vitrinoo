@@ -385,7 +385,7 @@ export async function saveProduct(formData: FormData): Promise<ProductActionResu
  * `publishProduct`. Sem `intent="publish"`, `status` nunca é incluído no
  * objeto de update — um produto já publicado que só teve campos salvos
  * continua publicado, e despublicar continua sendo obra exclusiva de
- * `unpublishProduct` (botão "Voltar para rascunho", ação separada).
+ * `unpublishProduct` (botão "Rascunho", ação separada).
  */
 export async function updateProduct(productId: string, formData: FormData): Promise<ProductActionResult> {
   const parsedFields = parseProductFormData(formData);
