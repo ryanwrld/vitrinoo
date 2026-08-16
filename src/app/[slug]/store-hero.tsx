@@ -214,7 +214,21 @@ export function StoreHero({ store, stats }: { store: StoreHeroData; stats: Store
               aria-label="Loja verificada"
             />
           </h1>
-          <p className="text-sm text-gray-500">@{store.slug}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm text-gray-500">@{store.slug}</p>
+            {store.instagram && (
+              <a
+                href={instagramProfileUrl(store.instagram)}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Instagram de ${store.name}`}
+                className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-900 transition-colors duration-150 hover:border-gray-400 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
+              >
+                <InstagramIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                {store.instagram}
+              </a>
+            )}
+          </div>
         </div>
 
         {store.tagline && (
@@ -233,7 +247,10 @@ export function StoreHero({ store, stats }: { store: StoreHeroData; stats: Store
           // próprio é ruído.
           <dl className="mt-4 flex flex-wrap items-baseline gap-x-8 gap-y-2">
             {statItems.map((item) => (
-              <div key={item.label} className="flex items-baseline gap-1.5">
+              <div
+                key={item.label}
+                className="flex flex-col items-start sm:flex-row sm:items-baseline sm:gap-1.5"
+              >
                 <dd className="text-sm font-bold text-gray-900 sm:text-base">{item.value}</dd>
                 <dt className="text-sm text-gray-500">{item.label}</dt>
               </div>
