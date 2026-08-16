@@ -7,7 +7,8 @@ import clsx, { type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { toast } from "sonner";
 import { copyText } from "@/lib/clipboard";
-import { formatBRLPrice, formatBRLPriceInput } from "@/lib/currency/brl";
+import { formatBRLPriceInput } from "@/lib/currency/brl";
+import { PriceDisplay } from "@/components/price-display";
 import { buildOrderMessage, buildWhatsAppUrl } from "@/lib/whatsapp/order-message";
 import { decideOrderAction } from "@/lib/whatsapp/order-guard";
 import { logOrderClick } from "@/lib/products/order-clicks-actions";
@@ -32,6 +33,9 @@ export type ProductOrderPanelProps = {
     line: string | null;
     sole: string | null;
     price: number;
+    /** Preço promocional (gatilho de conversão, `PriceDisplay`) — `null`
+     * sem promoção ativa. */
+    promotional_price: number | null;
   };
   sizes: { size: number; available: boolean }[];
   whatsappE164: string;
@@ -134,7 +138,14 @@ export function ProductOrderPanel({
   // A2 (05-RESEARCH.md): sole ausente vira string vazia, nunca "null"/"undefined"
   // literal na mensagem.
   const solado = product.sole ?? "";
-  const precoFormatado = formatBRLPriceInput(product.price);
+  // Gatilho de conversão (preço promocional): a mensagem do WhatsApp cita
+  // SÓ o valor que o cliente vai pagar de fato — nunca "de/por" aqui, texto
+  // limpo pro revendedor confirmar rápido (decisão do usuário). Mesma regra
+  // de validade de `PriceDisplay`: só conta como promo ativa quando
+  // `promotional_price` é um número válido e menor que `price`.
+  const hasPromo =
+    product.promotional_price !== null && product.promotional_price > 0 && product.promotional_price < product.price;
+  const precoFormatado = formatBRLPriceInput(hasPromo ? product.promotional_price! : product.price);
 
   // fotoUrl aqui é a URL da PÁGINA do produto (não o arquivo de imagem cru
   // do Storage) — no iOS, um link wa.me cujo texto termina numa URL que
@@ -220,7 +231,7 @@ export function ProductOrderPanel({
       if (ok) {
         toast.success("Pedido copiado!");
       } else {
-        toast.error("Não foi possível copiar. Tente novamente.");
+        toast.error("Não foi possível copiar.");
       }
     });
   }
@@ -237,7 +248,7 @@ export function ProductOrderPanel({
         {photosToRender.map((url, index) => (
           <div
             key={url ?? index}
-            className="relative aspect-square w-full shrink-0 snap-center overflow-hidden rounded-xl bg-gray-100"
+            className="relative aspect-square w-full shrink-0 snap-center overflow-hidden rounded-[1.25rem] bg-gray-100"
           >
             <ImageWithFallback src={url} alt={product.name} />
           </div>
@@ -267,7 +278,7 @@ export function ProductOrderPanel({
           <h1 className="font-display text-xl font-extrabold text-gray-900">{product.name}</h1>
           <FavoriteButton slug={slug} productId={productId} productName={product.name} variant="inline" className="shrink-0" />
         </div>
-        <span className="font-display text-2xl font-extrabold text-primary">{formatBRLPrice(product.price)}</span>
+        <PriceDisplay price={product.price} promotionalPrice={product.promotional_price} variant="detail" />
       </div>
 
       <div className="flex flex-col gap-2">
@@ -281,7 +292,7 @@ export function ProductOrderPanel({
               aria-pressed={selectedSize === size}
               tabIndex={available ? 0 : -1}
               className={cn(
-                "flex min-h-11 min-w-11 items-center justify-center rounded-lg border text-base transition-colors duration-150",
+                "flex min-h-11 min-w-11 items-center justify-center rounded-xl border text-base transition-colors duration-150",
                 available && selectedSize !== size && "border-gray-300 bg-white text-gray-900 hover:border-primary",
                 available && selectedSize === size && "border-primary bg-primary text-white",
                 !available &&
@@ -337,7 +348,7 @@ export function ProductOrderPanel({
               disabled={isPending}
               aria-label="Copiar pedido"
               className={cn(
-                "flex h-full min-h-11 items-center justify-center gap-1 rounded-md border border-gray-300 bg-white px-4 py-2 text-center text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60",
+                "flex h-full min-h-11 items-center justify-center gap-1 rounded-full border border-gray-300 bg-white px-4 py-2 text-center text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60",
                 copyShakeKey > 0 && "animate-shake"
               )}
             >
@@ -368,7 +379,7 @@ export function ProductOrderPanel({
               rel={opensInNewTab ? "noopener noreferrer" : undefined}
               onClick={handleOrderClick}
               className={cn(
-                "block min-h-11 w-full rounded-md bg-whatsapp px-4 py-2 text-center text-sm font-semibold text-white transition-all duration-150 hover:bg-whatsapp-hover active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2",
+                "block min-h-11 w-full rounded-full bg-whatsapp px-4 py-2 text-center text-sm font-semibold text-white transition-all duration-150 hover:bg-whatsapp-hover active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2",
                 orderShakeKey > 0 && "animate-shake"
               )}
             >

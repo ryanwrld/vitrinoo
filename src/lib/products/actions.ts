@@ -101,12 +101,12 @@ async function uploadAndInsertPhotos(
     .eq("product_id", productId);
 
   if (countError) {
-    return { error: "Não foi possível verificar as fotos existentes. Tente novamente." };
+    return { error: "Não foi possível verificar as fotos." };
   }
 
   const startPosition = existingCount ?? 0;
   if (startPosition + photos.length > MAX_PHOTOS_PER_PRODUCT) {
-    return { error: "Você já atingiu o limite de 5 fotos por produto." };
+    return { error: "Limite de 5 fotos por produto atingido." };
   }
 
   for (const photo of photos) {
@@ -123,7 +123,7 @@ async function uploadAndInsertPhotos(
       .upload(path, photo, { contentType: photo.type });
 
     if (uploadError) {
-      return { error: "Não foi possível enviar uma das fotos. Tente novamente." };
+      return { error: "Não foi possível enviar uma das fotos." };
     }
 
     const { error: insertError } = await owned.supabase.from("product_photos").insert({
@@ -133,7 +133,7 @@ async function uploadAndInsertPhotos(
     });
 
     if (insertError) {
-      return { error: "Não foi possível salvar uma das fotos. Tente novamente." };
+      return { error: "Não foi possível salvar uma das fotos." };
     }
   }
 
@@ -164,7 +164,7 @@ async function getOwnedStore(): Promise<
     .single();
 
   if (storeLookupError || !store) {
-    return { error: "Não foi possível localizar sua loja. Tente novamente." };
+    return { error: "Não foi possível localizar sua loja." };
   }
 
   return { supabase, userId: userData.user.id, storeId: store.id };
@@ -314,7 +314,7 @@ export async function saveProduct(formData: FormData): Promise<ProductActionResu
     .single();
 
   if (insertError || !product) {
-    return { error: "Não foi possível salvar o produto. Verifique sua conexão e tente novamente." };
+    return { error: "Não foi possível salvar o produto." };
   }
 
   // Só as linhas escolhidas (nunca a grade inteira) — um produto sem
@@ -335,7 +335,7 @@ export async function saveProduct(formData: FormData): Promise<ProductActionResu
       // ("Tente novamente") de virar um SEGUNDO produto idêntico — nada de
       // valor se perde, porque nenhuma foto foi enviada ainda.
       await owned.supabase.from("products").delete().eq("id", product.id);
-      return { error: "Não foi possível salvar os tamanhos do produto. Tente novamente." };
+      return { error: "Não foi possível salvar os tamanhos." };
     }
   }
 
@@ -417,7 +417,7 @@ export async function updateProduct(productId: string, formData: FormData): Prom
     .eq("id", productId);
 
   if (updateError) {
-    return { error: "Não foi possível salvar as alterações. Verifique sua conexão e tente novamente." };
+    return { error: "Não foi possível salvar as alterações." };
   }
 
   // Upsert-depois-delete, nunca delete-depois-insert: sem transação no
@@ -437,7 +437,7 @@ export async function updateProduct(productId: string, formData: FormData): Prom
     );
 
     if (sizesUpsertError) {
-      return { error: "Não foi possível salvar os tamanhos do produto. Tente novamente." };
+      return { error: "Não foi possível salvar os tamanhos." };
     }
   }
 
@@ -450,7 +450,7 @@ export async function updateProduct(productId: string, formData: FormData): Prom
     : await removeStale;
 
   if (deleteSizesError) {
-    return { error: "Não foi possível atualizar os tamanhos do produto. Tente novamente." };
+    return { error: "Não foi possível atualizar os tamanhos." };
   }
 
   revalidateProdutos(productId);
@@ -478,7 +478,7 @@ export async function deleteProduct(productId: string): Promise<ProductActionRes
 
   const { error: deleteError } = await owned.supabase.from("products").delete().eq("id", productId);
   if (deleteError) {
-    return { error: "Não foi possível excluir o produto. Tente novamente." };
+    return { error: "Não foi possível excluir o produto." };
   }
 
   revalidateProdutos();
@@ -499,7 +499,7 @@ export async function publishProduct(productId: string): Promise<ProductActionRe
 
   const { error } = await owned.supabase.from("products").update({ status: "published" }).eq("id", productId);
   if (error) {
-    return { error: "Não foi possível publicar o produto. Tente novamente." };
+    return { error: "Não foi possível publicar o produto." };
   }
 
   revalidateProdutos(productId);
@@ -519,7 +519,7 @@ export async function unpublishProduct(productId: string): Promise<ProductAction
 
   const { error } = await owned.supabase.from("products").update({ status: "draft" }).eq("id", productId);
   if (error) {
-    return { error: "Não foi possível mover o produto para rascunho. Tente novamente." };
+    return { error: "Não foi possível mover para rascunho." };
   }
 
   revalidateProdutos(productId);
@@ -583,7 +583,7 @@ export async function updatePhotoOrder(
       .eq("id", item.id);
 
     if (error) {
-      return { error: "Não foi possível reordenar as fotos. Tente novamente." };
+      return { error: "Não foi possível reordenar as fotos." };
     }
   }
 
@@ -594,7 +594,7 @@ export async function updatePhotoOrder(
       .eq("id", item.id);
 
     if (error) {
-      return { error: "Não foi possível reordenar as fotos. Tente novamente." };
+      return { error: "Não foi possível reordenar as fotos." };
     }
   }
 
@@ -623,14 +623,14 @@ export async function removePhoto(photoId: string): Promise<ProductActionResult>
     .single();
 
   if (fetchError || !photo) {
-    return { error: "Não foi possível encontrar essa foto. Tente novamente." };
+    return { error: "Não foi possível encontrar essa foto." };
   }
 
   await owned.supabase.storage.from("product-images").remove([photo.storage_path]);
 
   const { error: deleteError } = await owned.supabase.from("product_photos").delete().eq("id", photoId);
   if (deleteError) {
-    return { error: "Não foi possível remover a foto. Tente novamente." };
+    return { error: "Não foi possível remover a foto." };
   }
 
   revalidatePath("/admin/produtos");
@@ -678,7 +678,91 @@ export async function markProductEsgotado(productId: string): Promise<ProductAct
     .eq("product_id", productId);
 
   if (error) {
-    return { error: "Não foi possível marcar o produto como esgotado. Tente novamente." };
+    return { error: "Não foi possível marcar como esgotado." };
+  }
+
+  revalidateProdutos(productId);
+  return { success: true, id: productId };
+}
+
+/**
+ * Edição rápida do preço PROMOCIONAL direto na listagem (input "Promocional"
+ * inline em `ProductList`, ao lado do preço normal) — gatilho de conversão
+ * na vitrine pública (`PriceDisplay`): "de/por" + selo de desconto. Campo
+ * vazio (`promotionalPrice: null`) REMOVE a promoção — sem data de validade
+ * nesta v1, fica ativa até o revendedor apagar manualmente.
+ *
+ * A checagem "promocional < normal" é revalidada aqui contra o `price`
+ * ATUAL do banco (nunca um valor que o client possa ter enviado junto) —
+ * o preço normal pode ter sido editado num campo irmão sem o componente do
+ * promocional saber, então o servidor é a única fonte confiável no momento
+ * do commit.
+ */
+export async function updateProductPromotionalPrice(
+  productId: string,
+  promotionalPrice: number | null
+): Promise<ProductActionResult> {
+  const owned = await getOwnedStore();
+  if ("error" in owned) {
+    return { error: owned.error };
+  }
+
+  if (promotionalPrice !== null) {
+    if (!Number.isFinite(promotionalPrice) || promotionalPrice <= 0) {
+      return { error: "Preço promocional inválido." };
+    }
+
+    const { data: current, error: fetchError } = await owned.supabase
+      .from("products")
+      .select("price")
+      .eq("id", productId)
+      .single();
+
+    if (fetchError || !current) {
+      return { error: "Não foi possível localizar o produto." };
+    }
+
+    if (promotionalPrice >= current.price) {
+      return { error: "O promocional deve ser menor que o normal." };
+    }
+  }
+
+  const { error } = await owned.supabase
+    .from("products")
+    .update({ promotional_price: promotionalPrice })
+    .eq("id", productId);
+
+  if (error) {
+    return { error: "Não foi possível salvar o preço promocional." };
+  }
+
+  revalidateProdutos(productId);
+  return { success: true, id: productId };
+}
+
+/**
+ * Edição rápida do preço direto na listagem (input inline em `ProductList`)
+ * — mesmo espírito de `markProductEsgotado`: um único UPDATE de campo só,
+ * sem reusar `updateProduct` (que exige o FormData inteiro do formulário
+ * completo, tamanhos incluídos). `price` já chega validado por
+ * `parseBRLPrice` no client antes de chamar esta action; revalidado aqui
+ * de novo (nunca > 0) porque a Server Action é a fronteira real de
+ * confiança, não o client.
+ */
+export async function updateProductPrice(productId: string, price: number): Promise<ProductActionResult> {
+  if (!Number.isFinite(price) || price <= 0) {
+    return { error: "Preço inválido." };
+  }
+
+  const owned = await getOwnedStore();
+  if ("error" in owned) {
+    return { error: owned.error };
+  }
+
+  const { error } = await owned.supabase.from("products").update({ price }).eq("id", productId);
+
+  if (error) {
+    return { error: "Não foi possível salvar o preço." };
   }
 
   revalidateProdutos(productId);

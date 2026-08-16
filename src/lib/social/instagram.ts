@@ -52,7 +52,7 @@ export function normalizeInstagramHandle(raw: string | null | undefined): Instag
 
   if (!HANDLE_PATTERN.test(candidate)) {
     return {
-      error: "Instagram inválido. Use só o nome de usuário, como rlesportes.",
+      error: "Instagram inválido. Use só o nome de usuário.",
     };
   }
 

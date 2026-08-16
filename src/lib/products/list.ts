@@ -29,6 +29,10 @@ export type QueriedProduct = {
   brand_other: string | null;
   line: string | null;
   price: number;
+  /** Preço promocional (gatilho de conversão na vitrine pública) — `null`
+   * quando o produto não tem promoção ativa. Editável inline via
+   * `updateProductPromotionalPrice`, ver `product-list.tsx`. */
+  promotional_price: number | null;
   status: string;
   /** Disponibilidade derivada: EXISTS sobre product_sizes.available=true
    * (03-RESEARCH.md Pattern 1) — cobre de graça o rascunho sem tamanhos
@@ -62,7 +66,7 @@ export async function queryProducts(
 ): Promise<QueriedProduct[]> {
   let query = supabase
     .from("products")
-    .select("id, name, brand, brand_other, line, price, status")
+    .select("id, name, brand, brand_other, line, price, promotional_price, status")
     .eq("store_id", storeId);
 
   if (params.q) {

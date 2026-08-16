@@ -52,7 +52,7 @@ export default async function ProdutosPage({
 
   const { data: store } = await supabase
     .from("stores")
-    .select("id")
+    .select("id, slug, name")
     .eq("owner_id", userData.user!.id)
     .single();
 
@@ -130,25 +130,33 @@ export default async function ProdutosPage({
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 2xl:max-w-[96rem]">
       {/* "Novo produto" saiu da linha do h1: os três ícones do cabeçalho
           ocupam a direita agora, e disputar essa borda faria o botão mais
-          importante da tela brigar por espaço com controles utilitários. */}
-      <Link
-        href="/admin/produtos/novo"
-        className="w-full shrink-0 rounded-md bg-primary px-5 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow active:translate-y-0 active:bg-primary-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 sm:w-auto sm:self-start"
-      >
-        Novo produto
-      </Link>
-
-      {hasAnyProduct && (
-        <div className="flex flex-col gap-2">
-          <ProductToolbar currentParams={params} />
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {products.length} {products.length === 1 ? "produto" : "produtos"}
-          </p>
-        </div>
+          importante da tela brigar por espaço com controles utilitários.
+          Ele mora na linha dos filtros (via prop `actions` do
+          ProductToolbar), alinhado à direita — só quando já existe algum
+          produto; sem produto nenhum, o botão fica no EmptyState abaixo. */}
+      {hasAnyProduct ? (
+        <ProductToolbar
+          currentParams={params}
+          actions={
+            <Link
+              href="/admin/produtos/novo"
+              className="flex min-h-11 w-full shrink-0 items-center justify-center rounded-full bg-primary px-4 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow active:translate-y-0 active:bg-primary-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 sm:w-auto"
+            >
+              Novo produto
+            </Link>
+          }
+        />
+      ) : (
+        <Link
+          href="/admin/produtos/novo"
+          className="w-full shrink-0 rounded-full bg-primary px-5 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow active:translate-y-0 active:bg-primary-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 sm:w-auto sm:self-start"
+        >
+          Novo produto
+        </Link>
       )}
 
       {hasFilteredResults ? (
-        <ProductList products={productsWithCoverUrl} />
+        <ProductList products={productsWithCoverUrl} storeSlug={store.slug} storeName={store.name} />
       ) : hasAnyProduct ? (
         <EmptyState
           icon="search"
@@ -163,7 +171,7 @@ export default async function ProdutosPage({
           action={
             <Link
               href="/admin/produtos/novo"
-              className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-primary-hover active:bg-primary-active active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
+              className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-primary-hover active:bg-primary-active active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
             >
               Cadastrar produto
             </Link>

@@ -65,7 +65,7 @@ export async function updatePassword(formData: FormData): Promise<UpdatePassword
   const { error } = await supabase.auth.updateUser({ password: parsed.data });
 
   if (error) {
-    return { error: "Não foi possível redefinir sua senha. O link pode ter expirado — solicite um novo." };
+    return { error: "Link expirado. Solicite um novo." };
   }
 
   redirect("/admin/dashboard");

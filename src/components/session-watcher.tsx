@@ -25,7 +25,7 @@ export function SessionWatcher() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") {
-        toast.error("Sua sessão expirou. Salve seu trabalho e faça login novamente.", {
+        toast.error("Sessão expirada. Faça login novamente.", {
           duration: Infinity,
         });
       }

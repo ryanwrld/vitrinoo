@@ -327,8 +327,14 @@ input:autofill {
 @keyframes vt-fade-in { from { opacity: 0 } to { opacity: 1 } }
 @keyframes vt-scale-in { from { opacity: 0; transform: scale(.96) translateY(4px) } to { opacity: 1; transform: scale(1) translateY(0) } }
 @keyframes vt-slide-up { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: translateY(0) } }
+/* Menu "mais ações" (product-list.tsx) — entra da DIREITA pra esquerda
+   (translateX positivo -> 0), não de cima/escala como os outros dropdowns:
+   o gatilho fica encostado na borda direita do card, então a entrada
+   lateral reforça de onde o menu "nasceu". */
+@keyframes vt-slide-in-right { from { opacity: 0; transform: translateX(12px) } to { opacity: 1; transform: translateX(0) } }
 .animate-fade-in { animation: vt-fade-in 180ms cubic-bezier(.4,0,.2,1); }
 .animate-scale-in { animation: vt-scale-in 280ms cubic-bezier(.2,0,0,1); }
+.animate-slide-in-right { animation: vt-slide-in-right 200ms cubic-bezier(.2,0,0,1); }
 .animate-slide-up { animation: vt-slide-up 280ms cubic-bezier(.2,0,0,1); }
 
 /*
@@ -706,6 +712,21 @@ input:autofill {
     radial-gradient(65% 60% at 50% -18%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 60%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.02) 30%, rgba(255, 255, 255, 0.05) 100%);
 }
+
+/*
+ * Ícone dos toasts (sonner, ver app-toaster.tsx) por tipo — mesma cor vívida
+ * dos badges/status já usados no resto do app (--color-*-solid, tokens
+ * únicos que já funcionam nos dois temas, ver comentário acima de
+ * `.dark .admin-scope` sobre os tokens *-fg). CSS puro em vez de classe
+ * Tailwind: o seletor `[&_[data-icon]]:` (colchete dentro de colchete)
+ * nunca chegou a compilar — Tailwind não gerou a regra (verificado nas
+ * stylesheets do navegador), provavelmente por causa dos colchetes
+ * aninhados na variante arbitrária.
+ */
+[data-sonner-toast][data-type="error"] [data-icon] svg { color: var(--color-error-solid) !important; }
+[data-sonner-toast][data-type="success"] [data-icon] svg { color: var(--color-success-solid) !important; }
+[data-sonner-toast][data-type="warning"] [data-icon] svg { color: var(--color-warning-solid) !important; }
+[data-sonner-toast][data-type="info"] [data-icon] svg { color: var(--color-primary) !important; }
 
 /* Reduced motion — respeita preferência do sistema operacional */
 @media (prefers-reduced-motion: reduce) {

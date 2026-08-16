@@ -92,7 +92,7 @@ export function HeaderActions({
 
         {accountMenuOpen && (
           <div
-            className="animate-scale-in absolute right-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-lg border border-gray-200 bg-white p-1 shadow-md dark:border-gray-800 dark:bg-gray-900"
+            className="animate-scale-in absolute right-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-[1.5rem] border border-gray-200 bg-white p-2 shadow-md dark:border-gray-800 dark:bg-gray-900"
             style={{ transformOrigin: "top right" }}
           >
             <form action={signOutAction}>

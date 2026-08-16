@@ -45,12 +45,12 @@ export type ProductFormProps = {
 
 /* ── Tokens visuais reutilizáveis ────────────────────────────────────────── */
 const cardCls =
-  "flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900";
+  "flex flex-col gap-4 rounded-[2rem] border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900";
 const labelCls = "text-sm font-medium text-gray-700 dark:text-gray-300";
 const inputCls =
-  "rounded-md border border-gray-300 bg-white px-3 h-11 text-base text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:placeholder:text-gray-600 dark:focus:ring-blue-400/20";
+  "rounded-xl border border-gray-300 bg-white px-3 h-11 text-base text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:placeholder:text-gray-600 dark:focus:ring-blue-400/20";
 const selectCls =
-  "w-full min-h-11 appearance-none rounded-md border border-gray-300 bg-white px-3 pr-9 h-11 text-base text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:focus:ring-blue-400/20";
+  "w-full min-h-11 appearance-none rounded-xl border border-gray-300 bg-white px-3 pr-9 h-11 text-base text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:focus:ring-blue-400/20";
 const errorCls = "text-sm text-error-fg";
 const fieldCls = "flex flex-col gap-1";
 
@@ -192,7 +192,7 @@ export function ProductForm({ header, defaultValues, productId, status, initialP
         createdIdRef.current = result.id;
 
         if (result.warning) {
-          toast.error(`${result.warning} Os dados do produto já foram salvos.`);
+          toast.error(`${result.warning} Produto salvo, reenvie a foto.`);
           router.push(`/admin/produtos/${result.id}/editar`);
           return;
         }
@@ -221,7 +221,7 @@ export function ProductForm({ header, defaultValues, productId, status, initialP
         return;
       }
       setCurrentStatus("draft");
-      toast.success("Produto movido para rascunho. Ele saiu da sua vitrine.");
+      toast.success("Movido para rascunho. Saiu da vitrine.");
     });
   }
 
@@ -351,7 +351,7 @@ export function ProductForm({ header, defaultValues, productId, status, initialP
 
               <div className={fieldCls}>
                 <label htmlFor="price" className={labelCls}>Preço</label>
-                <div className="flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 h-11 transition-colors duration-150 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:focus-within:ring-blue-400/20">
+                <div className="flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 h-11 transition-colors duration-150 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:focus-within:ring-blue-400/20">
                   <span className="text-base text-gray-500 dark:text-gray-400">R$</span>
                   <input
                     id="price"
@@ -376,7 +376,7 @@ export function ProductForm({ header, defaultValues, productId, status, initialP
                   id="description"
                   rows={4}
                   {...register("description")}
-                  className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:placeholder:text-gray-600 dark:focus:ring-blue-400/20"
+                  className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:placeholder:text-gray-600 dark:focus:ring-blue-400/20"
                 />
                 {errors.description && (
                   <span className={errorCls}>{errors.description.message}</span>
@@ -392,7 +392,7 @@ export function ProductForm({ header, defaultValues, productId, status, initialP
                     type="submit"
                     onClick={() => { submitIntentRef.current = "save"; }}
                     disabled={isPending}
-                    className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-primary-hover active:bg-primary-active active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:bg-gray-100 disabled:text-gray-400 disabled:pointer-events-none dark:disabled:bg-gray-800 dark:disabled:text-gray-600"
+                    className="flex-1 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-primary-hover active:bg-primary-active active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:bg-gray-100 disabled:text-gray-400 disabled:pointer-events-none dark:disabled:bg-gray-800 dark:disabled:text-gray-600"
                   >
                     {isPending ? "Salvando…" : "Salvar alterações"}
                   </button>
@@ -401,7 +401,7 @@ export function ProductForm({ header, defaultValues, productId, status, initialP
                       type="button"
                       onClick={handleRevert}
                       disabled={isPending}
-                      className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700"
+                      className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700"
                     >
                       Reverter alterações
                     </button>
@@ -410,7 +410,7 @@ export function ProductForm({ header, defaultValues, productId, status, initialP
                       type="button"
                       onClick={handleUnpublish}
                       disabled={isPublishPending}
-                      className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700"
+                      className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700"
                     >
                       {isPublishPending ? "Salvando…" : "Rascunho"}
                     </button>
@@ -422,7 +422,7 @@ export function ProductForm({ header, defaultValues, productId, status, initialP
                     type="submit"
                     onClick={() => { submitIntentRef.current = "publish"; }}
                     disabled={isPending}
-                    className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-primary-hover active:bg-primary-active active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:bg-gray-100 disabled:text-gray-400 disabled:pointer-events-none dark:disabled:bg-gray-800 dark:disabled:text-gray-600"
+                    className="flex-1 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-primary-hover active:bg-primary-active active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:bg-gray-100 disabled:text-gray-400 disabled:pointer-events-none dark:disabled:bg-gray-800 dark:disabled:text-gray-600"
                   >
                     {isPending && submitIntentRef.current === "publish" ? "Publicando…" : "Publicar"}
                   </button>
@@ -430,7 +430,7 @@ export function ProductForm({ header, defaultValues, productId, status, initialP
                     type="submit"
                     onClick={() => { submitIntentRef.current = productId ? "save" : "draft"; }}
                     disabled={isPending}
-                    className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700"
+                    className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700"
                   >
                     {isPending && submitIntentRef.current !== "publish"
                       ? "Salvando…"

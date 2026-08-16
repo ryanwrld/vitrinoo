@@ -44,7 +44,7 @@ export function ThemeToggle() {
   const mounted = useHasMounted();
 
   return (
-    <div className="flex w-full rounded-lg border border-gray-200/60 bg-gray-100/80 p-1 shadow-sm sm:w-auto dark:border-gray-800 dark:bg-gray-800/60">
+    <div className="flex w-full rounded-full border border-gray-200/60 bg-gray-100/80 p-1 shadow-sm sm:w-auto dark:border-gray-800 dark:bg-gray-800/60">
       {OPTIONS.map(({ value, label, Icon }) => {
         const isActive = mounted && theme === value;
         return (
@@ -54,7 +54,7 @@ export function ThemeToggle() {
             onClick={() => setTheme(value)}
             aria-pressed={isActive}
             className={cn(
-              "flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 sm:flex-none",
+              "flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition-colors duration-150 sm:flex-none",
               isActive
                 ? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-50"
                 : "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"

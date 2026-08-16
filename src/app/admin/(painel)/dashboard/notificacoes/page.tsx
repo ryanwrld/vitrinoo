@@ -88,7 +88,7 @@ export default async function AtividadePage({
       </div>
 
       <section
-        className={`flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 ${
+        className={`flex flex-col gap-3 rounded-[2rem] border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900 ${
           isEmpty ? "flex-1 justify-center" : ""
         }`}
       >
@@ -130,7 +130,7 @@ export default async function AtividadePage({
           // toda é só isso), com tom de início de jornada — sem CTA aqui: o
           // "Movimento parado" do dashboard já cobre a ação de compartilhar;
           // esta página é o registro histórico, não o lugar de agir.
-          <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-gray-300 px-6 py-16 text-center dark:border-gray-700">
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-[2rem] border border-dashed border-gray-300 px-6 py-16 text-center dark:border-gray-700">
             <span className="flex h-16 w-16 items-center justify-center rounded-full bg-primary-subtle text-primary dark:bg-blue-400/15 dark:text-blue-300">
               <Bell className="h-8 w-8" aria-hidden="true" />
             </span>
@@ -142,7 +142,7 @@ export default async function AtividadePage({
             </span>
           </div>
         ) : (
-          <div className="flex flex-col gap-1 rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center dark:border-gray-700">
+          <div className="flex flex-col gap-1 rounded-[2rem] border border-dashed border-gray-300 px-4 py-8 text-center dark:border-gray-700">
             <span className="font-medium text-gray-900 dark:text-gray-50">Nada por aqui</span>
             <span className="text-sm text-gray-500 dark:text-gray-400">Essa página não tem mais itens.</span>
           </div>

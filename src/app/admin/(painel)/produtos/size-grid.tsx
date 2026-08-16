@@ -116,12 +116,12 @@ export const SizeGrid = forwardRef<HTMLDivElement, SizeGridProps>(function SizeG
     <div
       ref={ref}
       style={style}
-      className={`flex flex-col justify-center gap-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900${className ? ` ${className}` : ""}`}
+      className={`flex flex-col justify-center gap-4 rounded-[2rem] border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900${className ? ` ${className}` : ""}`}
     >
       <div className="flex items-center justify-between gap-2">
         <div>
           <h2 className="font-display font-bold text-gray-900 dark:text-gray-50">Tamanhos</h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="hidden text-xs text-gray-500 sm:block dark:text-gray-400">
             Toque para alternar entre disponível e esgotado.
           </p>
         </div>
@@ -129,7 +129,7 @@ export const SizeGrid = forwardRef<HTMLDivElement, SizeGridProps>(function SizeG
           type="button"
           onClick={handleMarkAllEsgotado}
           disabled={isPending}
-          className="shrink-0 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60"
+          className="shrink-0 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60"
         >
           {isPending ? "Marcando…" : "Marcar tudo como esgotado"}
         </button>
@@ -156,7 +156,7 @@ export const SizeGrid = forwardRef<HTMLDivElement, SizeGridProps>(function SizeG
                       : `Tamanho ${size} esgotado. Marcar como disponível`
                 }
                 className={cn(
-                  "flex min-h-11 w-full min-w-11 items-center justify-center rounded-lg border text-base transition-colors duration-150",
+                  "flex min-h-11 w-full min-w-11 items-center justify-center rounded-xl border text-base transition-colors duration-150",
                   // Não-incluído: ausência de informação — tracejado e apagado.
                   !included &&
                     "border-dashed border-gray-300 bg-white text-gray-400 hover:border-primary hover:text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-500 dark:hover:text-gray-50",

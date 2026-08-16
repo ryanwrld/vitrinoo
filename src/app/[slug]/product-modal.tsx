@@ -73,7 +73,7 @@ export function ProductModal({ children }: { children: ReactNode }) {
         // Cliques dentro do card nunca devem borbulhar até o overlay e
         // fechar o modal no meio da escolha de tamanho.
         onClick={(event) => event.stopPropagation()}
-        className="relative flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl outline-none md:max-h-[88dvh] md:rounded-2xl lg:max-w-4xl xl:max-w-5xl"
+        className="relative flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-[2rem] bg-white shadow-xl outline-none md:max-h-[88dvh] md:rounded-[2rem] lg:max-w-4xl xl:max-w-5xl"
       >
         <button
           type="button"

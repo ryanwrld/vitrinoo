@@ -20,7 +20,7 @@ export function normalizeWhatsAppBR(
   const phone = parsePhoneNumberFromString(input, "BR");
 
   if (!phone || !phone.isValid()) {
-    return { error: "Número de WhatsApp inválido. Confira o DDD e o número." };
+    return { error: "Número de WhatsApp inválido. Confira o DDD." };
   }
 
   // phone.number vem como "+5511999999999" — remover o "+" para o formato

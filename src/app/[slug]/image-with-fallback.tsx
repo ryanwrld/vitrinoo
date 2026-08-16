@@ -33,7 +33,7 @@ export function ImageWithFallback({
 
   if (errored || !src) {
     return (
-      <div className="flex h-full w-full items-center justify-center rounded-xl bg-gray-100">
+      <div className="flex h-full w-full items-center justify-center rounded-[1.25rem] bg-gray-100">
         <ImageOff className="h-8 w-8 text-gray-400" aria-hidden="true" />
       </div>
     );
@@ -45,7 +45,7 @@ export function ImageWithFallback({
       alt={alt}
       fill
       sizes={sizes}
-      className="rounded-xl object-cover"
+      className="rounded-[1.25rem] object-cover"
       onError={() => setErrored(true)}
     />
   );

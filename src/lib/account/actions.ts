@@ -54,7 +54,7 @@ export async function changePasswordAction(
 
   const { error: updateError } = await supabase.auth.updateUser({ password: parsed.data });
   if (updateError) {
-    return { error: "Não foi possível alterar a senha. Tente novamente." };
+    return { error: "Não foi possível alterar a senha." };
   }
 
   return { success: true };
@@ -75,7 +75,7 @@ export async function signOutAllDevicesAction(): Promise<{ error: string } | nev
 
   if (error) {
     console.error("signOutAllDevicesAction: signOut global falhou", error);
-    return { error: "Não foi possível encerrar as sessões. Tente novamente." };
+    return { error: "Não foi possível encerrar as sessões." };
   }
 
   redirect("/admin/login");
@@ -144,7 +144,7 @@ export async function exportAccountDataAction(): Promise<
   // arquivo nenhum do que entregar um arquivo que mente.
   if (productsError) {
     console.error("exportAccountDataAction: falha ao ler produtos", productsError);
-    return { error: "Não foi possível ler seus produtos. Tente novamente." };
+    return { error: "Não foi possível ler seus produtos." };
   }
 
   const publicPhotoUrl = (storagePath: string) =>
@@ -259,7 +259,7 @@ export async function deleteAccountAction(
   const { error: deleteError } = await admin.auth.admin.deleteUser(userId);
   if (deleteError) {
     console.error("deleteAccountAction: deleteUser falhou", deleteError);
-    return { error: "Não foi possível excluir a conta. Tente novamente." };
+    return { error: "Não foi possível excluir a conta." };
   }
 
   // O usuário já não existe, então o servidor Supabase pode rejeitar o

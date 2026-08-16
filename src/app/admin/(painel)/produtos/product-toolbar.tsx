@@ -1,10 +1,11 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Search } from "lucide-react";
 import { useDebouncedValue } from "@/lib/hooks/use-debounce";
-import { BRANDS, SOLES } from "@/lib/products/constants";
+import { BRANDS, SOLES, SOLE_LABELS } from "@/lib/products/constants";
 
 export type ProductToolbarParams = {
   q?: string;
@@ -16,6 +17,7 @@ export type ProductToolbarParams = {
 
 export type ProductToolbarProps = {
   currentParams: ProductToolbarParams;
+  actions?: ReactNode;
 };
 
 /**
@@ -35,7 +37,7 @@ export type ProductToolbarProps = {
  * Mobile: os controles ficam em `flex-wrap gap-2` (nunca uma tira de scroll
  * horizontal que esconde controles, 03-UI-SPEC.md §Spacing Scale).
  */
-export function ProductToolbar({ currentParams }: ProductToolbarProps) {
+export function ProductToolbar({ currentParams, actions }: ProductToolbarProps) {
   const router = useRouter();
   const [searchInput, setSearchInput] = useState(currentParams.q ?? "");
   const debouncedSearch = useDebouncedValue(searchInput, 400);
@@ -66,7 +68,7 @@ export function ProductToolbar({ currentParams }: ProductToolbarProps) {
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 transition-colors duration-150 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:focus-within:ring-blue-400/20">
+      <div className="flex items-center gap-2 rounded-full border border-gray-300 bg-white px-3 py-1.5 transition-colors duration-150 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:focus-within:ring-blue-400/20">
         <Search className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
         <input
           type="text"
@@ -74,17 +76,26 @@ export function ProductToolbar({ currentParams }: ProductToolbarProps) {
           onChange={(event) => setSearchInput(event.target.value)}
           placeholder="Buscar por nome…"
           aria-label="Buscar por nome"
-          className="w-full min-h-11 text-base text-gray-900 outline-none placeholder:text-gray-400 dark:text-gray-50 dark:placeholder:text-gray-600"
+          className="w-full min-h-9 text-base text-gray-900 outline-none placeholder:text-gray-400 dark:text-gray-50 dark:placeholder:text-gray-600"
         />
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      {/* Grid 2x2 no mobile (nunca scroll horizontal — inutilizável em
+          celular, "ninguém em pleno 2026 usa isso") garante alinhamento
+          perfeito nas duas direções: cada select ocupa exatamente metade
+          da largura disponível, sem quebra torta nem sobra de espaço.
+          A partir de `sm:` volta a ser uma linha só (`sm:flex`), já que
+          cabe tudo numa tela mais larga. Rótulos padrão de marca/solado
+          encurtados ("Marca"/"Solado" em vez de "Todas as marcas"/"Todos
+          os solados") — mesmo com a metade da largura da tela, "Todas as
+          marcas" ainda estourava e cortava no meio da palavra. */}
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         <div className="relative">
           <select
             value={currentParams.status ?? ""}
             onChange={(event) => navigate({ status: event.target.value || undefined })}
             aria-label="Filtrar por status"
-            className="min-h-11 appearance-none rounded-md border border-gray-300 bg-white px-3 py-2 pr-9 text-sm text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:focus:ring-blue-400/20"
+            className="min-h-11 w-full appearance-none truncate rounded-xl border border-gray-300 bg-white px-3 py-2 pr-9 text-sm text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:focus:ring-blue-400/20"
           >
             <option value="">Todos</option>
             <option value="published">Publicado</option>
@@ -95,12 +106,26 @@ export function ProductToolbar({ currentParams }: ProductToolbarProps) {
 
         <div className="relative">
           <select
+            value={currentParams.sort ?? "recente"}
+            onChange={(event) => navigate({ sort: event.target.value === "recente" ? undefined : event.target.value })}
+            aria-label="Ordenar por"
+            className="min-h-11 w-full appearance-none truncate rounded-xl border border-gray-300 bg-white px-3 py-2 pr-9 text-sm text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:focus:ring-blue-400/20"
+          >
+            <option value="recente">Mais recente</option>
+            <option value="nome">Nome</option>
+            <option value="preco">Preço</option>
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" aria-hidden="true" />
+        </div>
+
+        <div className="relative">
+          <select
             value={currentParams.brand ?? ""}
             onChange={(event) => navigate({ brand: event.target.value || undefined })}
             aria-label="Filtrar por marca"
-            className="min-h-11 appearance-none rounded-md border border-gray-300 bg-white px-3 py-2 pr-9 text-sm text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:focus:ring-blue-400/20"
+            className="min-h-11 w-full appearance-none truncate rounded-xl border border-gray-300 bg-white px-3 py-2 pr-9 text-sm text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:focus:ring-blue-400/20"
           >
-            <option value="">Todas as marcas</option>
+            <option value="">Marca</option>
             {BRANDS.map((brand) => (
               <option key={brand} value={brand}>
                 {brand}
@@ -110,36 +135,30 @@ export function ProductToolbar({ currentParams }: ProductToolbarProps) {
           <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" aria-hidden="true" />
         </div>
 
+        {/* Solado por último: no desktop (`sm:flex`) o próprio elemento
+            nativo dimensiona a caixa pela opção mais LARGA da lista (não
+            pelo texto "Solado" visível), e agora que os rótulos viraram
+            "Grama sintética (AG)" etc. essa caixa é a mais larga da régua
+            — ordem pedida pelo usuário é menor pra maior, então este vai
+            no fim. */}
         <div className="relative">
           <select
             value={currentParams.sole ?? ""}
             onChange={(event) => navigate({ sole: event.target.value || undefined })}
             aria-label="Filtrar por solado"
-            className="min-h-11 appearance-none rounded-md border border-gray-300 bg-white px-3 py-2 pr-9 text-sm text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:focus:ring-blue-400/20"
+            className="min-h-11 w-full appearance-none truncate rounded-xl border border-gray-300 bg-white px-3 py-2 pr-9 text-sm text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:focus:ring-blue-400/20"
           >
-            <option value="">Todos os solados</option>
+            <option value="">Solado</option>
             {SOLES.map((sole) => (
               <option key={sole} value={sole}>
-                {sole}
+                {SOLE_LABELS[sole]}
               </option>
             ))}
           </select>
           <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" aria-hidden="true" />
         </div>
 
-        <div className="relative">
-          <select
-            value={currentParams.sort ?? "recente"}
-            onChange={(event) => navigate({ sort: event.target.value === "recente" ? undefined : event.target.value })}
-            aria-label="Ordenar por"
-            className="min-h-11 appearance-none rounded-md border border-gray-300 bg-white px-3 py-2 pr-9 text-sm text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:focus:ring-blue-400/20"
-          >
-            <option value="recente">Mais recente</option>
-            <option value="nome">Nome</option>
-            <option value="preco">Preço</option>
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" aria-hidden="true" />
-        </div>
+        {actions && <div className="col-span-2 flex sm:ml-auto sm:w-auto">{actions}</div>}
       </div>
     </div>
   );

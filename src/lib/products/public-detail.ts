@@ -32,6 +32,9 @@ export type PublicProductDetail = {
   line: string | null;
   sole: string | null;
   price: number;
+  /** Preço promocional (gatilho de conversão, `PriceDisplay`) — `null` sem
+   * promoção ativa. */
+  promotional_price: number | null;
   sizes: { size: number; available: boolean }[];
   photos: { id: string; storage_path: string }[];
 };
@@ -44,7 +47,7 @@ export async function queryPublicProductDetail(
 ): Promise<PublicProductDetail | null> {
   const { data: product, error } = await supabase
     .from("products")
-    .select("id, name, brand, brand_other, line, sole, price, hide_when_sold_out")
+    .select("id, name, brand, brand_other, line, sole, price, promotional_price, hide_when_sold_out")
     .eq("id", productId)
     .eq("store_id", storeId)
     .eq("status", "published") // fixo — mesma disciplina de queryPublicProducts
@@ -85,6 +88,7 @@ export async function queryPublicProductDetail(
     line: product.line,
     sole: product.sole,
     price: product.price,
+    promotional_price: product.promotional_price,
     sizes,
     photos,
   };

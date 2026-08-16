@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useState, useTransition, type ChangeEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+  type ChangeEvent,
+  type PointerEvent as ReactPointerEvent,
+  type WheelEvent as ReactWheelEvent,
+} from "react";
 import Image from "next/image";
 import imageCompression from "browser-image-compression";
 import {
@@ -22,7 +30,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Plus, X, Loader2, ImageIcon } from "lucide-react";
+import { Plus, X, Loader2, ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { addProductPhotos, updatePhotoOrder, removePhoto } from "@/lib/products/actions";
@@ -139,6 +147,104 @@ export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange }
 
   const emptySlotCount = Math.max(0, MAX_PHOTOS - slots.length - processingCount);
 
+  // Três formas de trocar de foto no preview grande, além de clicar na
+  // miniatura:
+  // 1. Arrastar com o DEDO (mobile/tablet touch) — acompanha o toque em
+  //    tempo real (`dragOffsetX`), troca ao soltar se passar do limiar.
+  //    Filtrado por `pointerType === "touch"`: mouse NUNCA entra nesse
+  //    fluxo (pedido explícito do usuário — arraste de mouse no desktop
+  //    era instável, "uma hora funciona outra não", porque competia com o
+  //    drag nativo de imagem do navegador).
+  // 2. SWIPE de touchpad/trackpad (desktop) — via `onWheel`, que é o
+  //    evento que dois dedos deslizando no trackpad disparam (com
+  //    `deltaX` != 0), não `pointer*`.
+  // 3. Setas dedicadas nas bordas esquerda/direita do preview.
+  function goToPhoto(direction: 1 | -1) {
+    if (slots.length < 2) return;
+    setActiveIndex((current) => {
+      const next = current + direction;
+      if (next < 0) return slots.length - 1;
+      if (next >= slots.length) return 0;
+      return next;
+    });
+  }
+
+  const dragStartRef = useRef<{ x: number; y: number } | null>(null);
+  const [dragOffsetX, setDragOffsetX] = useState(0);
+  const [isDraggingPreview, setIsDraggingPreview] = useState(false);
+
+  function handlePreviewPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== "touch" || slots.length < 2) return;
+    dragStartRef.current = { x: event.clientX, y: event.clientY };
+    setIsDraggingPreview(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handlePreviewPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== "touch") return;
+    const start = dragStartRef.current;
+    if (!start) return;
+    setDragOffsetX(event.clientX - start.x);
+  }
+
+  function handlePreviewPointerUp(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== "touch") return;
+    const start = dragStartRef.current;
+    dragStartRef.current = null;
+    setIsDraggingPreview(false);
+
+    if (!start) {
+      setDragOffsetX(0);
+      return;
+    }
+
+    const deltaX = event.clientX - start.x;
+    const deltaY = event.clientY - start.y;
+    const SWIPE_THRESHOLD_PX = 40;
+    // Predominantemente horizontal (senão um scroll vertical acidental na
+    // área do preview dispararia troca de foto).
+    if (Math.abs(deltaX) >= SWIPE_THRESHOLD_PX && Math.abs(deltaX) >= Math.abs(deltaY)) {
+      // Arrastar pra ESQUERDA (deltaX negativo) avança pra próxima foto —
+      // mesmo sentido de um carrossel/swipe nativo.
+      goToPhoto(deltaX < 0 ? 1 : -1);
+    }
+
+    // Sempre volta pra 0: a foto nova (ou a mesma, se não passou do
+    // limiar) já renderiza centrada — não desliza fisicamente pra fora da
+    // tela antes de trocar (ver nota "não quero scroll horizontal").
+    setDragOffsetX(0);
+  }
+
+  function handlePreviewPointerCancel(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== "touch") return;
+    dragStartRef.current = null;
+    setIsDraggingPreview(false);
+    setDragOffsetX(0);
+  }
+
+  // Swipe de trackpad: um único gesto de dois dedos dispara DEZENAS de
+  // eventos `wheel` em sequência — sem um cooldown, um swipe só já passaria
+  // o limiar várias vezes e pularia 3-4 fotos de uma vez. `wheelLockRef`
+  // trava novas trocas por `WHEEL_COOLDOWN_MS` depois de cada troca.
+  const wheelLockRef = useRef(false);
+
+  function handlePreviewWheel(event: ReactWheelEvent<HTMLDivElement>) {
+    if (slots.length < 2) return;
+    // Scroll vertical de mouse comum (deltaY dominante) não deve trocar de
+    // foto — só o swipe horizontal do trackpad (deltaX dominante).
+    if (Math.abs(event.deltaX) < Math.abs(event.deltaY) || Math.abs(event.deltaX) < 12) return;
+
+    event.preventDefault();
+    if (wheelLockRef.current) return;
+
+    wheelLockRef.current = true;
+    goToPhoto(event.deltaX > 0 ? 1 : -1);
+    const WHEEL_COOLDOWN_MS = 350;
+    setTimeout(() => {
+      wheelLockRef.current = false;
+    }, WHEEL_COOLDOWN_MS);
+  }
+
   // Se o activeIndex aponta para um slot que foi removido, volta para 0.
   const safeActiveIndex = slots.length > 0 ? Math.min(activeIndex, slots.length - 1) : 0;
   const activeSlot = slots[safeActiveIndex] ?? null;
@@ -170,11 +276,11 @@ export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange }
 
     const roomLeft = MAX_PHOTOS - slots.length;
     if (roomLeft <= 0) {
-      toast.error("Você já atingiu o limite de 5 fotos por produto.");
+      toast.error("Limite de 5 fotos por produto atingido.");
       return;
     }
     if (incoming.length > roomLeft) {
-      toast.error("Você já atingiu o limite de 5 fotos por produto.");
+      toast.error("Limite de 5 fotos por produto atingido.");
     }
     const toProcess = incoming.slice(0, roomLeft);
 
@@ -207,7 +313,7 @@ export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange }
           ]);
         }
       } catch {
-        toast.error("Não foi possível processar essa foto. Tente novamente.");
+        toast.error("Não foi possível processar a foto.");
       } finally {
         setProcessingCount((count) => Math.max(0, count - 1));
       }
@@ -279,7 +385,7 @@ export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange }
   }
 
   return (
-    <div className="flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+    <div className="flex flex-col gap-4 rounded-[2rem] border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
       <h2 className="font-display font-bold text-gray-900 dark:text-gray-50">Imagens do produto</h2>
 
       {/* ── Preview grande fixo ──────────────────────────────────────────────
@@ -287,22 +393,70 @@ export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange }
           um placeholder com ícone + label para convidar o upload.
           aspect-[4/3] mantém proporção consistente independente da foto.
       ─────────────────────────────────────────────────────────────────────── */}
-      <div className="relative w-full overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800" style={{ aspectRatio: "1/1" }}>
+      <div
+        className="group relative w-full touch-pan-y select-none overflow-hidden rounded-[1.25rem] bg-gray-100 dark:bg-gray-800"
+        style={{ aspectRatio: "1/1" }}
+        onPointerDown={handlePreviewPointerDown}
+        onPointerMove={handlePreviewPointerMove}
+        onPointerUp={handlePreviewPointerUp}
+        onPointerCancel={handlePreviewPointerCancel}
+        onWheel={handlePreviewWheel}
+      >
         {activeUrl ? (
-          <Image
-            key={activeUrl}
-            src={activeUrl}
-            alt="Preview da foto ativa"
-            fill
-            sizes="(min-width: 1024px) 40vw, 100vw"
-            className="object-contain"
-            priority
-          />
+          <div
+            className="absolute inset-0"
+            style={{
+              transform: `translateX(${dragOffsetX}px)`,
+              transition: isDraggingPreview ? "none" : "transform 200ms ease",
+            }}
+            onDragStart={(event) => event.preventDefault()}
+          >
+            <Image
+              key={activeUrl}
+              src={activeUrl}
+              alt="Preview da foto ativa"
+              fill
+              sizes="(min-width: 1024px) 40vw, 100vw"
+              className="pointer-events-none object-contain"
+              priority
+            />
+          </div>
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-gray-400 dark:text-gray-600">
             <ImageIcon className="h-10 w-10" aria-hidden="true" />
             <span className="text-sm">Nenhuma foto adicionada</span>
           </div>
+        )}
+
+        {/* Setas — terceira forma de trocar de foto (além do arraste touch
+            e do swipe de trackpad), sempre visíveis quando há mais de 1
+            foto. `stopPropagation` evita que o clique também dispare os
+            handlers de pointer do container por baixo. */}
+        {slots.length > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                goToPhoto(-1);
+              }}
+              aria-label="Foto anterior"
+              className="absolute left-2 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-gray-700 opacity-0 shadow-sm backdrop-blur-sm transition-opacity duration-150 hover:bg-white group-hover:opacity-100 dark:bg-gray-900/85 dark:text-gray-200 dark:hover:bg-gray-900"
+            >
+              <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                goToPhoto(1);
+              }}
+              aria-label="Próxima foto"
+              className="absolute right-2 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-gray-700 opacity-0 shadow-sm backdrop-blur-sm transition-opacity duration-150 hover:bg-white group-hover:opacity-100 dark:bg-gray-900/85 dark:text-gray-200 dark:hover:bg-gray-900"
+            >
+              <ChevronRight className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </>
         )}
       </div>
 
@@ -340,7 +494,7 @@ export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange }
             {Array.from({ length: processingCount }).map((_, index) => (
               <div
                 key={`processing-${index}`}
-                className="flex aspect-square items-center justify-center rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-800 dark:bg-gray-800"
+                className="flex aspect-square items-center justify-center rounded-[1.25rem] border border-gray-200 bg-gray-100 dark:border-gray-800 dark:bg-gray-800"
               >
                 <div className="flex flex-col items-center gap-1 text-gray-500 dark:text-gray-400">
                   <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
@@ -352,11 +506,17 @@ export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange }
             {Array.from({ length: emptySlotCount }).map((_, index) => (
               <label
                 key={`empty-${index}`}
-                className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-gray-300 text-gray-400 transition-colors hover:border-primary hover:text-primary dark:border-gray-700 dark:text-gray-600 dark:hover:border-blue-500 dark:hover:text-blue-400"
+                className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-[1.25rem] border border-dashed border-gray-300 text-gray-400 transition-colors hover:border-primary hover:text-primary dark:border-gray-700 dark:text-gray-600 dark:hover:border-blue-500 dark:hover:text-blue-400"
               >
                 <Plus className="h-5 w-5" aria-hidden="true" />
-                <span className="text-[10px] text-center leading-tight">Adicionar</span>
-                <input type="file" multiple accept={ACCEPTED_TYPES} className="sr-only" onChange={handleFilesSelected} />
+                <input
+                  type="file"
+                  multiple
+                  accept={ACCEPTED_TYPES}
+                  className="sr-only"
+                  aria-label="Adicionar foto"
+                  onChange={handleFilesSelected}
+                />
               </label>
             ))}
           </div>
@@ -371,7 +531,7 @@ export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange }
         */}
         <DragOverlay>
           {draggingSlot ? (
-            <div className="h-24 w-24 cursor-grabbing overflow-hidden rounded-lg border-2 border-primary shadow-xl">
+            <div className="h-24 w-24 cursor-grabbing overflow-hidden rounded-[1.25rem] border-2 border-primary shadow-xl">
               {draggingSlot.kind === "saved" ? (
                 <Image src={draggingSlot.url} alt="" width={96} height={96} className="h-full w-full object-cover" />
               ) : (
@@ -415,7 +575,7 @@ function PhotoSlotItem({ slot, isCover, isActive, onRemove, onSelect }: PhotoSlo
     <div
       ref={setNodeRef}
       style={style}
-      className={`group relative aspect-square overflow-hidden rounded-lg border-2 transition-all duration-150 ${
+      className={`group relative aspect-square overflow-hidden rounded-[1.25rem] border-2 transition-all duration-150 ${
         isDragging ? "opacity-50" : ""
       } ${
         isActive

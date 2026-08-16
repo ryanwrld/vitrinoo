@@ -48,13 +48,13 @@ export function FavoriteButton({ slug, productId, productName, variant = "overla
       className={clsx(
         "flex items-center justify-center transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2",
         variant === "overlay" &&
-          "h-8 w-8 rounded-full bg-white/85 text-gray-600 shadow-sm backdrop-blur-sm hover:bg-white hover:text-gray-900",
-        variant === "inline" && "h-9 w-9 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-900",
+          "h-7 w-7 rounded-full border border-white/25 bg-white/10 text-white shadow-[0_1px_4px_rgba(0,0,0,0.25)] backdrop-blur-md backdrop-saturate-150 hover:border-white/45 hover:bg-white/20",
+        variant === "inline" && "h-8 w-8 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-900",
         className
       )}
     >
       <Heart
-        className={clsx("h-[18px] w-[18px] transition-colors duration-150", active && "fill-red-500 text-red-500")}
+        className={clsx("h-4 w-4 transition-colors duration-150", active && "fill-red-500 text-red-500")}
         aria-hidden="true"
       />
     </button>

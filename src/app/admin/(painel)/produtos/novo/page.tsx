@@ -25,8 +25,8 @@ export default async function NovoProdutoPage() {
       <h1 className="mt-2 font-display text-2xl font-extrabold text-gray-900 dark:text-gray-50">
         Novo produto
       </h1>
-      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-        Preencha os detalhes — o produto aparece na vitrine assim que for publicado.
+      <p className="mt-1 hidden text-sm text-gray-500 sm:block dark:text-gray-400">
+        Preencha os detalhes, o produto aparece na vitrine assim que for publicado.
       </p>
     </>
   );

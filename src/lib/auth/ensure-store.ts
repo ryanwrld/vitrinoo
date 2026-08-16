@@ -74,7 +74,7 @@ export async function ensureStoreForUser(
     }
 
     if (!storeId) {
-      return { error: lastError?.message ?? "Não foi possível preparar sua loja. Tente novamente." };
+      return { error: lastError?.message ?? "Falha ao preparar sua loja." };
     }
   }
 
@@ -93,7 +93,7 @@ export async function ensureStoreForUser(
       .insert({ store_id: storeId, onboarding_completed_at: null });
 
     if (settingsError) {
-      return { error: "Não foi possível concluir a configuração inicial. Tente novamente." };
+      return { error: "Falha na configuração inicial." };
     }
   }
 

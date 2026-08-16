@@ -65,6 +65,7 @@ export async function loadProductDetail(slug: string, produto: string): Promise<
         line: detail.line,
         sole: detail.sole,
         price: detail.price,
+        promotional_price: detail.promotional_price,
       },
       sizes: detail.sizes,
       whatsappE164: storeSettings?.whatsapp_e164 ?? "",

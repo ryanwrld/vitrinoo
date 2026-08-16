@@ -275,9 +275,9 @@ function RankingList({
               </>
             );
             return (
-              <li key={item.productId} className="rounded-lg border border-gray-200 dark:border-gray-800">
-                <div className={`flex min-h-11 flex-wrap items-start gap-3 rounded-lg p-3 sm:items-center ${urgent ? "bg-warning-bg dark:bg-warning-solid/15" : "bg-white dark:bg-gray-900"}`}>
-                  <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
+              <li key={item.productId} className="rounded-[2rem] border border-gray-200 dark:border-gray-800">
+                <div className={`flex min-h-11 flex-wrap items-start gap-3 rounded-[2rem] p-3 sm:items-center ${urgent ? "bg-warning-bg dark:bg-warning-solid/15" : "bg-white dark:bg-gray-900"}`}>
+                  <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-[1.25rem] bg-gray-100 dark:bg-gray-800">
                     {item.coverUrl ? (
                       <Image src={item.coverUrl} alt={item.name} fill sizes="48px" className="object-cover" />
                     ) : (
@@ -336,7 +336,7 @@ function RankingList({
           })}
         </ul>
       ) : (
-        <div className="flex flex-col gap-1 rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center dark:border-gray-700">
+        <div className="flex flex-col gap-1 rounded-[2rem] border border-dashed border-gray-300 px-4 py-8 text-center dark:border-gray-700">
           <span className="font-medium text-gray-900 dark:text-gray-50">{emptyTitle}</span>
           <span className="text-sm text-gray-500 dark:text-gray-400">{emptyMessage}</span>
         </div>
@@ -380,7 +380,7 @@ export default async function DashboardPage({
           </div>
           <HeaderActions />
         </div>
-        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-gray-300 px-6 py-16 text-center dark:border-gray-700">
+        <div className="flex flex-col items-center gap-3 rounded-[2rem] border border-dashed border-gray-300 px-6 py-16 text-center dark:border-gray-700">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-subtle dark:bg-blue-400/15">
             <PackagePlus className="h-7 w-7 text-primary dark:text-blue-300" aria-hidden="true" />
           </div>
@@ -393,7 +393,7 @@ export default async function DashboardPage({
           </div>
           <Link
             href="/admin/produtos/novo"
-            className="mt-2 rounded-md bg-primary px-4 py-2 text-center text-sm font-semibold text-white transition-all duration-150 hover:bg-primary-hover active:bg-primary-active active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
+            className="mt-2 rounded-full bg-primary px-4 py-2 text-center text-sm font-semibold text-white transition-all duration-150 hover:bg-primary-hover active:bg-primary-active active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
           >
             Cadastrar primeiro produto
           </Link>
@@ -527,7 +527,7 @@ export default async function DashboardPage({
       <ShareVitrineButton
         url={buildStoreUrl(store!.slug)}
         storeName={store!.name}
-        className="mt-1 inline-flex shrink-0 items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-primary-hover active:bg-primary-active disabled:opacity-70 lg:mt-0"
+        className="mt-1 inline-flex shrink-0 items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-primary-hover active:bg-primary-active disabled:opacity-70 lg:mt-0"
       />
     </div>
   );
@@ -553,7 +553,7 @@ export default async function DashboardPage({
       <ShareVitrineButton
         url={buildStoreUrl(store!.slug)}
         storeName={store!.name}
-        className="mt-1 inline-flex shrink-0 items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-primary-hover active:bg-primary-active disabled:opacity-70"
+        className="mt-1 inline-flex shrink-0 items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-primary-hover active:bg-primary-active disabled:opacity-70"
       />
     </div>
   );
@@ -567,16 +567,16 @@ export default async function DashboardPage({
       </div>
 
       {/* MTR-03: placar do dia — sempre hoje, nunca acumulado */}
-      <div className="grid grid-cols-1 divide-y divide-gray-200 overflow-hidden rounded-lg border border-gray-200 bg-white dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-900 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-        <div className="flex flex-col gap-0.5 p-4">
+      <div className="grid grid-cols-1 divide-y divide-gray-200 overflow-hidden rounded-[2rem] border border-gray-200 bg-white dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-900 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+        <div className="flex flex-col gap-0.5 p-6">
           <span className="text-xs text-gray-700 dark:text-gray-300">Visualizações hoje</span>
           <span className="font-display text-2xl font-extrabold text-gray-900 dark:text-gray-50">{today.views}</span>
         </div>
-        <div className="flex flex-col gap-0.5 p-4">
+        <div className="flex flex-col gap-0.5 p-6">
           <span className="text-xs text-gray-700 dark:text-gray-300">Cliques em &quot;Pedir agora&quot; hoje</span>
           <span className="font-display text-2xl font-extrabold text-gray-900 dark:text-gray-50">{today.clicks}</span>
         </div>
-        <div className="flex flex-col gap-0.5 p-4">
+        <div className="flex flex-col gap-0.5 p-6">
           <span className="text-xs text-gray-700 dark:text-gray-300">Taxa de conversão (view → clique)</span>
           <span className="font-display text-2xl font-extrabold text-primary dark:text-blue-300">{today.conversionPct}%</span>
         </div>
@@ -602,7 +602,7 @@ export default async function DashboardPage({
             e some o vão embaixo. Com mais que isso volta a top-align — se
             centralizasse com overflow, o primeiro item ficaria cortado no
             topo (fora do alcance do scroll). */}
-        <section className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 lg:col-span-2">
+        <section className="flex flex-col gap-3 rounded-[2rem] border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900 lg:col-span-2">
           <h2 className="font-display font-bold text-gray-900 dark:text-gray-50">Atividades recentes</h2>
           {recentActivityItems.length === 0 ? (
             // 0 eventos nas 24h: só o CTA de compartilhar, centralizado na
@@ -666,7 +666,7 @@ export default async function DashboardPage({
             topo; só o espaço de baixo estica. No mobile segue grid-cols-2
             (Disp./Esg. lado a lado, Tamanhos em linha própria). */}
         <div className="grid grid-cols-2 gap-3 lg:flex lg:flex-col lg:gap-4">
-          <div className="flex flex-col gap-2 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+          <div className="flex flex-col gap-2 rounded-[2rem] border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
             <span className="text-xs text-gray-700 dark:text-gray-300">Produtos disponíveis</span>
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center">
@@ -675,7 +675,7 @@ export default async function DashboardPage({
               <span className="font-display text-2xl font-extrabold text-gray-900 dark:text-gray-50">{disponiveis}</span>
             </div>
           </div>
-          <div className="flex flex-col gap-2 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+          <div className="flex flex-col gap-2 rounded-[2rem] border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
             <span className="text-xs text-gray-700 dark:text-gray-300">Produtos esgotados</span>
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center">
@@ -700,7 +700,7 @@ export default async function DashboardPage({
               flex-1 do CTA dentro de "Atividades recentes": qualquer que
               seja o lado mais alto no momento, o outro absorve a diferença
               crescendo, e as duas bordas de baixo ficam sempre alinhadas. */}
-          <div className="col-span-2 flex min-h-44 flex-col gap-4 rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900 lg:col-span-1 lg:flex-1">
+          <div className="col-span-2 flex min-h-44 flex-col gap-4 rounded-[2rem] border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900 lg:col-span-1 lg:flex-1">
             <span className="font-display text-base font-bold text-gray-900 dark:text-gray-50">Tamanhos mais pedidos</span>
             {sizeDemand.length > 0 ? (
               <ul className="flex flex-col gap-3">
@@ -737,15 +737,15 @@ export default async function DashboardPage({
           consistente com o resto do dashboard. O track do seletor
           (bg-gray-100/800) fica "recuado" dentro do card branco/gray-900,
           mesmo princípio de profundidade já usado no avatar de produto. */}
-      <div className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+      <div className="flex flex-col gap-3 rounded-[2rem] border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-display font-bold text-gray-900 dark:text-gray-50">Demanda atual</h2>
-          <div className="inline-flex w-fit shrink-0 gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
+          <div className="inline-flex w-fit shrink-0 gap-1 rounded-full bg-gray-100 p-1 dark:bg-gray-800">
             {VALID_PERIODS.map((d) => (
               <Link
                 key={d}
                 href={`/admin/dashboard?periodo=${d}`}
-                className={`rounded-md px-3 py-1.5 text-xs font-bold transition-colors duration-150 ${
+                className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors duration-150 ${
                   d === periodo
                     ? "bg-white text-primary shadow-sm dark:bg-gray-900 dark:text-blue-300"
                     : "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"

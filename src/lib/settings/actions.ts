@@ -60,7 +60,7 @@ async function validateImageFile(file: File, label: string): Promise<{ error: st
   const headerBytes = new Uint8Array(await file.slice(0, signature.length).arrayBuffer());
   const matchesSignature = signature.every((byte, index) => headerBytes[index] === byte);
   if (!matchesSignature) {
-    return { error: `Arquivo de ${label.toLowerCase()} inválido (conteúdo não corresponde a uma imagem).` };
+    return { error: `Arquivo de ${label.toLowerCase()} inválido.` };
   }
   return null;
 }
@@ -86,7 +86,7 @@ async function uploadStoreAsset(
     .upload(path, file, { contentType: file.type, upsert: true });
 
   if (uploadError) {
-    return { error: `Não foi possível enviar ${basename === "logo" ? "o logo" : "a capa"}. Tente novamente.` };
+    return { error: `Não foi possível enviar ${basename === "logo" ? "o logo" : "a capa"}.` };
   }
 
   const { data: publicUrlData } = supabase.storage.from("store-assets").getPublicUrl(path);
@@ -117,7 +117,7 @@ async function getOwnedStore(): Promise<
     .single();
 
   if (storeLookupError || !store) {
-    return { error: "Não foi possível localizar sua loja. Tente novamente." };
+    return { error: "Não foi possível localizar sua loja." };
   }
 
   return { supabase, userId: userData.user.id, storeId: store.id };
@@ -180,7 +180,7 @@ export async function updateStoreSlug(newSlug: string): Promise<SettingsActionRe
     if (error.code === "23505") {
       return { error: "Este link já está em uso. Escolha outro." };
     }
-    return { error: "Não foi possível salvar o novo link. Tente novamente." };
+    return { error: "Não foi possível salvar o novo link." };
   }
 
   return { success: true };
@@ -354,7 +354,7 @@ export async function saveStoreSettings(formData: FormData): Promise<SettingsAct
     .eq("id", owned.storeId);
 
   if (storeUpdateError) {
-    return { error: "Não foi possível salvar os dados da loja. Tente novamente." };
+    return { error: "Não foi possível salvar os dados da loja." };
   }
 
   // D-11: a preferência global REALMENTE mudou -> reseta (para null) todas
@@ -368,7 +368,7 @@ export async function saveStoreSettings(formData: FormData): Promise<SettingsAct
       .eq("store_id", owned.storeId);
 
     if (resetError) {
-      return { error: "Configuração salva, mas não foi possível atualizar as exceções por produto. Tente novamente." };
+      return { error: "Configuração salva, mas as exceções falharam." };
     }
   }
 
@@ -381,7 +381,7 @@ export async function saveStoreSettings(formData: FormData): Promise<SettingsAct
     .eq("store_id", owned.storeId);
 
   if (settingsUpdateError) {
-    return { error: "Não foi possível salvar a configuração de WhatsApp. Tente novamente." };
+    return { error: "Não foi possível salvar o WhatsApp." };
   }
 
   // O layout do painel (src/app/(admin)/(painel)/layout.tsx) busca

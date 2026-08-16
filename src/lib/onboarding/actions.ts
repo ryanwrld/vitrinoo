@@ -48,7 +48,7 @@ async function validateLogoFile(file: File): Promise<{ error: string } | null> {
   const headerBytes = new Uint8Array(await file.slice(0, signature.length).arrayBuffer());
   const matchesSignature = signature.every((byte, index) => headerBytes[index] === byte);
   if (!matchesSignature) {
-    return { error: "Arquivo de logo inválido (conteúdo não corresponde a uma imagem)." };
+    return { error: "Arquivo de logo inválido." };
   }
 
   return null;
@@ -126,7 +126,7 @@ export async function saveOnboarding(formData: FormData): Promise<OnboardingActi
     .single();
 
   if (storeLookupError || !store) {
-    return { error: "Não foi possível localizar sua loja. Tente novamente." };
+    return { error: "Não foi possível localizar sua loja." };
   }
 
   const validationError = await validateLogoFile(logoFile);
@@ -140,7 +140,7 @@ export async function saveOnboarding(formData: FormData): Promise<OnboardingActi
     .upload(path, logoFile, { contentType: logoFile.type, upsert: true });
 
   if (uploadError) {
-    return { error: "Não foi possível enviar o logo. Tente novamente." };
+    return { error: "Não foi possível enviar o logo." };
   }
 
   const { data: publicUrlData } = supabase.storage.from("store-assets").getPublicUrl(path);
@@ -158,7 +158,7 @@ export async function saveOnboarding(formData: FormData): Promise<OnboardingActi
     .eq("id", store.id);
 
   if (storeUpdateError) {
-    return { error: "Não foi possível salvar os dados da loja. Tente novamente." };
+    return { error: "Não foi possível salvar os dados da loja." };
   }
 
   const { error: settingsUpdateError } = await supabase
@@ -171,7 +171,7 @@ export async function saveOnboarding(formData: FormData): Promise<OnboardingActi
     .eq("store_id", store.id);
 
   if (settingsUpdateError) {
-    return { error: "Não foi possível salvar a configuração de WhatsApp. Tente novamente." };
+    return { error: "Não foi possível salvar o WhatsApp." };
   }
 
   redirect("/admin/dashboard");

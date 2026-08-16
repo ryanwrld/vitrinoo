@@ -46,8 +46,8 @@ function NavLinks({ pathname }: { pathname: string }) {
             href={item.href}
             className={
               isActive
-                ? "flex min-h-11 items-center gap-3 rounded-md bg-primary-subtle px-3 font-semibold text-primary transition-colors duration-150 dark:bg-blue-400/15 dark:text-blue-300"
-                : "flex min-h-11 items-center gap-3 rounded-md px-3 font-medium text-gray-500 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-50"
+                ? "flex min-h-11 items-center gap-3 rounded-full bg-primary-subtle px-3 font-semibold text-primary transition-colors duration-150 dark:bg-blue-400/15 dark:text-blue-300"
+                : "flex min-h-11 items-center gap-3 rounded-full px-3 font-medium text-gray-500 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-50"
             }
           >
             <item.Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
@@ -95,7 +95,7 @@ function AccountBlock({
           href={`/${storeSlug}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="mb-1 flex min-h-10 items-center gap-2.5 rounded-md px-2 text-sm font-medium text-gray-500 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-50"
+          className="mb-1 flex min-h-10 items-center gap-2.5 rounded-full px-2 text-sm font-medium text-gray-500 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-50"
         >
           <ExternalLink className="h-4 w-4 shrink-0" aria-hidden="true" />
           Ver minha vitrine
@@ -107,7 +107,7 @@ function AccountBlock({
         href={buildSupportWhatsAppHref(storeName)}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex min-h-10 items-center gap-2.5 rounded-md px-2 text-sm font-medium text-gray-500 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-50"
+        className="flex min-h-10 items-center gap-2.5 rounded-full px-2 text-sm font-medium text-gray-500 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-50"
       >
         <Headset className="h-4 w-4 shrink-0" aria-hidden="true" />
         Falar com suporte
@@ -255,7 +255,7 @@ export function AdminSidebar({
 
             {accountMenuOpen && (
               <div
-                className="animate-scale-in absolute right-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-lg border border-gray-200 bg-white p-1 shadow-md dark:border-gray-800 dark:bg-gray-900"
+                className="animate-scale-in absolute right-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-[1.5rem] border border-gray-200 bg-white p-2 shadow-md dark:border-gray-800 dark:bg-gray-900"
                 style={{ transformOrigin: "top right" }}
               >
                 <form action={signOutAction}>

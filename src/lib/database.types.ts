@@ -200,6 +200,7 @@ export type Database = {
           line: string | null
           name: string
           price: number
+          promotional_price: number | null
           sole: string | null
           status: string
           store_id: string
@@ -217,6 +218,7 @@ export type Database = {
           line?: string | null
           name: string
           price: number
+          promotional_price?: number | null
           sole?: string | null
           status?: string
           store_id: string
@@ -234,6 +236,7 @@ export type Database = {
           line?: string | null
           name?: string
           price?: number
+          promotional_price?: number | null
           sole?: string | null
           status?: string
           store_id?: string

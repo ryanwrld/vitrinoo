@@ -85,6 +85,9 @@ export type PublicProduct = {
   brand_other: string | null;
   line: string | null;
   price: number;
+  /** Preço promocional (gatilho de conversão, `PriceDisplay`) — `null` sem
+   * promoção ativa. */
+  promotional_price: number | null;
   /** Disponibilidade derivada (mesmo cálculo de queryProducts do admin):
    * EXISTS sobre product_sizes.available=true. */
   disponivel: boolean;
@@ -137,7 +140,7 @@ export async function queryPublicProducts(
 
   let query = supabase
     .from("products")
-    .select("id, name, brand, brand_other, line, price, hide_when_sold_out")
+    .select("id, name, brand, brand_other, line, price, promotional_price, hide_when_sold_out")
     .eq("store_id", storeId)
     .eq("status", "published"); // fixo — nunca vindo de params/searchParams
 
@@ -225,6 +228,7 @@ export async function queryPublicProducts(
     brand_other: product.brand_other,
     line: product.line,
     price: product.price,
+    promotional_price: product.promotional_price,
     disponivel: availableProductIds.has(product.id),
     coverPath: coverPathByProductId.get(product.id) ?? null,
   }));

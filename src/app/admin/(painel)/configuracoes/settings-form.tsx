@@ -360,7 +360,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
     // via col-start/row-start aqui e lá.
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="contents">
       <div className="flex flex-col gap-6 lg:col-start-1 lg:row-start-1">
-      <div className="flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+      <div className="flex flex-col gap-4 rounded-[2rem] border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-gray-900 dark:text-gray-50">
             <Paintbrush className="h-5 w-5" />
@@ -376,7 +376,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
           <button
             type="button"
             onClick={() => previewDialogRef.current?.showModal()}
-            className="flex shrink-0 items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 outline-none transition-colors duration-150 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 outline-none transition-colors duration-150 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
           >
             <Eye className="h-3.5 w-3.5" aria-hidden="true" />
             Pré-visualizar
@@ -385,7 +385,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
 
         <dialog
           ref={previewDialogRef}
-          className="dialog-modal m-auto w-full max-w-xs rounded-lg bg-white p-5 shadow-lg backdrop:bg-black/45 backdrop:backdrop-blur-[2px] dark:bg-gray-900"
+          className="dialog-modal m-auto w-full max-w-xs rounded-[2rem] bg-white p-6 shadow-lg backdrop:bg-black/45 backdrop:backdrop-blur-[2px] dark:bg-gray-900"
         >
           <div className="flex flex-col gap-4">
             <h3 className="font-display text-sm font-bold text-gray-900 dark:text-gray-50">
@@ -426,7 +426,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
             <button
               type="button"
               onClick={() => previewDialogRef.current?.close()}
-              className="self-end rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700"
+              className="self-end rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700"
             >
               Fechar
             </button>
@@ -504,7 +504,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
             <button
               type="button"
               onClick={() => coverInputRef.current?.click()}
-              className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 outline-none transition-colors duration-150 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+              className="rounded-full border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 outline-none transition-colors duration-150 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
             >
               {coverPreview ? "Trocar capa" : "Enviar capa"}
             </button>
@@ -579,7 +579,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
             <button
               type="button"
               onClick={() => logoInputRef.current?.click()}
-              className="shrink-0 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none transition-colors duration-150 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+              className="shrink-0 rounded-full border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none transition-colors duration-150 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
             >
               {store.logoUrl ? "Trocar logo" : "Escolher logo"}
             </button>
@@ -602,7 +602,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
               id="accentColor"
               type="color"
               {...register("accentColor")}
-              className="h-[38px] w-20 rounded-md border border-gray-300 bg-white p-1 dark:border-gray-700 dark:bg-gray-900"
+              className="h-[38px] w-20 rounded-xl border border-gray-300 bg-white p-1 dark:border-gray-700 dark:bg-gray-900"
             />
           </div>
           {errors.accentColor && (
@@ -622,7 +622,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
           gráficos da marca (logo e cor), aqui o texto da loja e a regra de
           exibição. Continua no MESMO <form>: o botão "Salvar alterações" no
           rodapé salva os dois cards de uma vez, como antes. */}
-      <div className="flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+      <div className="flex flex-col gap-4 rounded-[2rem] border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
         <div className="flex items-center gap-2 text-gray-900 dark:text-gray-50">
           <SlidersHorizontal className="h-5 w-5" />
           <h2 className="font-display font-bold">Preferências</h2>
@@ -637,7 +637,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
             type="text"
             autoComplete="organization"
             {...register("name")}
-            className="rounded-md border border-gray-300 bg-white px-3 h-11 text-base text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:placeholder:text-gray-600 dark:focus:ring-blue-400/20"
+            className="rounded-xl border border-gray-300 bg-white px-3 h-11 text-base text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:placeholder:text-gray-600 dark:focus:ring-blue-400/20"
           />
           {errors.name && <span className="text-sm text-error-fg">{errors.name.message}</span>}
         </div>
@@ -651,7 +651,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
             type="text"
             maxLength={100}
             {...register("tagline")}
-            className="rounded-md border border-gray-300 bg-white px-3 h-11 text-base text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:placeholder:text-gray-600 dark:focus:ring-blue-400/20"
+            className="rounded-xl border border-gray-300 bg-white px-3 h-11 text-base text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:placeholder:text-gray-600 dark:focus:ring-blue-400/20"
           />
           {errors.tagline && <span className="text-sm text-error-fg">{errors.tagline.message}</span>}
         </div>
@@ -667,7 +667,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
               linha de instrução, e o servidor aceita de qualquer jeito o link
               inteiro colado do app (normalizeInstagramHandle) — o prefixo
               orienta, não restringe. */}
-          <div className="flex items-center rounded-md border border-gray-300 bg-white transition-colors duration-150 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:focus-within:ring-blue-400/20">
+          <div className="flex items-center rounded-xl border border-gray-300 bg-white transition-colors duration-150 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:focus-within:ring-blue-400/20">
             <span className="pl-3 text-base text-gray-400 dark:text-gray-600">@</span>
             <input
               id="instagram"
@@ -696,7 +696,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
             <select
               id="hideSoldOutDefault"
               {...register("hideSoldOutDefault")}
-              className="w-full min-h-11 appearance-none rounded-md border border-gray-300 bg-white px-3 pr-9 h-11 text-base text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:focus:ring-blue-400/20"
+              className="w-full min-h-11 appearance-none rounded-xl border border-gray-300 bg-white px-3 pr-9 h-11 text-base text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:focus:ring-blue-400/20"
             >
               <option value="true">Ocultar da vitrine (padrão)</option>
               <option value="false">Mostrar esmaecido</option>
@@ -706,7 +706,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+      <div className="flex flex-col gap-4 rounded-[2rem] border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
         <div className="flex items-center gap-2 text-gray-900 dark:text-gray-50">
           <MessageCircle className="h-5 w-5" />
           <h2 className="font-display font-bold">WhatsApp e mensagem de pedido</h2>
@@ -721,7 +721,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
             type="tel"
             placeholder="(11) 99999-9999"
             {...register("whatsapp")}
-            className="rounded-md border border-gray-300 bg-white px-3 h-11 text-base text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:placeholder:text-gray-600 dark:focus:ring-blue-400/20"
+            className="rounded-xl border border-gray-300 bg-white px-3 h-11 text-base text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:placeholder:text-gray-600 dark:focus:ring-blue-400/20"
           />
           {formattedPreview && (
             <span className="text-xs text-gray-500 dark:text-gray-400">Prévia: {formattedPreview}</span>
@@ -744,7 +744,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
             // que a aba "Conta". Travar em `resize-y` mantém o ajuste de
             // altura (útil pra um template longo) e elimina o vetor
             // horizontal.
-            className="w-full resize-y rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:placeholder:text-gray-600 dark:focus:ring-blue-400/20"
+            className="w-full resize-y rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:placeholder:text-gray-600 dark:focus:ring-blue-400/20"
           />
           {errors.messageTemplate && (
             <span className="text-sm text-error-fg">{errors.messageTemplate.message}</span>
@@ -768,7 +768,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
         // diálogo encosta no canto superior esquerdo da tela.
         // `dialog-modal` (globals.css) anima entrada E saída do próprio
         // diálogo e do fundo escurecido.
-        className="dialog-modal m-auto rounded-lg bg-white p-6 text-gray-900 shadow-lg backdrop:bg-black/45 backdrop:backdrop-blur-[2px] dark:bg-gray-900 dark:text-gray-50"
+        className="dialog-modal m-auto rounded-[2rem] bg-white p-6 text-gray-900 shadow-lg backdrop:bg-black/45 backdrop:backdrop-blur-[2px] dark:bg-gray-900 dark:text-gray-50"
       >
         <div>
           <h2 className="font-display text-xl font-medium text-gray-900 dark:text-gray-50">
@@ -782,7 +782,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
             <button
               type="button"
               onClick={() => confirmSlugDialogRef.current?.close()}
-              className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700"
+              className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700"
             >
               Cancelar
             </button>
@@ -790,7 +790,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
               type="button"
               disabled={isPending}
               onClick={handleConfirmSlugChange}
-              className="rounded-md bg-error-solid px-4 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-error-solid-hover active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error-bg focus-visible:ring-offset-2 disabled:opacity-60"
+              className="rounded-full bg-error-solid px-4 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-error-solid-hover active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error-bg focus-visible:ring-offset-2 disabled:opacity-60"
             >
               {isPending ? "Salvando…" : "Sim, trocar o link"}
             </button>
@@ -812,7 +812,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
             form em `display: contents`, esta seção vem DEPOIS do botão
             "Salvar alterações" no DOM — a auto-colocação da grade a jogaria
             para a linha de baixo. */}
-        <section className="flex flex-col gap-5 rounded-lg border border-gray-200 bg-white p-5 lg:col-start-2 lg:row-start-1 lg:h-full dark:border-gray-800 dark:bg-gray-900">
+        <section className="flex flex-col gap-5 rounded-[2rem] border border-gray-200 bg-white p-6 lg:col-start-2 lg:row-start-1 lg:h-full dark:border-gray-800 dark:bg-gray-900">
           <div className="flex items-center gap-2 text-gray-900 dark:text-gray-50">
             <LinkIcon className="h-5 w-5" />
             <h2 className="font-display font-bold">Link e QR code da vitrine</h2>
@@ -840,7 +840,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
             type="button"
             onClick={handleRevert}
             disabled={isPending}
-            className="w-full sm:w-auto rounded-md border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700"
+            className="w-full sm:w-auto rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700"
           >
             Reverter alterações
           </button>
@@ -849,7 +849,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
         <button
           type="submit"
           disabled={isPending || slugBlocksSave || !hasLogo}
-          className="w-full sm:w-auto rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow active:translate-y-0 active:bg-primary-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none dark:disabled:bg-gray-800 dark:disabled:text-gray-600"
+          className="w-full sm:w-auto rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow active:translate-y-0 active:bg-primary-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none dark:disabled:bg-gray-800 dark:disabled:text-gray-600"
         >
           {isPending ? "Salvando…" : "Salvar alterações"}
         </button>

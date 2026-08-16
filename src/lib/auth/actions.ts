@@ -34,9 +34,9 @@ export async function signUpAction(formData: FormData): Promise<AuthActionResult
 
   if (signUpError || !signUpData.user) {
     if (signUpError && isAuthRetryableFetchError(signUpError)) {
-      return { error: "Não foi possível conectar. Verifique sua internet e tente novamente." };
+      return { error: "Não foi possível conectar." };
     }
-    return { error: signUpError?.message ?? "Não foi possível criar a conta. Tente novamente." };
+    return { error: signUpError?.message ?? "Não foi possível criar a conta." };
   }
 
   // Se isto falhar aqui (colisão de slug esgotando os retries, hiccup de
@@ -81,7 +81,7 @@ export async function signInAction(formData: FormData): Promise<AuthActionResult
 
   if (error) {
     if (isAuthRetryableFetchError(error)) {
-      return { error: "Não foi possível conectar. Verifique sua internet e tente novamente." };
+      return { error: "Não foi possível conectar." };
     }
     return { error: 'Email ou senha inválidos' };
   }

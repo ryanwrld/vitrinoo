@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
-import { formatBRLPrice } from "@/lib/currency/brl";
+import { PriceDisplay } from "@/components/price-display";
 import { ImageWithFallback } from "./image-with-fallback";
 import { FavoriteButton } from "./favorite-button";
 
@@ -11,6 +11,9 @@ export type PublicProductCardData = {
   brand_other: string | null;
   line: string | null;
   price: number;
+  /** Preço promocional (gatilho de conversão, `PriceDisplay`) — `null` sem
+   * promoção ativa. */
+  promotional_price: number | null;
   disponivel: boolean;
   coverUrl: string | null;
 };
@@ -54,9 +57,9 @@ export function ProductCard({
       href={`/${slug}?${params.toString()}`}
       scroll={false}
       style={{ "--stagger-index": staggerIndex } as CSSProperties}
-      className="animate-card-in flex flex-col gap-2 rounded-xl transition-transform duration-150 hover:-translate-y-1"
+      className="animate-card-in flex flex-col gap-2 rounded-[1.25rem] transition-transform duration-150 hover:-translate-y-1"
     >
-      <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-gray-100">
+      <div className="relative aspect-square w-full overflow-hidden rounded-[1.25rem] bg-gray-100">
         {/* Espelha EXATAMENTE a régua de colunas de product-grid.tsx — se uma
             mudar sem a outra, o navegador escolhe o arquivo errado (borrado se
             pedir de menos, desperdício de banda se pedir demais). */}
@@ -81,18 +84,13 @@ export function ProductCard({
           ela de fato ajuda a achar o produto. */}
       <div className="flex flex-col gap-0.5">
         <span className="truncate font-display text-sm font-medium text-gray-900">{product.name}</span>
-        <span className="font-display text-sm font-bold text-primary">{formatBRLPrice(product.price)}</span>
-        <span
-          className={`flex items-center gap-1 text-xs transition-colors duration-150 ${
-            product.disponivel ? "text-success-fg" : "text-gray-500"
-          }`}
-        >
-          <span
-            className={`h-1.5 w-1.5 rounded-full ${product.disponivel ? "bg-success-solid" : "bg-gray-400"}`}
-            aria-hidden="true"
-          />
-          {product.disponivel ? "Disponível" : "Esgotado"}
-        </span>
+        <PriceDisplay price={product.price} promotionalPrice={product.promotional_price} variant="card" />
+        {!product.disponivel && (
+          <span className="flex items-center gap-1 text-xs text-error-fg transition-colors duration-150">
+            <span className="h-1.5 w-1.5 rounded-full bg-error-solid" aria-hidden="true" />
+            Esgotado
+          </span>
+        )}
       </div>
     </Link>
   );

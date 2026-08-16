@@ -1,3 +1,4 @@
+import { BadgeCheck } from "lucide-react";
 import { formatBRLPrice } from "@/lib/currency/brl";
 import { instagramProfileUrl } from "@/lib/social/instagram";
 import { formatStoreFreshness } from "@/lib/store/freshness";
@@ -202,8 +203,16 @@ export function StoreHero({ store, stats }: { store: StoreHeroData; stats: Store
         </div>
 
         <div className="mt-4 flex flex-col gap-1">
-          <h1 className="font-display text-xl font-extrabold tracking-tight text-gray-900 sm:text-2xl lg:text-3xl">
+          <h1 className="flex items-center gap-1.5 font-display text-xl font-extrabold tracking-tight text-gray-900 sm:text-2xl lg:text-3xl">
             {store.name}
+            {/* Selo de verificado — vale pra TODA loja publicada (decisão do
+                usuário), não condicionado a nenhum campo de "verificação"
+                real no banco; é puramente visual/confiança de marca. */}
+            <BadgeCheck
+              className="relative top-[2px] h-[22px] w-[22px] shrink-0 sm:top-[3px] sm:h-6 sm:w-6 lg:top-1 lg:h-7 lg:w-7"
+              style={{ fill: "#1DA1F2", color: "white" }}
+              aria-label="Loja verificada"
+            />
           </h1>
           <p className="text-sm text-gray-500">@{store.slug}</p>
         </div>

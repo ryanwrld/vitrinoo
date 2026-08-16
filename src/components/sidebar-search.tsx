@@ -60,7 +60,7 @@ export function SearchTriggerButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="flex h-9 items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-2.5 text-sm text-gray-400 transition-colors duration-150 hover:border-gray-300 hover:text-gray-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-500 dark:hover:border-gray-700"
+      className="flex h-9 items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-2.5 text-sm text-gray-400 transition-colors duration-150 hover:border-gray-300 hover:text-gray-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-500 dark:hover:border-gray-700"
     >
       <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
       <span className="flex-1 text-left">Buscar…</span>
@@ -251,7 +251,7 @@ function SearchPalette({
       />
 
       {/* Painel */}
-      <div className="animate-scale-in relative flex max-h-[80vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900 sm:max-h-[70vh]">
+      <div className="animate-scale-in relative flex max-h-[80vh] w-full max-w-xl flex-col overflow-hidden rounded-[2rem] border border-gray-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900 sm:max-h-[70vh]">
         <div className="flex items-center gap-3 border-b border-gray-100 px-4 dark:border-gray-800">
           <Search className="h-5 w-5 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
           <input
@@ -313,7 +313,7 @@ function SearchPalette({
                       event.preventDefault();
                       handleRemoveRecent(term);
                     }}
-                    className="mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600 active:bg-gray-300 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-gray-300 dark:active:bg-gray-600"
+                    className="mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600 active:bg-gray-300 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-gray-300 dark:active:bg-gray-600"
                   >
                     <X className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
@@ -346,7 +346,7 @@ function SearchPalette({
                     const globalIndex = navMatches.length + index;
                     return (
                       <RowButton key={product.id} active={activeIndex === globalIndex} onSelect={() => handleSelect({ type: "product", product })} padded>
-                        <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
+                        <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-[1.25rem] bg-gray-100 dark:bg-gray-800">
                           {product.coverUrl ? (
                             <Image src={product.coverUrl} alt={product.name} fill sizes="44px" className="object-cover" />
                           ) : (
@@ -442,7 +442,7 @@ function RowButton({
 function ProductSkeleton() {
   return (
     <div className="flex items-center gap-3 p-2">
-      <div className="h-11 w-11 shrink-0 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800" />
+      <div className="h-11 w-11 shrink-0 animate-pulse rounded-[1.25rem] bg-gray-100 dark:bg-gray-800" />
       <div className="flex flex-1 flex-col gap-1.5">
         <div className="h-3 w-2/3 animate-pulse rounded bg-gray-100 dark:bg-gray-800" />
         <div className="h-3 w-1/3 animate-pulse rounded bg-gray-100 dark:bg-gray-800" />

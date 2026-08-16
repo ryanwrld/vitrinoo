@@ -188,7 +188,7 @@ export default async function ConfiguracoesPage({
         // diferença de LARGURA não.
         <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2">
           <div className="flex w-full min-w-0 flex-col gap-6">
-            <section className="flex w-full min-w-0 flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+            <section className="flex w-full min-w-0 flex-col gap-4 rounded-[2rem] border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
               <div className="flex items-center gap-2 text-gray-900 dark:text-gray-50">
                 <UserCircle className="h-5 w-5" />
                 <h2 className="font-display font-bold">Seu perfil</h2>
@@ -208,7 +208,7 @@ export default async function ConfiguracoesPage({
                   criada em" pedia complemento, e o complemento estava a meia
                   tela de distância. Continua com duas linhas de texto, então a
                   altura do card não muda. */}
-              <div className="flex flex-col gap-2 rounded-lg border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-925/40">
+              <div className="flex flex-col gap-2 rounded-[1.25rem] border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-925/40">
                 <div>
                   <span className="block font-medium text-gray-900 dark:text-gray-50">Conta criada em</span>
                   <span className="text-sm text-gray-500 tabular-nums dark:text-gray-400">{contaCriadaEm}</span>
@@ -216,7 +216,7 @@ export default async function ConfiguracoesPage({
               </div>
             </section>
 
-            <section className="flex w-full min-w-0 flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+            <section className="flex w-full min-w-0 flex-col gap-4 rounded-[2rem] border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
               <div className="flex items-center gap-2 text-gray-900 dark:text-gray-50">
                 <Paintbrush className="h-5 w-5" />
                 <h2 className="font-display font-bold">Interface</h2>
@@ -224,7 +224,7 @@ export default async function ConfiguracoesPage({
 
               {/* Rótulo + subtítulo no mesmo formato das linhas dos outros
                   cards (span block + span text-sm text-gray-500). */}
-              <div className="flex flex-col gap-2 rounded-lg border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-925/40">
+              <div className="flex flex-col gap-2 rounded-[1.25rem] border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-925/40">
                 <div className="flex min-h-16 flex-col items-start justify-center gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <span className="block font-medium text-gray-900 dark:text-gray-50">Tema</span>
@@ -239,7 +239,7 @@ export default async function ConfiguracoesPage({
                 deixa apagar tudo agora deixa levar uma cópia antes. Fica na
                 coluna esquerda, com o que é "seu", e não junto do vermelho —
                 baixar dados é ação tranquila, não passo da exclusão. */}
-            <section className="flex w-full min-w-0 flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+            <section className="flex w-full min-w-0 flex-col gap-4 rounded-[2rem] border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
               <div className="flex items-center gap-2 text-gray-900 dark:text-gray-50">
                 <DatabaseBackup className="h-5 w-5" />
                 <h2 className="font-display font-bold">Seus dados</h2>
@@ -250,7 +250,7 @@ export default async function ConfiguracoesPage({
           </div>
 
           <div className="flex w-full min-w-0 flex-col gap-6">
-            <section className="flex w-full min-w-0 flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+            <section className="flex w-full min-w-0 flex-col gap-4 rounded-[2rem] border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
               <div className="flex items-center gap-2 text-gray-900 dark:text-gray-50">
                 <Shield className="h-5 w-5" />
                 <h2 className="font-display font-bold">Acesso</h2>
@@ -267,7 +267,7 @@ export default async function ConfiguracoesPage({
                 logado"), e juntas empilhavam três linhas de ação num card só.
                 Separado, "sair daqui" e "sair de todos" ficam lado a lado —
                 que é exatamente quando a diferença entre os dois importa. */}
-            <section className="flex w-full min-w-0 flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+            <section className="flex w-full min-w-0 flex-col gap-4 rounded-[2rem] border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
               <div className="flex items-center gap-2 text-gray-900 dark:text-gray-50">
                 <MonitorSmartphone className="h-5 w-5" />
                 <h2 className="font-display font-bold">Sessões</h2>
@@ -277,7 +277,7 @@ export default async function ConfiguracoesPage({
                   escondido atrás de um clique — quem procura por isso vai em
                   Configurações primeiro. Duplicar um caminho de saída é
                   barato; não achar nenhum é o que irrita. */}
-              <div className="flex flex-col gap-2 rounded-lg border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-925/40">
+              <div className="flex flex-col gap-2 rounded-[1.25rem] border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-925/40">
                 <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <span className="block font-medium text-gray-900 dark:text-gray-50">Este dispositivo</span>
@@ -286,7 +286,7 @@ export default async function ConfiguracoesPage({
                   <form action={signOutAction} className="w-full shrink-0 sm:w-auto">
                     <button
                       type="submit"
-                      className="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 sm:w-auto dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700"
+                      className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 sm:w-auto dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700"
                     >
                       <LogOut className="h-4 w-4" aria-hidden="true" />
                       Sair da conta
@@ -305,7 +305,7 @@ export default async function ConfiguracoesPage({
                 catástrofe, e o título deixa de repetir literalmente o rótulo
                 do botão logo abaixo. O peso visual vermelho fica, por decisão
                 do usuário. */}
-            <section className="flex w-full min-w-0 flex-col gap-4 rounded-lg border border-error-bg bg-white p-5 dark:border-error-solid/25 dark:bg-gray-900">
+            <section className="flex w-full min-w-0 flex-col gap-4 rounded-[2rem] border border-error-bg bg-white p-6 dark:border-error-solid/25 dark:bg-gray-900">
               <div className="flex items-center gap-2 text-error-solid">
                 <AlertTriangle className="h-5 w-5" />
                 <h2 className="font-display font-bold">Apagar permanentemente</h2>

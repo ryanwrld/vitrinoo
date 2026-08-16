@@ -18,6 +18,8 @@ export type ShareVitrineButtonProps = {
    */
   label?: ReactNode;
   ariaLabel?: string;
+  iconClassName?: string;
+  strokeWidth?: number;
 };
 
 /**
@@ -36,6 +38,8 @@ export function ShareVitrineButton({
   className,
   label = "Compartilhar vitrine",
   ariaLabel,
+  iconClassName,
+  strokeWidth,
 }: ShareVitrineButtonProps) {
   const [isPending, startTransition] = useTransition();
 
@@ -55,7 +59,7 @@ export function ShareVitrineButton({
       if (ok) {
         toast.success("Link da vitrine copiado!");
       } else {
-        toast.error("Não foi possível compartilhar. Copie o link manualmente.");
+        toast.error("Não foi possível compartilhar.");
       }
     });
   }
@@ -68,7 +72,11 @@ export function ShareVitrineButton({
       aria-label={ariaLabel}
       className={className}
     >
-      <Share2 className={label === null ? "h-[18px] w-[18px]" : "h-4 w-4"} aria-hidden="true" />
+      <Share2
+        className={iconClassName ?? (label === null ? "h-[18px] w-[18px]" : "h-4 w-4")}
+        strokeWidth={strokeWidth}
+        aria-hidden="true"
+      />
       {label}
     </button>
   );

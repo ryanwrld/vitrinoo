@@ -101,7 +101,7 @@ export function QrCodePanel({ publicUrl, storeName, accentColor }: QrCodePanelPr
       try {
         triggerDownload(await generateQrDataUrl(publicUrl, QR_DOWNLOAD_SIZE), "vitrine-qrcode.png");
       } catch {
-        toast.error("Não foi possível gerar o QR code. Tente novamente.");
+        toast.error("Não foi possível gerar o QR code.");
       }
     });
   }
@@ -112,7 +112,7 @@ export function QrCodePanel({ publicUrl, storeName, accentColor }: QrCodePanelPr
       if (ok) {
         toast.success("Link copiado!");
       } else {
-        toast.error("Não foi possível copiar o link. Selecione e copie manualmente.");
+        toast.error("Não foi possível copiar. Copie manualmente.");
       }
     });
   }
@@ -161,7 +161,7 @@ export function QrCodePanel({ publicUrl, storeName, accentColor }: QrCodePanelPr
             // e num texto de 13px sobre fundo escuro lê como quase preto
             // (~1,5:1 de contraste). Área muda a leitura da cor — clarear é o
             // que faz o contorno PARECER o azul do botão "Copiar" ao lado.
-            className="flex items-center justify-center gap-2 rounded-md border border-primary bg-white p-3 text-sm font-semibold text-primary transition-all duration-150 hover:bg-primary-subtle active:bg-primary-border active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:border-gray-200 disabled:bg-gray-100 disabled:text-gray-400 disabled:pointer-events-none dark:border-blue-400 dark:bg-gray-900 dark:text-blue-400 dark:hover:bg-blue-400/10 dark:active:bg-blue-400/20 dark:disabled:border-gray-800 dark:disabled:bg-gray-800 dark:disabled:text-gray-600"
+            className="flex items-center justify-center gap-2 rounded-full border border-primary bg-white p-3 text-sm font-semibold text-primary transition-all duration-150 hover:bg-primary-subtle active:bg-primary-border active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:border-gray-200 disabled:bg-gray-100 disabled:text-gray-400 disabled:pointer-events-none dark:border-blue-400 dark:bg-gray-900 dark:text-blue-400 dark:hover:bg-blue-400/10 dark:active:bg-blue-400/20 dark:disabled:border-gray-800 dark:disabled:bg-gray-800 dark:disabled:text-gray-600"
           >
             <Download className="h-4 w-4" aria-hidden="true" />
             Baixar cartão
@@ -171,7 +171,7 @@ export function QrCodePanel({ publicUrl, storeName, accentColor }: QrCodePanelPr
             type="button"
             onClick={handleDownloadPlainQr}
             disabled={isDownloadingQr}
-            className="flex items-center justify-center gap-2 rounded-md border border-gray-300 bg-white p-3 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700"
+            className="flex items-center justify-center gap-2 rounded-full border border-gray-300 bg-white p-3 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700"
           >
             {/* "Baixar QR code", não "Só o QR code": o rótulo antigo não tinha
                 verbo (quebrando o paralelismo com o botão ao lado) e se
@@ -193,14 +193,14 @@ export function QrCodePanel({ publicUrl, storeName, accentColor }: QrCodePanelPr
             type="text"
             value={publicUrl}
             readOnly
-            className="flex-1 rounded-md border border-gray-200 bg-gray-50 px-3 h-11 text-base text-gray-900 outline-none dark:border-gray-800 dark:bg-gray-925/40 dark:text-gray-50"
+            className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 h-11 text-base text-gray-900 outline-none dark:border-gray-800 dark:bg-gray-925/40 dark:text-gray-50"
           />
           <button
             type="button"
             onClick={handleCopy}
             disabled={isCopying}
             aria-label="Copiar"
-            className="flex items-center gap-2 rounded-md bg-primary p-3 text-sm font-semibold text-white transition-all duration-150 hover:bg-primary-hover active:bg-primary-active active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:bg-gray-100 disabled:text-gray-400 disabled:pointer-events-none dark:disabled:bg-gray-800 dark:disabled:text-gray-600"
+            className="flex items-center gap-2 rounded-full bg-primary p-3 text-sm font-semibold text-white transition-all duration-150 hover:bg-primary-hover active:bg-primary-active active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:bg-gray-100 disabled:text-gray-400 disabled:pointer-events-none dark:disabled:bg-gray-800 dark:disabled:text-gray-600"
           >
             <Copy className="h-4 w-4" aria-hidden="true" />
             Copiar

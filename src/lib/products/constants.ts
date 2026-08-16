@@ -21,7 +21,7 @@ export const BRANDS = [
 ] as const;
 
 /** Solado (D-07): códigos padrão da indústria. */
-export const SOLES = ["FG", "AG", "TF", "IC", "MG", "SG"] as const;
+export const SOLES = ["AG", "MG", "SG", "TF", "IC", "FG"] as const;
 
 /**
  * Rótulo do solado para o CLIENTE FINAL da vitrine pública. As siglas
@@ -36,12 +36,12 @@ export const SOLES = ["FG", "AG", "TF", "IC", "MG", "SG"] as const;
  * `SOLES` cru — lá a sigla sozinha é o vocabulário correto.
  */
 export const SOLE_LABELS: Record<(typeof SOLES)[number], string> = {
-  FG: "Campo (FG)",
   AG: "Grama sintética (AG)",
+  MG: "Multiterreno (MG)",
+  SG: "Trava Mista (SG)",
   TF: "Society (TF)",
   IC: "Futsal (IC)",
-  MG: "Multiterreno (MG)",
-  SG: "Campo mole (SG)",
+  FG: "Campo (FG)",
 };
 
 /** Categoria (RESEARCH Open Question 1, adotada em 03-UI-SPEC.md). */
