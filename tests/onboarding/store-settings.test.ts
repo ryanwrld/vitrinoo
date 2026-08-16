@@ -85,6 +85,49 @@ describe("saveOnboarding — identidade da loja (LOJA-01)", () => {
     await verifyClient.from("stores").delete().eq("id", stores![0].id);
   }, 30000);
 
+  it("salva o Instagram normalizado quando informado", async () => {
+    const { email, password } = await signUpAndGetCredentials("instagram-ok");
+
+    const formData = new FormData();
+    formData.set("name", "Loja Com Instagram");
+    formData.set("accentColor", "#00C46A");
+    formData.set("tagline", "");
+    formData.set("whatsapp", "(11) 97777-6666");
+    formData.set("messageTemplate", DEFAULT_MESSAGE_TEMPLATE);
+    formData.set("slug", "lojacominstagram");
+    formData.set("instagram", "@RLEsportes");
+    formData.set("logo", makeFakeLogoFile());
+
+    await expect(saveOnboarding(formData)).rejects.toThrow("NEXT_REDIRECT:/admin/dashboard");
+
+    const verifyClient = createAnonClient();
+    const { data: signInData } = await verifyClient.auth.signInWithPassword({ email, password });
+    const { data: stores } = await verifyClient
+      .from("stores")
+      .select("*")
+      .eq("owner_id", signInData.user!.id);
+    expect(stores).toHaveLength(1);
+    expect(stores![0].instagram).toBe("rlesportes");
+
+    await verifyClient.from("stores").delete().eq("id", stores![0].id);
+  }, 30000);
+
+  it("rejeita Instagram inválido sem salvar nada", async () => {
+    await signUpAndGetCredentials("instagram-invalido");
+
+    const formData = new FormData();
+    formData.set("name", "Loja Instagram Inválido");
+    formData.set("accentColor", "");
+    formData.set("tagline", "");
+    formData.set("whatsapp", "(11) 96666-5555");
+    formData.set("messageTemplate", DEFAULT_MESSAGE_TEMPLATE);
+    formData.set("instagram", "https://instagram.com/@espaço inválido");
+    formData.set("logo", makeFakeLogoFile());
+
+    const result = await saveOnboarding(formData);
+    expect(result).toEqual({ error: expect.any(String) });
+  });
+
   it("rejeita frase com mais de 100 caracteres sem salvar", async () => {
     await signUpAndGetCredentials("frase-longa");
 

@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeWhatsAppBR } from "@/lib/phone/normalize-br";
+import { normalizeInstagramHandle } from "@/lib/social/instagram";
 import { onboardingSchema } from "@/lib/validation/onboarding";
 import { slugSchema } from "@/lib/slug/validation";
 import { resolveTimeZone } from "@/lib/time/store-timezone";
@@ -156,6 +157,11 @@ export async function saveOnboarding(formData: FormData): Promise<OnboardingActi
   const { data: publicUrlData } = supabase.storage.from("store-assets").getPublicUrl(path);
   const logoUrl = publicUrlData.publicUrl;
 
+  const instagramResult = normalizeInstagramHandle(formData.get("instagram") as string | null);
+  if ("error" in instagramResult) {
+    return { error: instagramResult.error };
+  }
+
   const { error: storeUpdateError } = await supabase
     .from("stores")
     .update({
@@ -163,6 +169,7 @@ export async function saveOnboarding(formData: FormData): Promise<OnboardingActi
       slug: slugParsed.data,
       accent_color: parsed.data.accentColor || null,
       tagline: parsed.data.tagline || null,
+      instagram: instagramResult.handle,
       logo_url: logoUrl,
       timezone,
     })
