@@ -59,6 +59,10 @@ function uniqueEmail(label: string): string {
   return `vitrinoo.photoupload.${label}.${Date.now()}.${Math.random().toString(36).slice(2)}@gmail.com`;
 }
 
+function uniqueSlug(label: string): string {
+  return `${label.replace(/[^a-z0-9]/g, "").slice(0, 12)}${Date.now().toString().slice(-6)}${Math.random().toString(36).slice(2, 6)}`;
+}
+
 async function signUpAndCompleteOnboarding(label: string): Promise<{ email: string; password: string }> {
   const email = uniqueEmail(label);
   const password = "SenhaForte123!";
@@ -73,6 +77,7 @@ async function signUpAndCompleteOnboarding(label: string): Promise<{ email: stri
   onboardingFormData.set("tagline", "Frase original");
   onboardingFormData.set("whatsapp", "(11) 99999-0000");
   onboardingFormData.set("messageTemplate", DEFAULT_MESSAGE_TEMPLATE);
+  onboardingFormData.set("slug", uniqueSlug(label));
   onboardingFormData.set("logo", makeFakeLogoFile());
   await expect(saveOnboarding(onboardingFormData)).rejects.toThrow("NEXT_REDIRECT:/admin/dashboard");
 

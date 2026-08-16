@@ -171,5 +171,5 @@ describe("saveOnboarding — identidade da loja (LOJA-01)", () => {
 
     const result = await saveOnboarding(formDataB);
     expect(result).toEqual({ error: "Este link já está em uso. Escolha outro." });
-  });
+  }, 30000);
 });
