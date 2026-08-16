@@ -8,7 +8,7 @@ const UNIQUE_VIOLATION = "23505";
 function generateStoreSlug(email: string): string {
   const base = slugify(email.split("@")[0]) || "loja";
   const suffix = Math.random().toString(36).slice(2, 8);
-  return `${base}-${suffix}`;
+  return `${base}${suffix}`;
 }
 
 /**
@@ -29,7 +29,7 @@ export async function ensureStoreForUser(
   supabase: SupabaseClient<Database>,
   userId: string,
   email: string
-): Promise<{ storeId: string } | { error: string }> {
+): Promise<{ storeId: string; slug: string } | { error: string }> {
   // `.order().limit(1).maybeSingle()` e NUNCA `.single()`: `.single()`
   // devolve data=null tanto para ZERO linhas quanto para VÁRIAS, e o erro
   // era descartado aqui. Numa conta que (por uma corrida na criação) ficou
@@ -46,24 +46,30 @@ export async function ensureStoreForUser(
   // conteúdo), jamais criar outra.
   const { data: existingStore } = await supabase
     .from("stores")
-    .select("id")
+    .select("id, slug")
     .eq("owner_id", userId)
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
 
   let storeId = existingStore?.id ?? null;
+  let slug = existingStore?.slug ?? null;
 
   if (!storeId) {
     const storeName = email.split("@")[0];
     let lastError: { code?: string; message: string } | null = null;
 
     for (let attempt = 0; attempt < MAX_SLUG_ATTEMPTS && !storeId; attempt++) {
-      const slug = generateStoreSlug(email);
-      const { data, error } = await supabase.from("stores").insert({ owner_id: userId, name: storeName, slug }).select("id").single();
+      const candidateSlug = generateStoreSlug(email);
+      const { data, error } = await supabase
+        .from("stores")
+        .insert({ owner_id: userId, name: storeName, slug: candidateSlug })
+        .select("id, slug")
+        .single();
 
       if (data) {
         storeId = data.id;
+        slug = data.slug;
         break;
       }
 
@@ -97,5 +103,9 @@ export async function ensureStoreForUser(
     }
   }
 
-  return { storeId };
+  if (!slug) {
+    return { error: "Falha ao preparar sua loja." };
+  }
+
+  return { storeId, slug };
 }
