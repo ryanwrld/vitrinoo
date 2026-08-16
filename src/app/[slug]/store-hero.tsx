@@ -211,10 +211,10 @@ export function StoreHero({ store, stats }: { store: StoreHeroData; stats: Store
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={`Instagram de ${store.name}`}
-                className="inline-flex items-center gap-1 rounded-full border border-gray-300 bg-white px-2 py-0.5 text-xs font-medium text-gray-900 transition-colors duration-150 hover:border-gray-400 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
+                className="inline-flex max-w-[180px] items-center gap-1 rounded-full border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-900 transition-colors duration-150 hover:border-gray-400 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
               >
                 <InstagramIcon className="h-3 w-3 shrink-0" aria-hidden="true" />
-                {store.instagram}
+                <span className="truncate">{store.instagram}</span>
               </a>
             )}
           </div>
