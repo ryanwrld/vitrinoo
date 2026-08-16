@@ -38,5 +38,5 @@ export default async function OnboardingPage() {
     );
   }
 
-  return <OnboardingWizard />;
+  return <OnboardingWizard provisionalSlug={result.slug} />;
 }

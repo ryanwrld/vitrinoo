@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -12,6 +12,11 @@ import {
 } from "@/lib/validation/onboarding";
 import { saveOnboarding } from "@/lib/onboarding/actions";
 import { LogoMark } from "@/components/logo-mark";
+import { slugify } from "@/lib/slug/slugify";
+import { useSlugField } from "@/lib/slug/use-slug-field";
+import { resolveAvailableSlug } from "@/lib/slug/resolve-available";
+import { SlugFieldProvider } from "@/app/admin/(painel)/configuracoes/slug-field-context";
+import { SlugEditor } from "@/app/admin/(painel)/configuracoes/slug-editor";
 
 /**
  * Wizard de onboarding em tela única (decisão de UI a critério do executor,
@@ -32,7 +37,7 @@ import { LogoMark } from "@/components/logo-mark";
  * enviado/persistido. A normalização real e definitiva acontece uma única
  * vez dentro de `saveOnboarding` (Armadilha 2 do 01-RESEARCH.md).
  */
-export function OnboardingWizard() {
+export function OnboardingWizard({ provisionalSlug }: { provisionalSlug: string }) {
   const [isPending, startTransition] = useTransition();
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const {
@@ -54,9 +59,60 @@ export function OnboardingWizard() {
   const whatsappValue = watch("whatsapp");
   const formattedPreview = whatsappValue ? new AsYouType("BR").input(whatsappValue) : "";
 
+  // --- Campo "@" -----------------------------------------------------------
+  // Mesmo hook que Configurações usa (`useSlugField`), com duas diferenças
+  // específicas do onboarding: (1) autofill a partir do nome digitado, até a
+  // pessoa editar o @ à mão; (2) sugestão automática de alternativa quando o
+  // autofill colide com um @ já existente.
+  const nameValue = watch("name");
+  const [slugTouched, setSlugTouched] = useState(false);
+  const slugField = useSlugField(provisionalSlug);
+  const { setRawSlug: setSlugRaw } = slugField;
+
+  // Autofill: `slugify(nome)` sempre que o nome mudar, ENQUANTO a pessoa não
+  // tiver editado o campo @ diretamente. Fallback pra "loja" no mesmo padrão
+  // de `ensure-store.ts` — nunca autofilla um campo literalmente vazio (nome
+  // só com emoji/símbolo, por exemplo).
+  useEffect(() => {
+    if (slugTouched) return;
+    setSlugRaw(slugify(nameValue || "") || "loja");
+  }, [nameValue, slugTouched, setSlugRaw]);
+
+  // Edição manual do @ marca `slugTouched` e para o autofill — igual campo
+  // de slug de URL de qualquer admin (CMS, encurtador de link etc.): segue o
+  // nome até o usuário mexer, depois vira independente.
+  const handleSlugInputChange = (value: string) => {
+    setSlugTouched(true);
+    setSlugRaw(value);
+  };
+
+  // Sugestão automática quando o @ atual está ocupado — tenta @nome2,
+  // @nome3... e mostra a primeira livre como atalho de um clique.
+  const [suggestedSlug, setSuggestedSlug] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (slugField.status !== "taken") {
+      setSuggestedSlug(null);
+      return;
+    }
+
+    let cancelled = false;
+    resolveAvailableSlug(slugField.slug).then((result) => {
+      if (!cancelled) setSuggestedSlug(result);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [slugField.status, slugField.slug]);
+
+  const slugBlocksSubmit =
+    !!slugField.formatError || slugField.status === "checking" || slugField.status === "taken";
+
   const onSubmit = (values: OnboardingInput) => {
     const formData = new FormData();
     formData.set("name", values.name);
+    formData.set("slug", slugField.slug);
     formData.set("accentColor", values.accentColor ?? "");
     formData.set("tagline", values.tagline ?? "");
     formData.set("whatsapp", values.whatsapp);
@@ -109,6 +165,21 @@ export function OnboardingWizard() {
           />
           {errors.name && <span className="text-sm text-error-solid">{errors.name.message}</span>}
         </div>
+
+        <SlugFieldProvider value={{ ...slugField, setRawSlug: handleSlugInputChange }}>
+          <div className="flex flex-col gap-1">
+            <SlugEditor />
+            {suggestedSlug && (
+              <button
+                type="button"
+                onClick={() => handleSlugInputChange(suggestedSlug)}
+                className="self-start text-xs font-medium text-primary underline-offset-2 hover:underline"
+              >
+                Usar @{suggestedSlug}
+              </button>
+            )}
+          </div>
+        </SlugFieldProvider>
 
         <div className="flex flex-col gap-1">
           <label htmlFor="logo" className="text-sm font-medium text-gray-700">
@@ -194,7 +265,7 @@ export function OnboardingWizard() {
 
           <button
             type="submit"
-            disabled={isPending || !logoFile}
+            disabled={isPending || !logoFile || slugBlocksSubmit}
             className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-primary-hover active:bg-primary-active active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:bg-gray-100 disabled:text-gray-400 disabled:pointer-events-none"
           >
             {isPending ? "Salvando…" : "Concluir e ver minha vitrine"}
