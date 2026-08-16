@@ -505,7 +505,7 @@ export default async function DashboardPage({
   // depois da lista, naturalmente menor, e o layout em linha cabe folgado
   // com fonte em tamanho normal.
   const shareCta = (
-    <div className="mx-auto flex w-full max-w-2xl flex-col items-center justify-center gap-3 rounded-xl border border-gray-200 bg-primary-subtle/40 px-5 py-8 text-center lg:min-h-40 lg:flex-1 lg:flex-row lg:items-center lg:gap-4 lg:px-6 lg:py-5 lg:text-left dark:border-gray-800 dark:bg-blue-400/[0.06]">
+    <div className="mx-auto flex w-full max-w-2xl flex-col items-center justify-center gap-3 rounded-[2rem] border border-gray-200 bg-primary-subtle/40 px-5 py-8 text-center lg:min-h-40 lg:flex-1 lg:flex-row lg:items-center lg:gap-4 lg:px-6 lg:py-5 lg:text-left dark:border-gray-800 dark:bg-blue-400/[0.06]">
       <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-primary lg:h-11 lg:w-11 dark:bg-blue-400/15 dark:text-blue-300">
         <TrendingDown className="h-6 w-6 lg:h-5 lg:w-5" aria-hidden="true" />
       </span>
@@ -540,7 +540,7 @@ export default async function DashboardPage({
   // o card continuar crescendo/centralizando conforme a altura do vizinho
   // ("Tamanhos mais pedidos") muda.
   const shareCtaCompact = (
-    <div className="mx-auto flex w-full max-w-2xl flex-col items-center justify-center gap-3 rounded-xl border border-gray-200 bg-primary-subtle/40 px-5 py-8 text-center lg:min-h-40 lg:flex-1 dark:border-gray-800 dark:bg-blue-400/[0.06]">
+    <div className="mx-auto flex w-full max-w-2xl flex-col items-center justify-center gap-3 rounded-[2rem] border border-gray-200 bg-primary-subtle/40 px-5 py-8 text-center lg:min-h-40 lg:flex-1 dark:border-gray-800 dark:bg-blue-400/[0.06]">
       <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-primary dark:bg-blue-400/15 dark:text-blue-300">
         <TrendingDown className="h-6 w-6" aria-hidden="true" />
       </span>
