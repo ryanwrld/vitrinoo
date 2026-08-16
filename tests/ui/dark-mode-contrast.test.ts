@@ -24,14 +24,14 @@ import path from "node:path";
 
 /** As 4 telas de auth não têm mais `<main>` próprio: todas passam por AuthLayout. */
 const AUTH_PAGES = [
-  "src/app/(admin)/cadastro/page.tsx",
-  "src/app/(admin)/login/page.tsx",
-  "src/app/(admin)/esqueci-senha/page.tsx",
-  "src/app/(admin)/redefinir-senha/page.tsx",
+  "src/app/admin/cadastro/page.tsx",
+  "src/app/admin/login/page.tsx",
+  "src/app/admin/esqueci-senha/page.tsx",
+  "src/app/admin/redefinir-senha/page.tsx",
 ];
 
 const AUTH_LAYOUT = "src/components/auth-layout.tsx";
-const ONBOARDING = "src/app/(admin)/onboarding/onboarding-wizard.tsx";
+const ONBOARDING = "src/app/admin/onboarding/onboarding-wizard.tsx";
 
 /** Fundos claros aceitos como declaração EXPLÍCITA (nunca herança do body). */
 const EXPLICIT_LIGHT_BG = /\b(bg-white|bg-dot-pattern|bg-gray-50)\b/;
@@ -86,7 +86,7 @@ describe("dark mode contrast regression", () => {
   });
 
   it("(painel)/layout.tsx declara o wrapper .admin-scope", () => {
-    const source = readSource("src/app/(admin)/(painel)/layout.tsx");
+    const source = readSource("src/app/admin/(painel)/layout.tsx");
     expect(source).toMatch(/\badmin-scope\b/);
   });
 });

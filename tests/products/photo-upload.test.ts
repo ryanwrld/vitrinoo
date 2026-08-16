@@ -196,7 +196,7 @@ describe("addProductPhotos — validação, recontagem e persistência de fotos"
     const sixthFormData = new FormData();
     sixthFormData.append("photos", makeImageFile({ type: "image/png", name: "foto-6.png" }));
     const sixthResult = await addProductPhotos(productId, sixthFormData);
-    expect(sixthResult).toEqual({ error: "Você já atingiu o limite de 5 fotos por produto." });
+    expect(sixthResult).toEqual({ error: "Limite de 5 fotos por produto atingido." });
 
     const { client, storeId } = await signInAndFindStore(email, password);
     const { data: photos, error } = await client.from("product_photos").select("id").eq("product_id", productId);

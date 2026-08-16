@@ -43,7 +43,7 @@ describe("signInAction — erro de rede vs. credencial inválida", () => {
     const result = await signInAction(formData);
 
     expect(result).toEqual({
-      error: "Não foi possível conectar. Verifique sua internet e tente novamente.",
+      error: "Não foi possível conectar.",
     });
   });
 

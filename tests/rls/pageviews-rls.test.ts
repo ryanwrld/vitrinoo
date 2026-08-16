@@ -23,6 +23,7 @@ import {
 describe("RLS de pageviews + isolamento das views agregadas (migration 0006)", () => {
   let lojaA: SeededAccount;
   let lojaB: SeededAccount;
+  let lojaSemPublicado: SeededAccount;
   let storeAId: string;
   let storeBId: string;
   let storeNoPublishedId: string;
@@ -33,6 +34,11 @@ describe("RLS de pageviews + isolamento das views agregadas (migration 0006)", (
   beforeAll(async () => {
     lojaA = await seedAuthenticatedAccount("pageviews-loja-a");
     lojaB = await seedAuthenticatedAccount("pageviews-loja-b");
+    // Conta própria para a loja sem produto publicado — migration 0015
+    // (stores_owner_id_unique_idx) passou a limitar UMA loja por dono, então
+    // não dá mais pra reaproveitar `lojaA` pra uma segunda loja como este
+    // teste fazia antes dessa migration.
+    lojaSemPublicado = await seedAuthenticatedAccount("pageviews-loja-sem-publicado");
 
     const { data: storeA, error: storeAError } = await lojaA.client
       .from("stores")
@@ -54,12 +60,12 @@ describe("RLS de pageviews + isolamento das views agregadas (migration 0006)", (
     }
     storeBId = storeB.id;
 
-    const { data: storeNoPublished, error: storeNoPublishedError } = await lojaA.client
+    const { data: storeNoPublished, error: storeNoPublishedError } = await lojaSemPublicado.client
       .from("stores")
       .insert({
-        owner_id: lojaA.userId,
-        name: "Loja A - Sem Produto Publicado",
-        slug: `pageviews-loja-a-sem-pub-teste-${Date.now()}`,
+        owner_id: lojaSemPublicado.userId,
+        name: "Loja Sem Produto Publicado",
+        slug: `pageviews-loja-sem-pub-teste-${Date.now()}`,
       })
       .select()
       .single();
@@ -101,7 +107,7 @@ describe("RLS de pageviews + isolamento das views agregadas (migration 0006)", (
 
   afterAll(async () => {
     await lojaA?.client.from("stores").delete().eq("id", storeAId);
-    await lojaA?.client.from("stores").delete().eq("id", storeNoPublishedId);
+    await lojaSemPublicado?.client.from("stores").delete().eq("id", storeNoPublishedId);
     await lojaB?.client.from("stores").delete().eq("id", storeBId);
   });
 
