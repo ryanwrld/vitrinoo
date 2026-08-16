@@ -115,6 +115,7 @@ export function OnboardingWizard({ provisionalSlug }: { provisionalSlug: string 
     formData.set("slug", slugField.slug);
     formData.set("accentColor", values.accentColor ?? "");
     formData.set("tagline", values.tagline ?? "");
+    formData.set("instagram", values.instagram ?? "");
     formData.set("whatsapp", values.whatsapp);
     formData.set("messageTemplate", values.messageTemplate);
     // Fuso do aparelho do revendedor (migration 0013) — nenhum campo novo no
@@ -229,6 +230,32 @@ export function OnboardingWizard({ provisionalSlug }: { provisionalSlug: string 
             className="rounded-xl border border-gray-300 bg-white px-3 h-11 text-base text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle placeholder:text-gray-400"
           />
           {errors.tagline && <span className="text-sm text-error-solid">{errors.tagline.message}</span>}
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <div className="flex items-baseline justify-between gap-2">
+            <label htmlFor="instagram" className="text-sm font-medium text-gray-700">
+              Instagram
+            </label>
+            <span className="text-xs text-gray-500">Opcional</span>
+          </div>
+          <div className="flex items-center rounded-xl border border-gray-300 bg-white transition-colors duration-150 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary-subtle">
+            <span className="pl-3 text-base text-gray-400">@</span>
+            <input
+              id="instagram"
+              type="text"
+              inputMode="text"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder="rlesportes"
+              {...register("instagram")}
+              className="h-11 w-full bg-transparent px-2 text-base text-gray-900 outline-none placeholder:text-gray-400"
+            />
+          </div>
+          {errors.instagram && (
+            <span className="text-sm text-error-solid">{errors.instagram.message}</span>
+          )}
         </div>
 
         <div className="flex flex-col gap-1">
