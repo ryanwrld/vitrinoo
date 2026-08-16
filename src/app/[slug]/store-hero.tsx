@@ -188,17 +188,6 @@ export function StoreHero({ store, stats }: { store: StoreHeroData; stats: Store
               ariaLabel={`Compartilhar a vitrine de ${store.name}`}
               className={actionButtonClass}
             />
-            {store.instagram && (
-              <a
-                href={instagramProfileUrl(store.instagram)}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={`Instagram de ${store.name}`}
-                className={actionButtonClass}
-              >
-                <InstagramIcon className="h-[18px] w-[18px]" aria-hidden="true" />
-              </a>
-            )}
           </div>
         </div>
 
@@ -258,23 +247,6 @@ export function StoreHero({ store, stats }: { store: StoreHeroData; stats: Store
           </dl>
         )}
 
-        {store.instagram && (
-          // Repete o destino do ícone acima de propósito: o ícone serve a quem
-          // reconhece o símbolo, esta linha serve a quem precisa LER que a
-          // loja tem Instagram — e é ela que mostra o nome do perfil, para
-          // quem quer conferir se é a conta que já conhece.
-          <div className="mt-5 border-t border-gray-200 pt-4">
-            <a
-              href={instagramProfileUrl(store.instagram)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-gray-500 transition-colors duration-150 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
-            >
-              <InstagramIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
-              instagram.com/{store.instagram}
-            </a>
-          </div>
-        )}
       </div>
     </header>
   );
