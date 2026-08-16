@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeWhatsAppBR } from "@/lib/phone/normalize-br";
 import { onboardingSchema } from "@/lib/validation/onboarding";
+import { slugSchema } from "@/lib/slug/validation";
 import { resolveTimeZone } from "@/lib/time/store-timezone";
 
 export type OnboardingActionResult = { error: string } | void;
@@ -83,6 +84,15 @@ export async function saveOnboarding(formData: FormData): Promise<OnboardingActi
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
   }
 
+  // `slug` nunca entra em `onboardingSchema` — esse schema é compartilhado
+  // com `saveStoreSettings` (Configurações), que não tem esse campo no
+  // FormData. Validado separadamente, igual `checkSlugAvailability`/
+  // `updateStoreSlug` já fazem hoje.
+  const slugParsed = slugSchema.safeParse(formData.get("slug"));
+  if (!slugParsed.success) {
+    return { error: slugParsed.error.issues[0]?.message ?? "Link inválido" };
+  }
+
   // Logo passou a ser OBRIGATÓRIA no onboarding (decisão explícita do
   // usuário — antes era opcional). A regra vale só para contas NOVAS: lojas
   // que já existiam sem logo continuam funcionando normalmente e podem
@@ -150,6 +160,7 @@ export async function saveOnboarding(formData: FormData): Promise<OnboardingActi
     .from("stores")
     .update({
       name: parsed.data.name,
+      slug: slugParsed.data,
       accent_color: parsed.data.accentColor || null,
       tagline: parsed.data.tagline || null,
       logo_url: logoUrl,
@@ -158,6 +169,14 @@ export async function saveOnboarding(formData: FormData): Promise<OnboardingActi
     .eq("id", store.id);
 
   if (storeUpdateError) {
+    // Corrida entre a checagem debounced no client e este save (mesma
+    // classe de problema que `updateStoreSlug`, em Configurações, já trata
+    // — TOCTOU contra a UNIQUE constraint de `stores.slug`). O revendedor já
+    // viu uma sugestão de alternativa no client antes de chegar aqui; se
+    // mesmo assim colidir, pedir pra tentar de novo é suficiente.
+    if (storeUpdateError.code === "23505") {
+      return { error: "Este link já está em uso. Escolha outro." };
+    }
     return { error: "Não foi possível salvar os dados da loja." };
   }
 

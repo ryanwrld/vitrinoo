@@ -48,6 +48,7 @@ describe("saveOnboarding — template de mensagem (WPP-02)", () => {
     formData.set("name", "Loja Template OK");
     formData.set("whatsapp", "(11) 98888-7777");
     formData.set("messageTemplate", customTemplate);
+    formData.set("slug", `templateok${Date.now()}`);
     formData.set("logo", makeFakeLogoFile());
 
     await expect(saveOnboarding(formData)).rejects.toThrow("NEXT_REDIRECT:/admin/dashboard");

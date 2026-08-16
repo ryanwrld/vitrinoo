@@ -53,6 +53,7 @@ describe("saveOnboarding — identidade da loja (LOJA-01)", () => {
     formData.set("tagline", "As melhores chuteiras importadas do Brasil");
     formData.set("whatsapp", "(11) 99999-9999");
     formData.set("messageTemplate", DEFAULT_MESSAGE_TEMPLATE);
+    formData.set("slug", "chuteirasdorayan");
     // Logo virou obrigatória no onboarding — este é o caminho de SUCESSO,
     // então precisa de um arquivo válido para chegar ao redirect.
     formData.set("logo", makeFakeLogoFile());
@@ -71,6 +72,7 @@ describe("saveOnboarding — identidade da loja (LOJA-01)", () => {
     expect(stores![0].name).toBe("Chuteiras do Ryan");
     expect(stores![0].accent_color).toBe("#00C46A");
     expect(stores![0].tagline).toBe("As melhores chuteiras importadas do Brasil");
+    expect(stores![0].slug).toBe("chuteirasdorayan");
 
     const { data: settings } = await verifyClient
       .from("store_settings")
@@ -112,5 +114,62 @@ describe("saveOnboarding — identidade da loja (LOJA-01)", () => {
 
     const result = await saveOnboarding(formData);
     expect(result).toEqual({ error: expect.any(String) });
+  });
+
+  it("rejeita um slug fora do formato (com hifen) sem gravar nada", async () => {
+    const { email } = await signUpAndGetCredentials("slug-invalid-format");
+    void email;
+
+    const formData = new FormData();
+    formData.set("name", "Chuteiras Inválidas");
+    formData.set("accentColor", "#00C46A");
+    formData.set("tagline", "");
+    formData.set("whatsapp", "(11) 99999-9999");
+    formData.set("messageTemplate", DEFAULT_MESSAGE_TEMPLATE);
+    formData.set("slug", "chuteiras-com-hifen");
+    formData.set("logo", makeFakeLogoFile());
+
+    const result = await saveOnboarding(formData);
+    expect(result).toEqual({ error: expect.any(String) });
+  });
+
+  it("retorna erro amigavel quando o slug ja pertence a outra loja", async () => {
+    const { email: emailA, password: passwordA } = await signUpAndGetCredentials("slug-taken-a");
+
+    const formDataA = new FormData();
+    formDataA.set("name", "Loja A");
+    formDataA.set("accentColor", "#00C46A");
+    formDataA.set("tagline", "");
+    formDataA.set("whatsapp", "(11) 99999-9999");
+    formDataA.set("messageTemplate", DEFAULT_MESSAGE_TEMPLATE);
+    formDataA.set("slug", `lojaataken${Date.now()}`);
+    formDataA.set("logo", makeFakeLogoFile());
+    await expect(saveOnboarding(formDataA)).rejects.toThrow("NEXT_REDIRECT:/admin/dashboard");
+
+    const verifyClientA = createAnonClient();
+    const { data: signInDataA } = await verifyClientA.auth.signInWithPassword({
+      email: emailA,
+      password: passwordA,
+    });
+    const { data: storesA } = await verifyClientA
+      .from("stores")
+      .select("slug")
+      .eq("owner_id", signInDataA.user!.id);
+    const takenSlug = storesA![0].slug;
+
+    const { email: emailB } = await signUpAndGetCredentials("slug-taken-b");
+    void emailB;
+
+    const formDataB = new FormData();
+    formDataB.set("name", "Loja B");
+    formDataB.set("accentColor", "#00C46A");
+    formDataB.set("tagline", "");
+    formDataB.set("whatsapp", "(11) 98888-8888");
+    formDataB.set("messageTemplate", DEFAULT_MESSAGE_TEMPLATE);
+    formDataB.set("slug", takenSlug);
+    formDataB.set("logo", makeFakeLogoFile());
+
+    const result = await saveOnboarding(formDataB);
+    expect(result).toEqual({ error: "Este link já está em uso. Escolha outro." });
   });
 });
