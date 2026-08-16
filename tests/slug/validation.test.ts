@@ -33,12 +33,17 @@ describe("slugSchema", () => {
   });
 
   it("rejects accented characters", () => {
-    const result = slugSchema.safeParse("cafe-com-acento-a");
+    const result = slugSchema.safeParse("cafecomacentoa");
     expect(slugSchema.safeParse("café-loja").success).toBe(false);
     expect(result.success).toBe(true);
   });
 
-  it("rejects symbols other than hyphen", () => {
+  it("rejects hyphens", () => {
+    const result = slugSchema.safeParse("minha-loja");
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects underscore and other symbols", () => {
     const result = slugSchema.safeParse("minha_loja");
     expect(result.success).toBe(false);
   });
@@ -48,7 +53,7 @@ describe("slugSchema", () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.issues[0]?.message).toBe(
-        "Use apenas letras, números e hífens (3 a 30 caracteres)."
+        "Use apenas letras e números (3 a 30 caracteres)."
       );
     }
   });

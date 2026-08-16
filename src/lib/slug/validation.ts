@@ -7,10 +7,15 @@ import { z } from "zod";
  * (Server Action), nunca só no client — mesma disciplina do restante do
  * projeto.
  *
- * O texto de erro de charset ("Use apenas letras, números e hífens (3 a 30
- * caracteres).") é o contrato de copy exato do 02-UI-SPEC.md — não parafrasear.
+ * SEM HÍFEN (decisão do usuário — slug igual handle de rede social:
+ * `@rlesportes`, nunca `@rl-esportes`). `slugify` (mesmo diretório) já não
+ * produz hífen nenhum; este regex é o que barra um hífen digitado à mão
+ * diretamente no campo.
+ *
+ * O texto de erro de charset ("Use apenas letras e números (3 a 30
+ * caracteres).") é o contrato de copy exato do projeto — não parafrasear.
  */
-const SLUG_CHARSET_REGEX = /^[a-z0-9-]+$/;
+const SLUG_CHARSET_REGEX = /^[a-z0-9]+$/;
 
 /**
  * Nomes que NÃO podem virar slug de loja, porque a vitrine pública mora na
@@ -32,11 +37,7 @@ export const slugSchema = z
   .trim()
   .min(3, "O link precisa ter entre 3 e 30 caracteres")
   .max(30, "O link precisa ter entre 3 e 30 caracteres")
-  .regex(SLUG_CHARSET_REGEX, "Use apenas letras, números e hífens (3 a 30 caracteres).")
-  .refine(
-    (value) => !value.startsWith("-") && !value.endsWith("-"),
-    "O link não pode começar ou terminar com hífen"
-  )
+  .regex(SLUG_CHARSET_REGEX, "Use apenas letras e números (3 a 30 caracteres).")
   .refine((value) => !RESERVED_SLUGS.has(value), "Esse link é reservado — escolha outro.");
 
 export type SlugInput = z.infer<typeof slugSchema>;
