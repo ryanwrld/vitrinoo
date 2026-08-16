@@ -44,7 +44,7 @@ async function signUpLojaA(label: string): Promise<void> {
 describe("checkSlugAvailability (cross-tenant, via RPC is_slug_available)", () => {
   let lojaB: SeededAccount;
   let storeBId: string;
-  const takenSlug = `loja-b-ocupado-${Date.now()}`;
+  const takenSlug = `lojabocupado${Date.now()}`;
 
   it("retorna available=false para um slug já ocupado por OUTRO tenant", async () => {
     lojaB = await seedAuthenticatedAccount("slug-avail-b");
@@ -68,7 +68,7 @@ describe("checkSlugAvailability (cross-tenant, via RPC is_slug_available)", () =
   it("retorna available=true para um slug não utilizado", async () => {
     await signUpLojaA("slug-avail-a-unused");
 
-    const unusedSlug = `slug-livre-${Date.now()}`;
+    const unusedSlug = `slugdisponivel${Date.now()}`;
     const result = await checkSlugAvailability(unusedSlug);
     expect(result.available).toBe(true);
   }, 30000);

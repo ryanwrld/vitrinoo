@@ -45,7 +45,7 @@ async function signUpLojaA(label: string): Promise<{ email: string; password: st
 describe("updateStoreSlug (D-08, 23505 unique_violation path)", () => {
   it("retorna 'Este link já está em uso. Escolha outro.' quando o slug pertence a OUTRO tenant", async () => {
     const lojaB: SeededAccount = await seedAuthenticatedAccount("update-slug-b");
-    const takenSlug = `loja-b-taken-${Date.now()}`;
+    const takenSlug = `lojabtaken${Date.now()}`;
     const { data: storeB, error: storeBError } = await lojaB.client
       .from("stores")
       .insert({ owner_id: lojaB.userId, name: "Loja B", slug: takenSlug })
@@ -65,7 +65,7 @@ describe("updateStoreSlug (D-08, 23505 unique_violation path)", () => {
   it("salva com sucesso um slug novo e não utilizado", async () => {
     const { email, password } = await signUpLojaA("update-slug-a-success");
 
-    const freshSlug = `slug-novo-${Date.now()}`;
+    const freshSlug = `slugnovo${Date.now()}`;
     const result = await updateStoreSlug(freshSlug);
     expect(result).toEqual({ success: true });
 
