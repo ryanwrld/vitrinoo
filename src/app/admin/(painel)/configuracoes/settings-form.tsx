@@ -8,16 +8,14 @@ import { toast } from "sonner";
 import { AsYouType } from "libphonenumber-js";
 import { ChevronDown, Paintbrush, MessageCircle, SlidersHorizontal, Eye, Link as LinkIcon } from "lucide-react";
 import { onboardingSchema, type OnboardingInput } from "@/lib/validation/onboarding";
-import { checkSlugAvailability, saveStoreSettings, updateStoreSlug } from "@/lib/settings/actions";
+import { saveStoreSettings, updateStoreSlug } from "@/lib/settings/actions";
 import { getContrastTextColor } from "@/lib/color/contrast";
 import { buildCoverGradient } from "@/lib/color/cover-gradient";
 import { measureImageRatio, resolveCoverRatio } from "@/lib/store/cover-ratio";
 import { resolveCoverFrame, type CoverFrame } from "@/lib/store/cover-frame";
 import { CoverEditor } from "./cover-editor";
-import { slugify } from "@/lib/slug/slugify";
-import { slugSchema } from "@/lib/slug/validation";
-import { useDebouncedValue } from "@/lib/hooks/use-debounce";
-import { SlugFieldProvider, type SlugAvailabilityStatus } from "./slug-field-context";
+import { useSlugField } from "@/lib/slug/use-slug-field";
+import { SlugFieldProvider } from "./slug-field-context";
 import { SlugEditor } from "./slug-editor";
 import { QrCodePanel } from "./qr-code-panel";
 
@@ -154,43 +152,11 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
   // --- Campo "Slug" -------------------------------------------------------
   // Mora aqui, e não mais no `SlugEditor`, porque quem salva o slug agora é o
   // botão "Salvar alterações" deste formulário. O `SlugEditor` virou só a
-  // parte visual, alimentada via `SlugFieldProvider`.
-  const [rawSlug, setRawSlug] = useState(currentSlug);
-  const [availability, setAvailability] = useState<"idle" | "available" | "taken">("idle");
-  const [isCheckPending, startCheckTransition] = useTransition();
-
-  const slug = slugify(rawSlug);
-  const debouncedSlug = useDebouncedValue(slug, 400);
-
-  const slugFormatResult = slugSchema.safeParse(slug);
-  const slugFormatError = slugFormatResult.success
-    ? null
-    : slugFormatResult.error.issues[0]?.message ?? null;
-
-  // Formato é checado de forma síncrona; só a checagem de REDE é debounced
-  // (02-RESEARCH.md Open Question 2). Tudo derivado no render — nenhum
-  // `setState` síncrono dentro do efeito (react-hooks/set-state-in-effect).
-  const needsSlugCheck = slugFormatResult.success && debouncedSlug !== currentSlug;
-  const slugStatus: SlugAvailabilityStatus = !needsSlugCheck
-    ? "idle"
-    : isCheckPending
-      ? "checking"
-      : availability;
-
-  useEffect(() => {
-    if (!needsSlugCheck) return;
-
-    let cancelled = false;
-    startCheckTransition(async () => {
-      const result = await checkSlugAvailability(debouncedSlug);
-      if (cancelled) return;
-      setAvailability(result.available ? "available" : "taken");
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [debouncedSlug, currentSlug, needsSlugCheck]);
+  // parte visual, alimentada via `SlugFieldProvider`. O estado em si (raw,
+  // normalizado, validação de formato, checagem de disponibilidade
+  // debounced) vem do hook compartilhado — o mesmo que o onboarding usa.
+  const { rawSlug, setRawSlug, slug, formatError: slugFormatError, status: slugStatus } =
+    useSlugField(currentSlug);
 
   const slugChanged = slug !== currentSlug;
 
