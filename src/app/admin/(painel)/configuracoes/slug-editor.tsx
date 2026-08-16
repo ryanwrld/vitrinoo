@@ -45,7 +45,10 @@ export function SlugEditor() {
       {formatError ? (
         <span className="text-sm text-error-fg">{formatError}</span>
       ) : (
-        <StatusPill status={status} />
+        <>
+          <StatusPill status={status} />
+          <LengthHint length={slug.length} />
+        </>
       )}
     </div>
   );
@@ -77,6 +80,22 @@ function StatusPill({ status }: { status: SlugAvailabilityStatus }) {
         Este link já está em uso.
       </span>
     );
+  }
+
+  return null;
+}
+
+/**
+ * Aviso de tamanho, não bloqueante — puro nudge visual, nunca impede o
+ * submit. Abaixo de ~20 caracteres o @ passa fácil por WhatsApp; acima
+ * disso, ainda válido, só mais chato de repassar de viva voz ou digitar de
+ * novo depois de ler numa embalagem.
+ */
+function LengthHint({ length }: { length: number }) {
+  if (length === 0) return null;
+
+  if (length > 20) {
+    return <span className="text-xs text-warning-fg">Meio longo pra passar por WhatsApp</span>;
   }
 
   return null;
