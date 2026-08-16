@@ -41,7 +41,7 @@ export function SlugEditor() {
         onChange={(event) => setRawSlug(event.target.value)}
         className="rounded-xl border border-gray-300 bg-white px-3 h-11 text-base text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:placeholder:text-gray-600 dark:focus:ring-blue-400/20"
       />
-      <p className="text-xs text-gray-500 dark:text-gray-400">/{slug}</p>
+      <SlugPreview rawSlug={rawSlug} slug={slug} />
       {formatError ? (
         <span className="text-sm text-error-fg">{formatError}</span>
       ) : (
@@ -51,6 +51,28 @@ export function SlugEditor() {
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * Prévia do valor normalizado. `slugify` remove hífen/espaço/acento e
+ * troca maiúscula por minúscula ANTES de qualquer validação rodar — sem
+ * aviso, quem digita "minha-loja" via a caixa continuar mostrando
+ * "minha-loja" e só descobre depois que salvou "minhaloja". Quando o
+ * digitado bate com o normalizado, mantém a prévia discreta de sempre;
+ * quando não bate, vira um aviso âmbar que já entrega o valor final —
+ * ninguém deveria precisar reparar numa linha cinza pequena pra saber o
+ * que vai ser salvo de verdade.
+ */
+function SlugPreview({ rawSlug, slug }: { rawSlug: string; slug: string }) {
+  if (rawSlug === slug) {
+    return <p className="text-xs text-gray-500 dark:text-gray-400">/{slug}</p>;
+  }
+
+  return (
+    <p className="text-xs text-warning-fg">
+      Sem espaço, hífen ou acento — vai salvar como <span className="font-medium">/{slug}</span>
+    </p>
   );
 }
 
