@@ -14,6 +14,7 @@ import { buildCoverGradient } from "@/lib/color/cover-gradient";
 import { measureImageRatio, resolveCoverRatio } from "@/lib/store/cover-ratio";
 import { resolveCoverFrame, type CoverFrame } from "@/lib/store/cover-frame";
 import { CoverEditor } from "./cover-editor";
+import { IDENTITY_BUTTON_CLASS, IDENTITY_BUTTON_FILL } from "./identity-controls";
 import { useSlugField } from "@/lib/slug/use-slug-field";
 import { SlugFieldProvider } from "./slug-field-context";
 import { SlugEditor } from "./slug-editor";
@@ -99,6 +100,9 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
   const [coverRatioClamped, setCoverRatioClamped] = useState(false);
   const [coverFrame, setCoverFrame] = useState<CoverFrame>(store.coverFrame);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  // Ref própria para o input de cor: o `register` também precisa da dele, e os
+  // dois convivem no mesmo `ref` callback logo abaixo.
+  const accentInputRef = useRef<HTMLInputElement | null>(null);
   const {
     register,
     handleSubmit,
@@ -138,6 +142,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
   const taglineValue = watch("tagline") ?? "";
   const nameValue = watch("name");
   const accentColorValue = watch("accentColor") || "#0D21A1";
+  const { ref: accentColorRef, ...accentColorField } = register("accentColor");
   const heroLogoUrl = logoPreviewUrl ?? store.logoUrl;
   // Ordem importa: arquivo novo > remoção pendente > capa salva. Sem a
   // remoção no meio, clicar em "Usar o gradiente" não mudaria nada na tela
@@ -409,7 +414,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
         <div className="flex flex-col gap-1.5">
           <div className="flex items-baseline justify-between gap-2">
             <label htmlFor="cover" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Capa da vitrine
+              Banner da vitrine
             </label>
             <span className="text-xs text-gray-500 dark:text-gray-500">Opcional</span>
           </div>
@@ -428,6 +433,23 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
             fallbackBackground={buildCoverGradient(accentColorValue)}
             frame={coverFrame}
             onChange={setCoverFrame}
+            accentColor={accentColorValue}
+            onPickColor={() => accentInputRef.current?.click()}
+          />
+
+          {/* Input de cor nativo, escondido: quem o abre é o balde dentro da
+              prévia. Continua sendo um `<input type="color">` de verdade —
+              trocá-lo por um seletor próprio custaria muito mais do que
+              esconder o controle e disparar o picker do sistema. */}
+          <input
+            id="accentColor"
+            type="color"
+            {...accentColorField}
+            ref={(element) => {
+              accentColorRef(element);
+              accentInputRef.current = element;
+            }}
+            className="sr-only"
           />
 
           <input
@@ -466,14 +488,9 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
             </p>
           )}
 
+          {/* O envio/troca da capa mora no botão redondo dentro da prévia; aqui
+              fica só a saída de volta para o gradiente. */}
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => coverInputRef.current?.click()}
-              className="rounded-full border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 outline-none transition-colors duration-150 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
-            >
-              {coverPreview ? "Trocar capa" : "Enviar capa"}
-            </button>
             {coverPreview && (
               <button
                 type="button"
@@ -500,7 +517,11 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
             desperdiçavam a largura do card e afastavam a cor do contexto a
             que ela pertence. Empilha de volta abaixo de `sm`, onde não há
             largura para as duas. */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
+        {/* `items-end`: o bloco da capa não tem rótulo (o botão se explica e a
+            seção já se chama "Capa da vitrine"), então alinhar pelo topo o
+            deixaria mais alto que o do logo. Pelo rodapé, as duas molduras de
+            48px coincidem e os botões ficam na mesma linha. */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-6">
         {/* Sem `flex-1`: com ele o bloco do logo esticava até o fim da linha e
             jogava o seletor de cor lá na borda direita, longe do botão. Cada
             bloco ocupa só a própria largura e o `gap` faz o resto. */}
@@ -545,17 +566,25 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
             <button
               type="button"
               onClick={() => logoInputRef.current?.click()}
-              className="shrink-0 rounded-full border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none transition-colors duration-150 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+              className={`shrink-0 px-3 py-2 ${IDENTITY_BUTTON_CLASS} ${IDENTITY_BUTTON_FILL}`}
             >
               {store.logoUrl ? "Trocar logo" : "Escolher logo"}
             </button>
           </div>
         </div>
 
+        {/* Capa neste slot (onde antes ficava a cor): as duas funções foram
+            invertidas — a cor passou para o balde dentro da prévia, porque é
+            lá que ela aparece, e o arquivo da capa ficou aqui, ao lado do
+            logo, junto do outro upload de imagem da loja. */}
         <div className="flex shrink-0 flex-col gap-1">
-          <label htmlFor="accentColor" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Cor de destaque
-          </label>
+          {/* Linha vazia no lugar do rótulo: o bloco do logo tem um, e sem
+              nada aqui o botão da capa subiria 22px e ficaria desalinhado
+              dele. É um espaçador de rótulo, por isso some para leitores de
+              tela. */}
+          <span aria-hidden="true" className="text-sm font-medium">
+            &nbsp;
+          </span>
           {/* A causa do desalinhamento não era a altura do input — já batia
               com o botão. Era o CONTEXTO: a linha do logo tem 48px (altura do
               avatar) e centraliza o botão dentro dela (`items-center`), então
@@ -564,12 +593,13 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
               aqui replica a mesma moldura de 48px, então os dois controles
               centralizam pela mesma régua e seus topos batem de verdade. */}
           <div className="flex h-12 items-center">
-            <input
-              id="accentColor"
-              type="color"
-              {...register("accentColor")}
-              className="h-[38px] w-20 rounded-xl border border-gray-300 bg-white p-1 dark:border-gray-700 dark:bg-gray-900"
-            />
+            <button
+              type="button"
+              onClick={() => coverInputRef.current?.click()}
+              className={`shrink-0 px-3 py-2 ${IDENTITY_BUTTON_CLASS} ${IDENTITY_BUTTON_FILL}`}
+            >
+              Banner personalizado
+            </button>
           </div>
           {errors.accentColor && (
             <span className="text-sm text-error-fg">{errors.accentColor.message}</span>
@@ -642,7 +672,14 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
-              placeholder="rlesportes"
+              // Frase, não um handle de exemplo: um @ cinza aqui dentro é lido
+              // como campo JÁ PREENCHIDO por quem não é técnico — e o que
+              // estava fixo aqui era o handle de uma loja específica, que
+              // qualquer outro revendedor veria como erro do sistema.
+              // O texto também libera o que o servidor já aceita
+              // (`normalizeInstagramHandle` desmonta a URL colada do app), mas
+              // que nada na tela dizia.
+              placeholder="cole o link ou digite o @"
               {...register("instagram")}
               className="h-11 w-full bg-transparent px-2 text-base text-gray-900 outline-none placeholder:text-gray-400 dark:text-gray-50 dark:placeholder:text-gray-600"
             />

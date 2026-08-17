@@ -21,6 +21,67 @@
  * branco-acinzentado — exatamente o efeito que estamos eliminando.
  */
 
+/**
+ * Cor da PONTA do gradiente (parada de 100%), em hex.
+ *
+ * Serve para decidir o contraste de qualquer coisa desenhada sobre o canto
+ * inferior direito da faixa — que é onde o degradê 135° termina. Usar a cor
+ * base aqui daria a resposta errada justamente nos casos extremos: um azul
+ * escuro termina 24% mais claro, e é essa ponta que está atrás do botão.
+ */
+export function coverGradientEndHex(hex: string): string {
+  return gradientStopHex(hex, "end");
+}
+
+/**
+ * Cor do MEIO do gradiente (parada de 45%) — é ela que fica atrás do texto
+ * centralizado na faixa. Mesma razão de existir da ponta: cada elemento
+ * precisa medir o contraste contra o pedaço do degradê que está sob ele, não
+ * contra a cor base.
+ */
+export function coverGradientMidHex(hex: string): string {
+  return gradientStopHex(hex, "mid");
+}
+
+function gradientStopHex(hex: string, stop: "mid" | "end"): string {
+  const hsl = hexToHsl(hex);
+  if (!hsl) return gradientStopHex("#0D21A1", stop);
+
+  const { h, s, l } = hsl;
+  const goLighter = l <= 70;
+  const step = stop === "mid" ? (goLighter ? 10 : -8) : goLighter ? 24 : -18;
+
+  return hslToHex(h, s, clamp(l + step, 0, 100));
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+  const sat = s / 100;
+  const lig = l / 100;
+  const chroma = (1 - Math.abs(2 * lig - 1)) * sat;
+  const x = chroma * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = lig - chroma / 2;
+
+  const [r, g, b] =
+    h < 60
+      ? [chroma, x, 0]
+      : h < 120
+        ? [x, chroma, 0]
+        : h < 180
+          ? [0, chroma, x]
+          : h < 240
+            ? [0, x, chroma]
+            : h < 300
+              ? [x, 0, chroma]
+              : [chroma, 0, x];
+
+  const toHex = (channel: number) =>
+    Math.round((channel + m) * 255)
+      .toString(16)
+      .padStart(2, "0");
+
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
 function hexToHsl(hex: string): { h: number; s: number; l: number } | null {
   const normalized = hex.trim().replace("#", "");
   const full =

@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
-import { Crop, Move } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Crop, Move, PaintBucket } from "lucide-react";
 import {
   coverBandStyle,
   coverImageStyle,
@@ -11,6 +11,8 @@ import {
   MIN_ZOOM,
   type CoverFrame,
 } from "@/lib/store/cover-frame";
+import { coverGradientEndHex, coverGradientMidHex } from "@/lib/color/cover-gradient";
+import { getMaxContrastTone } from "@/lib/color/contrast";
 
 export type CoverEditorProps = {
   /** URL da capa (arquivo escolhido agora ou a já salva). `null` = só o gradiente. */
@@ -19,6 +21,12 @@ export type CoverEditorProps = {
   fallbackBackground: string;
   frame: CoverFrame;
   onChange: (frame: CoverFrame) => void;
+  /** Abre o seletor de cor de destaque. O botão vive DENTRO da prévia porque
+      é ali que a cor aparece: sem capa, a faixa É o gradiente dessa cor, então
+      o controle fica no próprio resultado que ele muda. */
+  onPickColor: () => void;
+  /** Cor de destaque atual — base do gradiente e, sem capa, do contraste do botão. */
+  accentColor: string;
 };
 
 /**
@@ -85,7 +93,14 @@ function pannableRangePx(
   };
 }
 
-export function CoverEditor({ imageUrl, fallbackBackground, frame, onChange }: CoverEditorProps) {
+export function CoverEditor({
+  imageUrl,
+  fallbackBackground,
+  accentColor,
+  frame,
+  onChange,
+  onPickColor,
+}: CoverEditorProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const bandRef = useRef<HTMLDivElement>(null);
   const dragStateRef = useRef<{ pointerId: number; x: number; y: number; posX: number; posY: number } | null>(null);
@@ -175,7 +190,80 @@ export function CoverEditor({ imageUrl, fallbackBackground, frame, onChange }: C
   // tem proporção fixa), então nunca difere do padrão.
   const isDefault = draft.zoom === DEFAULT_ZOOM && draft.posX === DEFAULT_POS && draft.posY === DEFAULT_POS;
 
+  /**
+   * Claro ou escuro sob o botão do canto inferior direito.
+   *
+   * Sem capa a resposta é exata: aquele canto é a PONTA do gradiente da cor de
+   * destaque, então basta medir a luminância dessa ponta (não da cor base —
+   * um azul escuro termina 24% mais claro justamente ali).
+   *
+   * Com capa não dá para saber sem olhar o arquivo, então a imagem é
+   * amostrada: só o quadrante inferior direito, que é a área que o botão
+   * cobre. Se o navegador barrar a leitura do pixel (imagem de outra origem
+   * sem CORS), fica no branco — o padrão mais seguro sobre foto, que costuma
+   * ser mais escura que clara.
+   */
+  const [imageTone, setImageTone] = useState<"light" | "dark">("light");
+
+  useEffect(() => {
+    if (!imageUrl) return;
+    let cancelled = false;
+
+    const probe = new Image();
+    probe.crossOrigin = "anonymous";
+    probe.onload = () => {
+      if (cancelled) return;
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = 16;
+        canvas.height = 16;
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        if (!context) return;
+
+        // Desenha só o canto inferior direito da arte esticado no canvas: é a
+        // região que fica atrás do botão, e a média dela é o que importa.
+        const cropW = probe.naturalWidth * 0.35;
+        const cropH = probe.naturalHeight * 0.35;
+        context.drawImage(
+          probe,
+          probe.naturalWidth - cropW,
+          probe.naturalHeight - cropH,
+          cropW,
+          cropH,
+          0,
+          0,
+          16,
+          16
+        );
+
+        const { data } = context.getImageData(0, 0, 16, 16);
+        let sum = 0;
+        for (let index = 0; index < data.length; index += 4) {
+          // Luminância perceptual (Rec. 709) — o olho pesa verde muito mais
+          // que azul, e uma média simples de RGB chamaria um azul saturado de
+          // "claro".
+          sum += 0.2126 * data[index] + 0.7152 * data[index + 1] + 0.0722 * data[index + 2];
+        }
+        const average = sum / (data.length / 4) / 255;
+        // Mesmo ponto de virada de `getMaxContrastTone` (razões de contraste
+        // iguais), para foto e gradiente responderem pela mesma régua.
+        setImageTone(average > 0.179 ? "dark" : "light");
+      } catch {
+        setImageTone("light");
+      }
+    };
+    probe.src = imageUrl;
+
+    return () => {
+      cancelled = true;
+    };
+  }, [imageUrl]);
+
+  const tone = imageUrl ? imageTone : getMaxContrastTone(coverGradientEndHex(accentColor));
+  const labelTone = getMaxContrastTone(coverGradientMidHex(accentColor));
+
   const sliderClass =
+
     "h-1.5 w-full cursor-pointer appearance-none rounded-full bg-gray-200 accent-primary dark:bg-gray-700";
 
   return (
@@ -191,11 +279,37 @@ export function CoverEditor({ imageUrl, fallbackBackground, frame, onChange }: C
           <img src={imageUrl} alt="Capa da vitrine" style={coverImageStyle(frame)} className="h-full w-full" />
         ) : (
           <div className="flex h-full w-full items-center justify-center">
-            <span className="text-xs font-medium text-white/80 mix-blend-difference">
+            {/* Mesma regra do botão, medida no ponto certo: este texto fica
+                CENTRALIZADO, então quem manda é a parada do meio do gradiente,
+                não a ponta. Preto ou branco puro, o que contrastar mais. */}
+            <span
+              style={{ color: labelTone === "dark" ? "#000000" : "#ffffff" }}
+              className="text-xs font-medium"
+            >
               Gradiente da sua cor de destaque
             </span>
           </div>
         )}
+
+        {/* CONTRASTE DO BOTÃO — por que não é token de tema nem blend.
+            Atrás dele não está o card: está o banner. Um token de tema erra
+            sempre que o banner contraria o tema (amarelo no escuro, azul no
+            claro), e `mix-blend-difference` até acerta o contraste, mas
+            INVENTA a cor — sobre azul devolvia um amarelo que não existe em
+            lugar nenhum da tela.
+            Aqui a cor é CALCULADA a partir do que está de fato sob o botão:
+            preto ou branco puro, o par de maior contraste possível, escolhido
+            pela luminância daquele ponto. */}
+        <button
+          type="button"
+          onClick={onPickColor}
+          aria-label="Escolher cor de destaque"
+          title="Cor de destaque"
+          style={{ color: tone === "dark" ? "#000000" : "#ffffff", borderColor: "currentColor" }}
+          className="absolute bottom-2 right-2 flex h-9 w-9 items-center justify-center rounded-full border outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary-subtle"
+        >
+          <PaintBucket className="h-4 w-4" aria-hidden="true" />
+        </button>
       </div>
 
       {imageUrl && (

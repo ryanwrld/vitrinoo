@@ -44,6 +44,29 @@ export function isLegibleOnWhite(hex: string, minRatio = 3): boolean {
   return ratio >= minRatio;
 }
 
+/**
+ * Entre PRETO e BRANCO puros, qual dos dois contrasta mais com `hex`.
+ *
+ * Difere de `getContrastTextColor`, que corta em 0,5 de luminância: aquele
+ * limiar responde "texto branco ainda é legível?", e não "qual dos dois é o
+ * melhor?". A diferença aparece justamente na faixa média — um vermelho puro
+ * ou um cinza médio ficam abaixo de 0,5 e recebem branco, quando preto ali
+ * rende quase o dobro de contraste.
+ *
+ * O ponto de virada real é onde as duas razões se igualam, em torno de 0,179
+ * de luminância relativa; aqui ele é calculado, não chutado.
+ */
+export function getMaxContrastTone(hex: string): "light" | "dark" {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return "light";
+
+  const luminance = relativeLuminance(rgb);
+  const againstWhite = 1.05 / (luminance + 0.05);
+  const againstBlack = (luminance + 0.05) / 0.05;
+
+  return againstBlack > againstWhite ? "dark" : "light";
+}
+
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   const match = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
   if (!match) return null;
