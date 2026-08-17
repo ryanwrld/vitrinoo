@@ -65,6 +65,18 @@ export type DropdownOption = {
 export type FilterDropdownProps = {
   /** Rótulo do botão quando nada está selecionado ("Marca", "Entrega"…). */
   label: string;
+  /**
+   * Rótulo curto usado APENAS no gatilho abaixo de `md`. Existe para um
+   * caso concreto: "Tipo de solado" mede ~150px, e no mobile as três pílulas
+   * dividem ~254px com os dois botões-ícone na mesma linha — sozinho ele
+   * comeria 57% da fileira e empurraria "Entrega" para fora da tela.
+   *
+   * NÃO troca o `label`: o título do bottom-sheet, o `aria-label` e os
+   * chips de filtro ativo seguem com o nome completo, que é o vocabulário
+   * certo quando há espaço para explicar. Só o GATILHO encolhe, e só onde
+   * ele precisa encolher — é essa a única diferença que o mobile pede.
+   */
+  shortLabel?: string;
   options: readonly DropdownOption[];
   selected: string[];
   onToggle: (value: string) => void;
@@ -87,6 +99,16 @@ export type FilterDropdownProps = {
   triggerVariant?: "pill" | "icon";
   /** Ícone do gatilho no modo `"icon"` — ignorado no modo `"pill"`. */
   triggerIcon?: ComponentType<{ className?: string; style?: CSSProperties; "aria-hidden"?: boolean }>;
+  /**
+   * Classes do elemento RAIZ, para o pai posicionar este controle dentro da
+   * barra (hoje: `order-*`, que reordena a fileira no mobile).
+   *
+   * Existe como prop em vez de um `<div>` embrulhando o componente lá fora
+   * porque `measure()` (abaixo) anda pelos IRMÃOS deste raiz para descobrir
+   * onde o painel de "Ordenar" pode crescer — um wrapper extra zeraria esse
+   * `previousElementSibling` e quebraria a detecção de colisão no desktop.
+   */
+  className?: string;
 };
 
 /**
@@ -107,6 +129,7 @@ export type FilterDropdownProps = {
  */
 export function FilterDropdown({
   label,
+  shortLabel,
   options,
   selected,
   onToggle,
@@ -115,6 +138,7 @@ export function FilterDropdown({
   accentColor,
   triggerVariant = "pill",
   triggerIcon: TriggerIcon,
+  className,
 }: FilterDropdownProps) {
   const [open, setOpen] = useState(false);
   // `closing` mantém o painel MONTADO durante a animação de saída. Sem este
@@ -496,7 +520,8 @@ export function FilterDropdown({
         // Vaga fixa de 44px no desktop para o gatilho só-ícone, que sai do
         // fluxo ao abrir (ver o botão abaixo). Sem ela o container colapsaria
         // para largura zero e a barra inteira se reorganizaria a cada clique.
-        triggerVariant === "icon" && "md:h-11 md:w-11"
+        triggerVariant === "icon" && "md:h-11 md:w-11",
+        className
       )}
       // Sobrescreve `--vt-sort-width` (globals.css) só NESTE subtree, só no
       // caso residual em que nem empurrar os vizinhos até o limite seguro
@@ -522,6 +547,15 @@ export function FilterDropdown({
           aria-label={iconAriaLabel}
           className={clsx(
             "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-[1.375rem] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2",
+            // Casca visível SÓ abaixo de `md` (`max-md:`, para não encostar
+            // em nada do desktop, que tem sua própria régua de borda logo
+            // abaixo). No mobile este botão fica lado a lado com o de
+            // Favoritos: sem borda, ele era um ícone solto no branco ao lado
+            // de um botão com contorno — dois pesos visuais diferentes para
+            // dois controles da MESMA natureza (ambos são lentes de
+            // visualização, não filtros de atributo). Mesma borda, mesmo
+            // raio, mesmo tamanho = leem como par.
+            "max-md:border max-md:border-gray-300 max-md:bg-white",
             // DESKTOP: sai do fluxo e cresce para um dos lados, com a borda
             // OPOSTA ancorada — por padrão para a DIREITA (comportamento
             // original: a borda esquerda fica parada e tudo cresce a partir
@@ -631,7 +665,15 @@ export function FilterDropdown({
           aria-controls={open ? panelId : undefined}
           style={hasSelection ? { backgroundColor: accentColor, borderColor: accentColor } : undefined}
           className={clsx(
-            "flex min-h-11 items-center gap-1.5 whitespace-nowrap border px-3.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2",
+            // TUDO que é novo aqui entra por `max-md:` — nunca por uma
+            // classe base com reset em `md:`. O desktop desta barra está
+            // aprovado e não pode mudar 1px; escopar no `max-md:` garante
+            // que a regra sequer existe acima de 768px, em vez de depender
+            // de ordem de emissão do Tailwind para ser sobrescrita.
+            // `max-md:min-w-0` + `max-md:px-3`: no mobile as três pílulas
+            // dividem a linha com os dois botões-ícone, então precisam poder
+            // encolher (e truncar o rótulo, ver o span abaixo).
+            "flex min-h-11 items-center gap-1.5 whitespace-nowrap border px-3.5 text-sm font-medium transition-all max-md:w-full max-md:min-w-0 max-md:justify-center max-md:px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2",
             // O gatilho anda no MESMO tempo e na MESMA curva da gaveta — 260ms
             // abrindo, 170ms fechando. Com os 150ms fixos de antes ele trocava
             // de forma quase instantaneamente e ficava esperando o painel
@@ -650,7 +692,17 @@ export function FilterDropdown({
             // um painel onde "New Balance" quebraria em duas linhas.
             // No mobile a barra rola horizontalmente e pílulas largas
             // custariam alcance do polegar, então o piso não se aplica.
-            "md:min-w-[11rem] md:justify-between",
+            //
+            // `md:min-w-[11rem]` sem `justify-between`: com `justify-between`
+            // o espaço sobrando entre o texto curto ("Marcas") e a largura
+            // mínima do botão era distribuído em DOIS vãos iguais (rótulo↔balão
+            // e balão↔seta) — quanto mais curto o rótulo, mais sobra, mais os
+            // dois vãos esticavam. Rótulos longos ("Tipo de solado") quase
+            // preenchiam os 11rem sozinhos, então o defeito nem aparecia ali.
+            // O `ml-auto` na seta (abaixo) resolve isso: rótulo e balão ficam
+            // colados pelo `gap-1.5` do container, e só a seta é empurrada
+            // para a borda direita.
+            "md:min-w-[11rem]",
             // Aberto: cantos de baixo retos + sem borda inferior, para o
             // painel colado continuar a mesma peça. `rounded-full` viraria
             // uma emenda torta contra o painel reto.
@@ -672,11 +724,32 @@ export function FilterDropdown({
               : "border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50"
           )}
         >
-          {triggerLabel}
+          {/* Dois nós de texto quando há `shortLabel`, não um valor
+              condicional em JS: a escolha precisa ser feita por MEDIA QUERY,
+              não por medição de viewport em JS — mesma disciplina do resto
+              do componente (popover/bottom-sheet decidido 100% por CSS).
+              Um `useMediaQuery` aqui daria um quadro com o rótulo errado na
+              hidratação e erraria em janela redimensionada. */}
+          {singleLabel ?? (shortLabel ? (
+            <>
+              <span className="min-w-0 truncate md:hidden">{shortLabel}</span>
+              <span className="max-md:hidden">{label}</span>
+            </>
+          ) : (
+            label
+          ))}
           {multiple && hasSelection && (
             <span
               className={clsx(
                 "flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs font-bold tabular-nums",
+                // Com UMA seleção o badge é redundante no mobile: a pílula já
+                // está pintada com a cor da loja (= "tem filtro aqui") e o
+                // chip removível logo abaixo já diz QUAL é. Ele custa 26px —
+                // exatamente o que fazia "Solado" virar "So…" e "Entrega"
+                // encostar na borda numa tela de 390px. A partir de 2 o
+                // número passa a carregar informação que nada mais mostra de
+                // forma compacta, e aí ele aparece mesmo apertando o rótulo.
+                selected.length === 1 && "max-md:hidden",
                 isDarkText ? "bg-black/15 text-gray-900" : "bg-white/25 text-white"
               )}
             >
@@ -691,7 +764,14 @@ export function FilterDropdown({
                dois pareciam animações independentes que só por acaso
                começaram juntas. */
             className={clsx(
-              "h-4 w-4 shrink-0 transition-transform",
+              // Escondido abaixo de `md` por SEMÂNTICA, não só por espaço:
+              // no mobile este gatilho abre um bottom-sheet que SOBE da
+              // borda inferior, então uma seta apontando para baixo descreve
+              // errado o que vai acontecer. No desktop a gaveta realmente
+              // desce colada ao botão, e lá o chevron continua correto.
+              // (Efeito colateral bem-vindo: devolve 22px por pílula, que é
+              // exatamente o que faz os três filtros caberem sem scroll.)
+              "h-4 w-4 shrink-0 transition-transform max-md:hidden md:ml-auto",
               closing
                 ? "duration-[170ms] ease-[cubic-bezier(0.4,0,1,1)]"
                 : "duration-[260ms] ease-[var(--vt-drawer-ease)]",
