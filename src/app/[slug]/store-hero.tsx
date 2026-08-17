@@ -173,8 +173,20 @@ export function StoreHero({ store, stats }: { store: StoreHeroData; stats: Store
           </div>
 
           {/* `pb-1` compensa exatamente o `p-1` do anel do avatar, para as
-              duas bases caírem na mesma linha ótica. */}
-          <div className="flex shrink-0 items-center gap-2 pb-1">
+              duas bases caírem na mesma linha ótica.
+
+              `max-md:translate-y-2`: no mobile a capa termina a 128px e estes
+              botões começavam a 132px — 4px de folga, que a olho nu lê como
+              se estivessem encostados/vazando no banner escuro. O avatar pode
+              invadir a capa (é o desenho), mas eles não: são controles, não
+              identidade, e sobrepor um controle a um fundo de cor
+              imprevisível (a capa é escolhida pelo revendedor) também custa
+              contraste. Descidos JUNTOS, no wrapper, para não perderem o
+              alinhamento entre si.
+              `translate` e não margem/padding de propósito: transform não
+              reflui o layout, então nada abaixo (nome da loja, @, stats) se
+              desloca por causa deste ajuste. */}
+          <div className="flex shrink-0 items-center gap-2 pb-1 max-md:translate-y-2">
             <QrCodeButton
               url={buildStoreUrl(store.slug)}
               storeName={store.name}
@@ -224,7 +236,7 @@ export function StoreHero({ store, stats }: { store: StoreHeroData; stats: Store
           // Teto de 2 linhas com reticências. Sem ele uma frase longa empurra
           // o primeiro produto para fora da dobra no celular — e a frase de
           // apresentação não vale o catálogo inteiro.
-          <p className="mt-4 line-clamp-2 max-w-2xl text-sm leading-relaxed text-gray-600 sm:text-base">
+          <p className="mt-2 line-clamp-2 max-w-2xl text-sm leading-relaxed text-gray-600 sm:text-base">
             {store.tagline}
           </p>
         )}
@@ -234,7 +246,7 @@ export function StoreHero({ store, stats }: { store: StoreHeroData; stats: Store
           // para a linha de baixo em vez de encolher a fonte. O separador é o
           // espaço, não um traço — traço entre itens que já têm rótulo
           // próprio é ruído.
-          <dl className="mt-4 flex flex-wrap items-baseline gap-x-8 gap-y-2">
+          <dl className="mt-2 flex flex-wrap items-baseline gap-x-8 gap-y-2">
             {statItems.map((item) => (
               <div
                 key={item.label}
