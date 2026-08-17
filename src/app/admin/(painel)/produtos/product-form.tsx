@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import type { ReactNode } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -13,21 +13,21 @@ import { BRANDS, SOLES, CATEGORIES, FULFILLMENTS, DEFAULT_SIZE_RANGE } from "@/l
 import { SizeGrid } from "./size-grid";
 import { PhotoUploader, type SavedPhoto } from "./photo-uploader";
 import { ProductLayout } from "./product-layout";
+import { DescriptionEditor } from "./description-editor";
 
 /**
  * Formulário de produto — layout de duas colunas (D-08 rev.).
  *
  * Desktop (≥ lg): grid 50/50 (via ProductLayout).
- *   Esquerda: Identificação → Solado & Cat. → Visibilidade → Preço → Descrição → Ações
+ *   Esquerda: Identificação → Solado & Cat. → Visibilidade → Preço
  *   Direita:  Fotos (preview + grade) → Tamanhos
+ *   Abaixo (full-width, as duas colunas): Descrição → Ações
  *
  * Mobile (< lg): coluna única, mas a direita (Fotos → Tamanhos) vem PRIMEIRO —
  * `order-1`/`order-2` em `ProductLayout`, sem duplicar/mover nenhum node.
  *
- * A base do card "Tamanhos" é esticada (via ResizeObserver, ver os refs
- * `precoCardRef`/`tamanhosCardRef`/`leftStackRef`/`fotosWrapRef` abaixo) para
- * coincidir exatamente com a base do card "Preço" no desktop — só ativo em
- * telas ≥ lg, onde as duas colunas existem lado a lado.
+ * As bases de "Preço" e "Tamanhos" coincidem por CSS (grid `items-stretch` +
+ * `lg:flex-1` no último card de cada coluna), sem medição em JS.
  *
  * Toda a lógica de negócio (validação, submit, publish/draft, revert,
  * idempotência, upload) permanece intocada em relação à versão anterior.
@@ -64,67 +64,13 @@ export function ProductForm({ header, defaultValues, productId, status, initialP
   const isSubmittingRef = useRef(false);
   const createdIdRef = useRef<string | null>(null);
 
-  /* ── Alinhamento milimétrico da base "Tamanhos" ↔ base "Preço" ──────────
-   * Os dois cards ficam exatamente onde já estavam (colunas independentes,
-   * sem reordenar nada) — só a base do card Tamanhos é esticada com
-   * `minHeight` para coincidir com a base do card Preço, calculada a partir
-   * da posição real dos dois na tela. `leftStackRef` cobre tudo que fica
-   * ACIMA de Preço na coluna esquerda (Identificação/Solado/Visibilidade) e
-   * `fotosWrapRef` cobre o que fica ACIMA de Tamanhos na direita (Fotos) —
-   * um ResizeObserver nos dois recalcula sempre que algo empurra a posição
-   * de um dos dois cards (campo condicional aparecendo, erro de validação,
-   * foto adicionada/removida etc.). Só ativo em telas ≥ lg — no mobile as
-   * colunas empilham em ordem de DOM e a base de um card não deve depender
-   * do outro.
+  /* ── Bases alinhadas "Preço" ↔ "Tamanhos", só com CSS ────────────────────
+   * O grid usa `lg:items-stretch` (ver ProductLayout), então as duas colunas
+   * têm a mesma altura. O último card de cada coluna leva `lg:flex-1` e
+   * absorve a sobra, o que alinha as duas bases sem nenhuma medição em JS —
+   * e sem deixar vão morto antes da faixa full-width da Descrição quando a
+   * coluna direita cresce (preview de foto escala com a largura da tela).
    */
-  const leftStackRef = useRef<HTMLDivElement>(null);
-  const precoCardRef = useRef<HTMLDivElement>(null);
-  const fotosWrapRef = useRef<HTMLDivElement>(null);
-  const tamanhosCardRef = useRef<HTMLDivElement>(null);
-  const [tamanhosMinHeight, setTamanhosMinHeight] = useState<number | undefined>(undefined);
-
-  useEffect(() => {
-    const mql = window.matchMedia("(min-width: 1024px)");
-
-    function sync() {
-      const precoEl = precoCardRef.current;
-      const tamanhosEl = tamanhosCardRef.current;
-      if (!precoEl || !tamanhosEl || !mql.matches) {
-        setTamanhosMinHeight(undefined);
-        return;
-      }
-
-      // Calculado sempre a partir das posições reais na tela (não da altura
-      // atual do card, que já pode estar esticada por um cálculo anterior —
-      // usar a altura renderizada como base faria o valor só crescer, nunca
-      // encolher de volta quando Preço fica mais curto).
-      const precoBottom = precoEl.getBoundingClientRect().bottom;
-      const tamanhosTop = tamanhosEl.getBoundingClientRect().top;
-      const target = precoBottom - tamanhosTop;
-
-      if (target <= 0) {
-        setTamanhosMinHeight(undefined);
-        return;
-      }
-
-      setTamanhosMinHeight((prev) => (prev !== undefined && Math.abs(prev - target) < 0.5 ? prev : target));
-    }
-
-    sync();
-
-    const ro = new ResizeObserver(sync);
-    if (leftStackRef.current) ro.observe(leftStackRef.current);
-    if (fotosWrapRef.current) ro.observe(fotosWrapRef.current);
-    mql.addEventListener("change", sync);
-    window.addEventListener("resize", sync);
-
-    return () => {
-      ro.disconnect();
-      mql.removeEventListener("change", sync);
-      window.removeEventListener("resize", sync);
-    };
-  }, []);
-
   const {
     register,
     handleSubmit,
@@ -236,7 +182,7 @@ export function ProductForm({ header, defaultValues, productId, status, initialP
       <ProductLayout
         header={header}
         left={
-          <div ref={leftStackRef} className="flex flex-col gap-4">
+          <div className="flex h-full flex-col gap-4">
             {/* ── Col. esquerda: campos de metadados ── */}
 
             {/* Identificação */}
@@ -346,7 +292,7 @@ export function ProductForm({ header, defaultValues, productId, status, initialP
             </div>
 
             {/* Preço */}
-            <div ref={precoCardRef} className={cardCls}>
+            <div className={cardCls}>
               <h2 className="font-display font-bold text-gray-900 dark:text-gray-50">Valor do produto</h2>
 
               <div className={fieldCls}>
@@ -366,17 +312,38 @@ export function ProductForm({ header, defaultValues, productId, status, initialP
               </div>
             </div>
 
-            {/* Descrição */}
+          </div>
+        }
+        right={
+          <>
+            {/* ── Col. direita: Fotos + Tamanhos ── */}
+            <div>
+              <PhotoUploader
+                productId={productId}
+                initialPhotos={initialPhotos}
+                onPendingFilesChange={setPendingPhotoFiles}
+              />
+            </div>
+
+            <SizeGrid control={control} productId={productId} className="lg:flex-1" />
+          </>
+        }
+        below={
+          <>
+            {/* Descrição — full-width, termina na mesma borda do card Tamanhos */}
             <div className={cardCls}>
-              <h2 className="font-display font-bold text-gray-900 dark:text-gray-50">Descrição</h2>
+              <h2 className="font-display font-bold text-gray-900 dark:text-gray-50">
+                Descrição{" "}
+                <span className="font-sans font-normal text-gray-500 dark:text-gray-400">(opcional)</span>
+              </h2>
 
               <div className={fieldCls}>
-                <label htmlFor="description" className={labelCls}>Descrição (opcional)</label>
-                <textarea
-                  id="description"
-                  rows={4}
-                  {...register("description")}
-                  className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:placeholder:text-gray-600 dark:focus:ring-blue-400/20"
+                <Controller
+                  name="description"
+                  control={control}
+                  render={({ field }) => (
+                    <DescriptionEditor value={field.value ?? ""} onChange={field.onChange} id="description" />
+                  )}
                 />
                 {errors.description && (
                   <span className={errorCls}>{errors.description.message}</span>
@@ -384,8 +351,8 @@ export function ProductForm({ header, defaultValues, productId, status, initialP
               </div>
             </div>
 
-            {/* Botões de ação — fim da coluna esquerda, após todos os campos. */}
-            <div className="flex flex-col gap-3 sm:flex-row">
+            {/* Botões de ação — largura da coluna esquerda no desktop. */}
+            <div className="flex flex-col gap-3 sm:flex-row lg:max-w-[calc(50%-0.75rem)]">
               {currentStatus === "published" ? (
                 <>
                   <button
@@ -441,25 +408,6 @@ export function ProductForm({ header, defaultValues, productId, status, initialP
                 </>
               )}
             </div>
-          </div>
-        }
-        right={
-          <>
-            {/* ── Col. direita: Fotos + Tamanhos ── */}
-            <div ref={fotosWrapRef}>
-              <PhotoUploader
-                productId={productId}
-                initialPhotos={initialPhotos}
-                onPendingFilesChange={setPendingPhotoFiles}
-              />
-            </div>
-
-            <SizeGrid
-              ref={tamanhosCardRef}
-              control={control}
-              productId={productId}
-              style={tamanhosMinHeight !== undefined ? { minHeight: tamanhosMinHeight } : undefined}
-            />
           </>
         }
       />

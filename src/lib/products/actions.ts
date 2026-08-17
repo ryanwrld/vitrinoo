@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { normalizeRichTextForStorage } from "@/lib/rich-text/document";
 import { productSchema } from "@/lib/validation/product";
 import { parseBRLPrice } from "@/lib/currency/brl";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -259,7 +260,9 @@ function parseProductFormData(formData: FormData): { error: string } | { data: P
       category: parsed.data.category || null,
       fulfillment: parsed.data.fulfillment ?? null,
       price,
-      description: parsed.data.description || null,
+      // Normalizado (allowlist de nós) SEMPRE no servidor — o JSON que chega
+      // do editor nunca é gravado como veio. Ver src/lib/rich-text/document.ts.
+      description: normalizeRichTextForStorage(parsed.data.description),
       sizes: sizesParsed.data ?? [],
       hideWhenSoldOut,
     },

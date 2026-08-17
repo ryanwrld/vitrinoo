@@ -20,9 +20,11 @@ export type ProductLayoutProps = {
   header: ReactNode;
   left: ReactNode;
   right: ReactNode;
+  /** Faixa full-width abaixo das duas colunas (Descrição + ações). */
+  below?: ReactNode;
 };
 
-export function ProductLayout({ header, left, right }: ProductLayoutProps) {
+export function ProductLayout({ header, left, right, below }: ProductLayoutProps) {
   return (
     <div className="w-full px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       {/* Cabeçalho full-span: ← Voltar + H1 + Badge de status */}
@@ -30,17 +32,25 @@ export function ProductLayout({ header, left, right }: ProductLayoutProps) {
 
       {/*
         Grid 50/50 no lg+, stack no mobile.
-        `items-start`: as colunas crescem pela altura do próprio conteúdo,
-        sem esticar artificialmente para igualar alturas entre si.
+        `items-stretch`: as duas colunas têm a MESMA altura (a do conteúdo mais
+        alto). O último card de cada coluna (Preço / Tamanhos) usa `lg:flex-1`
+        para absorver a sobra — sem isso, quando a coluna direita cresce (o
+        preview da foto escala com a largura da tela em monitor grande), a
+        coluna esquerda termina antes e abre um vão morto até a faixa
+        full-width da Descrição.
         Nenhuma coluna tem overflow nem sticky — o scroll é só o da página.
       */}
-      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-stretch lg:gap-6">
         {/* Coluna esquerda — 2ª no mobile (Fotos vem primeiro), 1ª no desktop */}
         <div className="order-2 flex flex-col gap-4 lg:order-none">{left}</div>
 
         {/* Coluna direita — 1ª no mobile, 2ª (à direita) no desktop */}
         <div className="order-1 flex flex-col gap-4 lg:order-none">{right}</div>
       </div>
+
+      {/* Faixa full-width: ocupa as duas colunas, terminando na mesma linha
+          vertical em que o card "Tamanhos" (coluna direita) termina. */}
+      {below ? <div className="mt-4 flex flex-col gap-4 lg:mt-6">{below}</div> : null}
     </div>
   );
 }

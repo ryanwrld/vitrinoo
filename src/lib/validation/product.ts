@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DESCRIPTION_MAX_CHARS, parseRichText, richTextToPlainText } from "@/lib/rich-text/document";
 
 /**
  * Schema de validação do cadastro/edição de produto (PROD-01/PROD-02,
@@ -19,7 +20,23 @@ export const productSchema = z.object({
   category: z.string().trim().optional(),
   fulfillment: z.enum(["sob_encomenda", "pronta_entrega", "ambos"]).optional(),
   price: z.string().trim().min(1, "Informe o preço"),
-  description: z.string().trim().optional(),
+  /**
+   * Descrição formatada — JSON do editor (ou texto puro legado). O limite é
+   * medido sobre o TEXTO PURO, nunca sobre a string bruta: o JSON de
+   * formatação pesa muito mais que o texto e faria o teto variar conforme a
+   * formatação usada.
+   */
+  description: z
+    .string()
+    .trim()
+    .optional()
+    .refine(
+      (value) => {
+        const doc = parseRichText(value);
+        return !doc || richTextToPlainText(doc).length <= DESCRIPTION_MAX_CHARS;
+      },
+      { message: `A descrição pode ter no máximo ${DESCRIPTION_MAX_CHARS} caracteres` }
+    ),
   /**
    * Tamanhos escolhidos (D-01), grid 36-45 (03-RESEARCH.md §Code Examples).
    * Adicionado no Plan 03-03 — necessário para tipar `useFieldArray` (name

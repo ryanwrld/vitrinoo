@@ -14,6 +14,8 @@ import { decideOrderAction } from "@/lib/whatsapp/order-guard";
 import { logOrderClick } from "@/lib/products/order-clicks-actions";
 import { resolveVisitorId } from "@/lib/analytics/visitor-id";
 import { useOpensInNewTab } from "@/lib/ui/use-opens-in-new-tab";
+import { RichText } from "@/components/rich-text";
+import { parseRichText } from "@/lib/rich-text/document";
 import { ImageWithFallback } from "../image-with-fallback";
 import { FavoriteButton } from "../favorite-button";
 
@@ -36,6 +38,9 @@ export type ProductOrderPanelProps = {
     /** Preço promocional (gatilho de conversão, `PriceDisplay`) — `null`
      * sem promoção ativa. */
     promotional_price: number | null;
+    /** Descrição formatada (JSON do TipTap) ou texto legado — `null`/vazia
+     * simplesmente não renderiza a seção. */
+    description?: string | null;
   };
   sizes: { size: number; available: boolean }[];
   whatsappE164: string;
@@ -237,6 +242,7 @@ export function ProductOrderPanel({
   }
 
   const photosToRender = galleryUrls.length > 0 ? galleryUrls : [coverUrl];
+  const descriptionDoc = parseRichText(product.description);
 
   const gallery = (
     <div className={cn("flex flex-col gap-2", isModal && "md:w-1/2 md:shrink-0")}>
@@ -304,6 +310,17 @@ export function ProductOrderPanel({
           ))}
         </div>
       </div>
+
+
+      {/* Descrição — dentro da coluna de dados, depois dos tamanhos: a decisão
+          de compra é modelo → tamanho → pedido, e a descrição é apoio, então
+          nunca pode empurrar as pílulas para baixo da dobra no celular. */}
+      {descriptionDoc && (
+        <div className="flex flex-col gap-2">
+          <h2 className="text-sm font-semibold text-gray-900">Descrição</h2>
+          <RichText doc={descriptionDoc} className="text-gray-600" />
+        </div>
+      )}
     </div>
   );
 
