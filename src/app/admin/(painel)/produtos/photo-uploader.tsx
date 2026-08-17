@@ -394,7 +394,7 @@ export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange }
           aspect-[4/3] mantém proporção consistente independente da foto.
       ─────────────────────────────────────────────────────────────────────── */}
       <div
-        className="group relative w-full touch-pan-y select-none overflow-hidden rounded-[1.25rem] bg-gray-100 dark:bg-gray-800"
+        className="group relative mx-auto w-full touch-pan-y select-none overflow-hidden rounded-[1.25rem] bg-gray-100 2xl:max-w-md dark:bg-gray-800"
         style={{ aspectRatio: "1/1" }}
         onPointerDown={handlePreviewPointerDown}
         onPointerMove={handlePreviewPointerMove}
