@@ -49,7 +49,7 @@ export function PriceDisplay({ price, promotionalPrice, variant = "detail", clas
       <span className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
         <span className="font-display text-sm font-bold text-primary">{formatBRLPrice(promotionalPrice)}</span>
         <span className="text-xs text-gray-400 line-through dark:text-gray-500">{formatBRLPrice(price)}</span>
-        <span className="inline-flex items-center rounded-full bg-error-bg px-1.5 py-0.5 text-[10px] font-bold text-error-badge-fg dark:bg-error-solid/15 dark:text-error-solid">
+        <span className="inline-flex items-center rounded-full bg-success-bg px-1.5 py-0.5 text-[10px] font-bold text-success-fg dark:bg-success-solid/15 dark:text-success-solid">
           -{discountPct}%
         </span>
       </span>
@@ -60,7 +60,7 @@ export function PriceDisplay({ price, promotionalPrice, variant = "detail", clas
     <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
       <span className="font-display text-2xl font-extrabold text-primary">{formatBRLPrice(promotionalPrice)}</span>
       <span className="text-base text-gray-400 line-through dark:text-gray-500">{formatBRLPrice(price)}</span>
-      <span className="inline-flex items-center rounded-full bg-error-bg px-2 py-0.5 text-xs font-bold text-error-badge-fg dark:bg-error-solid/15 dark:text-error-solid">
+      <span className="inline-flex items-center rounded-full bg-success-bg px-2 py-0.5 text-xs font-bold text-success-fg dark:bg-success-solid/15 dark:text-success-solid">
         -{discountPct}% OFF
       </span>
     </span>
