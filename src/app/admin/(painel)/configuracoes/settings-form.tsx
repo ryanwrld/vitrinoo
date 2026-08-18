@@ -200,6 +200,20 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
     if (logoInputRef.current) {
       logoInputRef.current.value = "";
     }
+    // O banner tem MAIS estado do que o formulário enxerga: arquivo novo,
+    // prévia local, remoção pendente, enquadramento e a medição de proporção.
+    // O `reset()` do react-hook-form não toca em nada disso — sem estas
+    // linhas, "Desfazer" apagava o banner e "Reverter alterações" não o
+    // trazia de volta, deixando o botão mentindo sobre o que faz.
+    setCoverFile(null);
+    setCoverPreviewUrl(null);
+    setCoverRemoved(false);
+    setCoverFrame(store.coverFrame);
+    setCoverRatio(null);
+    setCoverRatioClamped(false);
+    if (coverInputRef.current) {
+      coverInputRef.current.value = "";
+    }
     toast.success("Alterações revertidas.");
   };
   // Trava o save enquanto o link estiver inválido/ocupado: deixar salvar aqui
@@ -347,10 +361,14 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
           <button
             type="button"
             onClick={() => previewDialogRef.current?.showModal()}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 outline-none transition-colors duration-150 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+            // Só o ícone, sem pill nem contorno. O rótulo vira `aria-label` +
+            // `title`: some da tela, mas continua existindo para leitor de
+            // tela e no tooltip de quem passar o mouse.
+            aria-label="Pré-visualizar a vitrine"
+            title="Pré-visualizar"
+            className="flex shrink-0 items-center justify-center rounded-full p-1 text-gray-500 outline-none transition-colors duration-150 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-primary-subtle dark:text-gray-400 dark:hover:text-gray-100"
           >
-            <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-            Pré-visualizar
+            <Eye className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -404,20 +422,127 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
           </div>
         </dialog>
 
+        {/* Linha de upload: logo e banner lado a lado, os dois arquivos da
+            identidade visual no mesmo lugar. */}
+        {/* `items-end`: o bloco da capa não tem rótulo (o botão se explica e a
+            seção já se chama "Capa da vitrine"), então alinhar pelo topo o
+            deixaria mais alto que o do logo. Pelo rodapé, as duas molduras de
+            48px coincidem e os botões ficam na mesma linha. */}
+        <div className="flex flex-row items-end gap-3 sm:gap-4">
+        {/* Sem `flex-1`: com ele o bloco do logo esticava até o fim da linha e
+            jogava o seletor de cor lá na borda direita, longe do botão. Cada
+            bloco ocupa só a própria largura e o `gap` faz o resto. */}
+        {/* `gap-2` (e não `gap-1`): o rótulo estava colado demais no avatar.
+            Como a linha alinha pelo rodapé, aumentar o vão sobe o "Logo" sem
+            mexer na posição dos botões. */}
+        <div className="flex flex-col gap-2">
+          <label htmlFor="logo" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Upload de imagens:
+          </label>
+          <div className="flex items-center gap-2 sm:gap-3">
+            {(logoPreviewUrl ?? store.logoUrl) ? (
+              // eslint-disable-next-line @next/next/no-img-element -- prévia local (object URL) e logo já salva, sem necessidade de otimização do next/image aqui
+              <img
+                src={logoPreviewUrl ?? store.logoUrl ?? undefined}
+                alt="Logo atual da loja"
+                className="h-10 w-10 shrink-0 rounded-full border border-gray-200 object-cover sm:h-12 sm:w-12 dark:border-gray-800"
+              />
+            ) : (
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-dashed border-gray-300 text-[10px] text-gray-400 sm:h-12 sm:w-12 dark:border-gray-700 dark:text-gray-600">
+                Sem logo
+              </div>
+            )}
+            {/* Input nativo escondido — o texto padrão do navegador
+                ("Nenhum arquivo escolhido") não reflete se já existe uma logo
+                salva, então trocamos por um botão próprio.
+                A legenda que ficava abaixo ("PNG, JPG ou WEBP" / nome do
+                arquivo) saiu: ela empurrava o botão para fora do alinhamento
+                com o avatar e o seletor de cor. O feedback de qual arquivo foi
+                escolhido continua existindo na prévia do avatar ao lado, que
+                atualiza na hora. */}
+            <input
+              id="logo"
+              ref={logoInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={(event) => setLogoFile(event.target.files?.[0] ?? null)}
+              className="sr-only"
+            />
+            {/* Altura original preservada (menor que os 48px do avatar e do
+                seletor de cor). O alinhamento vem do `items-center` da linha:
+                o centro do botão bate com o centro do avatar e, por
+                consequência, com o do seletor de cor ao lado — que começa na
+                mesma altura por ter rótulo de mesma altura. */}
+            <button
+              type="button"
+              onClick={() => logoInputRef.current?.click()}
+              className={`shrink-0 px-3 py-2 ${IDENTITY_BUTTON_CLASS} ${IDENTITY_BUTTON_FILL}`}
+            >
+              {store.logoUrl ? "Trocar logo" : "Escolher logo"}
+            </button>
+          </div>
+        </div>
+
+        {/* Capa neste slot (onde antes ficava a cor): as duas funções foram
+            invertidas — a cor passou para o balde dentro da prévia, porque é
+            lá que ela aparece, e o arquivo da capa ficou aqui, ao lado do
+            logo, junto do outro upload de imagem da loja. */}
+        {/* Mesmo `gap-2` do bloco do logo: o espaçador só alinha se o vão
+            abaixo dele for igual ao de lá. */}
+        <div className="flex shrink-0 flex-col gap-2">
+          {/* Linha vazia no lugar do rótulo: o bloco do logo tem um, e sem
+              nada aqui o botão da capa subiria 22px e ficaria desalinhado
+              dele. É um espaçador de rótulo, por isso some para leitores de
+              tela. */}
+          {/* `hidden sm:block`: o espaçador só existe para alinhar com o
+              rótulo do logo na linha lado a lado. Empilhado no celular ele
+              virava uma linha em branco entre os dois botões. */}
+          <span aria-hidden="true" className="hidden text-sm font-medium sm:block">
+            &nbsp;
+          </span>
+          {/* A causa do desalinhamento não era a altura do input — já batia
+              com o botão. Era o CONTEXTO: a linha do logo tem 48px (altura do
+              avatar) e centraliza o botão dentro dela (`items-center`), então
+              o botão começa 5px abaixo do topo da linha. A linha da cor, sem
+              essa moldura, começava o input flush no topo. `h-12 items-center`
+              aqui replica a mesma moldura de 48px, então os dois controles
+              centralizam pela mesma régua e seus topos batem de verdade. */}
+          <div className="flex h-10 items-center sm:h-12">
+            <button
+              type="button"
+              onClick={() => coverInputRef.current?.click()}
+              className={`shrink-0 px-3 py-2 ${IDENTITY_BUTTON_CLASS} ${IDENTITY_BUTTON_FILL}`}
+            >
+              {/* "Importar" some nas telas mais estreitas: avatar + os dois
+                  pills não cabem numa linha de ~240px, e a alternativa era o
+                  segundo pill quebrar para baixo. */}
+              <span className="hidden min-[360px]:inline">Importar&nbsp;</span>Banner
+            </button>
+          </div>
+          {errors.accentColor && (
+            <span className="text-sm text-error-fg">{errors.accentColor.message}</span>
+          )}
+        </div>
+        </div>
+
         {/* CAPA — banner do cartão de perfil da vitrine.
-            Fica ACIMA de logo e cor porque é isso que a vitrine mostra
-            primeiro, e porque a prévia larga aqui ensina o enquadramento
-            sem precisar de texto explicando.
+            Fica ABAIXO da linha de upload (decisão do usuário): os botões que
+            escolhem os arquivos vêm primeiro, e a prévia larga logo em
+            seguida mostra o resultado do que acabou de ser enviado.
             Opcional de propósito (decisão do usuário): sem capa a vitrine
             gera um gradiente da cor de destaque, então nenhuma loja fica
             com buraco e ninguém é obrigado a um segundo upload. */}
         <div className="flex flex-col gap-1.5">
-          <div className="flex items-baseline justify-between gap-2">
-            <label htmlFor="cover" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Banner da vitrine
-            </label>
-            <span className="text-xs text-gray-500 dark:text-gray-500">Opcional</span>
-          </div>
+          {/* "(opcional)" colado no rótulo, não jogado na outra ponta da
+              linha: ali ele é lido junto com o nome do campo, que é onde a
+              informação importa. */}
+          <label
+            htmlFor="cover"
+            className="flex items-baseline gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
+            Banner da vitrine
+            <span className="text-xs font-normal text-gray-500 dark:text-gray-500">(opcional)</span>
+          </label>
 
           {/* `aspect-[3/1]` reproduz a proporção real da capa na vitrine — uma
               prévia quadrada mentiria sobre o corte e o revendedor só
@@ -434,6 +559,21 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
             frame={coverFrame}
             onChange={setCoverFrame}
             accentColor={accentColorValue}
+            onRemove={() => {
+              setCoverFile(null);
+              setCoverPreviewUrl(null);
+              setCoverRemoved(true);
+              // Enquadramento é de uma imagem específica; mantê-lo depois de
+              // remover a capa aplicaria o ajuste de uma arte que não existe
+              // mais ao gradiente.
+              setCoverFrame(resolveCoverFrame(null));
+              // O aviso de recorte descreve o ARQUIVO escolhido; sem limpar a
+              // medição junto, ele continuava na tela falando de uma imagem
+              // que acabou de ser removida.
+              setCoverRatio(null);
+              setCoverRatioClamped(false);
+              if (coverInputRef.current) coverInputRef.current.value = "";
+            }}
             onPickColor={() => accentInputRef.current?.click()}
           />
 
@@ -488,124 +628,8 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
             </p>
           )}
 
-          {/* O envio/troca da capa mora no botão redondo dentro da prévia; aqui
-              fica só a saída de volta para o gradiente. */}
-          <div className="flex flex-wrap items-center gap-2">
-            {coverPreview && (
-              <button
-                type="button"
-                onClick={() => {
-                  setCoverFile(null);
-                  setCoverPreviewUrl(null);
-                  setCoverRemoved(true);
-                  // Enquadramento é de uma imagem específica; mantê-lo depois
-                  // de remover a capa aplicaria o ajuste de uma arte que não
-                  // existe mais ao gradiente.
-                  setCoverFrame(resolveCoverFrame(null));
-                  if (coverInputRef.current) coverInputRef.current.value = "";
-                }}
-                className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-500 outline-none transition-colors duration-150 hover:bg-gray-100 hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-primary-subtle dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-300"
-              >
-                Usar o gradiente
-              </button>
-            )}
-          </div>
         </div>
 
-        {/* Logo e cor de destaque na MESMA linha: são as duas escolhas de
-            identidade visual e ocupam pouco espaço cada uma — empilhadas,
-            desperdiçavam a largura do card e afastavam a cor do contexto a
-            que ela pertence. Empilha de volta abaixo de `sm`, onde não há
-            largura para as duas. */}
-        {/* `items-end`: o bloco da capa não tem rótulo (o botão se explica e a
-            seção já se chama "Capa da vitrine"), então alinhar pelo topo o
-            deixaria mais alto que o do logo. Pelo rodapé, as duas molduras de
-            48px coincidem e os botões ficam na mesma linha. */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-6">
-        {/* Sem `flex-1`: com ele o bloco do logo esticava até o fim da linha e
-            jogava o seletor de cor lá na borda direita, longe do botão. Cada
-            bloco ocupa só a própria largura e o `gap` faz o resto. */}
-        <div className="flex flex-col gap-1">
-          <label htmlFor="logo" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Logo
-          </label>
-          <div className="flex items-center gap-3">
-            {(logoPreviewUrl ?? store.logoUrl) ? (
-              // eslint-disable-next-line @next/next/no-img-element -- prévia local (object URL) e logo já salva, sem necessidade de otimização do next/image aqui
-              <img
-                src={logoPreviewUrl ?? store.logoUrl ?? undefined}
-                alt="Logo atual da loja"
-                className="h-12 w-12 shrink-0 rounded-full border border-gray-200 object-cover dark:border-gray-800"
-              />
-            ) : (
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-dashed border-gray-300 text-[10px] text-gray-400 dark:border-gray-700 dark:text-gray-600">
-                Sem logo
-              </div>
-            )}
-            {/* Input nativo escondido — o texto padrão do navegador
-                ("Nenhum arquivo escolhido") não reflete se já existe uma logo
-                salva, então trocamos por um botão próprio.
-                A legenda que ficava abaixo ("PNG, JPG ou WEBP" / nome do
-                arquivo) saiu: ela empurrava o botão para fora do alinhamento
-                com o avatar e o seletor de cor. O feedback de qual arquivo foi
-                escolhido continua existindo na prévia do avatar ao lado, que
-                atualiza na hora. */}
-            <input
-              id="logo"
-              ref={logoInputRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              onChange={(event) => setLogoFile(event.target.files?.[0] ?? null)}
-              className="sr-only"
-            />
-            {/* Altura original preservada (menor que os 48px do avatar e do
-                seletor de cor). O alinhamento vem do `items-center` da linha:
-                o centro do botão bate com o centro do avatar e, por
-                consequência, com o do seletor de cor ao lado — que começa na
-                mesma altura por ter rótulo de mesma altura. */}
-            <button
-              type="button"
-              onClick={() => logoInputRef.current?.click()}
-              className={`shrink-0 px-3 py-2 ${IDENTITY_BUTTON_CLASS} ${IDENTITY_BUTTON_FILL}`}
-            >
-              {store.logoUrl ? "Trocar logo" : "Escolher logo"}
-            </button>
-          </div>
-        </div>
-
-        {/* Capa neste slot (onde antes ficava a cor): as duas funções foram
-            invertidas — a cor passou para o balde dentro da prévia, porque é
-            lá que ela aparece, e o arquivo da capa ficou aqui, ao lado do
-            logo, junto do outro upload de imagem da loja. */}
-        <div className="flex shrink-0 flex-col gap-1">
-          {/* Linha vazia no lugar do rótulo: o bloco do logo tem um, e sem
-              nada aqui o botão da capa subiria 22px e ficaria desalinhado
-              dele. É um espaçador de rótulo, por isso some para leitores de
-              tela. */}
-          <span aria-hidden="true" className="text-sm font-medium">
-            &nbsp;
-          </span>
-          {/* A causa do desalinhamento não era a altura do input — já batia
-              com o botão. Era o CONTEXTO: a linha do logo tem 48px (altura do
-              avatar) e centraliza o botão dentro dela (`items-center`), então
-              o botão começa 5px abaixo do topo da linha. A linha da cor, sem
-              essa moldura, começava o input flush no topo. `h-12 items-center`
-              aqui replica a mesma moldura de 48px, então os dois controles
-              centralizam pela mesma régua e seus topos batem de verdade. */}
-          <div className="flex h-12 items-center">
-            <button
-              type="button"
-              onClick={() => coverInputRef.current?.click()}
-              className={`shrink-0 px-3 py-2 ${IDENTITY_BUTTON_CLASS} ${IDENTITY_BUTTON_FILL}`}
-            >
-              Banner personalizado
-            </button>
-          </div>
-          {errors.accentColor && (
-            <span className="text-sm text-error-fg">{errors.accentColor.message}</span>
-          )}
-        </div>
-        </div>
 
         {/* Só aparece quando falta logo (contas antigas de antes desta regra
             existir) — é o que trava "Salvar alterações", não narrativa. O
@@ -653,12 +677,16 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
         </div>
 
         <div className="flex flex-col gap-1">
-          <div className="flex items-baseline justify-between gap-2">
-            <label htmlFor="instagram" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Instagram
-            </label>
-            <span className="text-xs text-gray-500 dark:text-gray-500">Opcional</span>
-          </div>
+          {/* Mesmo padrão do "Banner da vitrine": "(opcional)" colado ao
+              rótulo, onde é lido junto com o nome do campo, em vez de jogado
+              na outra ponta da linha. */}
+          <label
+            htmlFor="instagram"
+            className="flex items-baseline gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
+            Instagram
+            <span className="text-xs font-normal text-gray-500 dark:text-gray-500">(opcional)</span>
+          </label>
           {/* Prefixo `@` fixo no campo: comunica o formato esperado sem uma
               linha de instrução, e o servidor aceita de qualquer jeito o link
               inteiro colado do app (normalizeInstagramHandle) — o prefixo
@@ -735,16 +763,27 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
           </label>
           <textarea
             id="messageTemplate"
-            rows={6}
+            rows={8}
             {...register("messageTemplate")}
-            // `w-full resize-y`: sem isso o <textarea> usa a largura
+            // `w-full`: sem isso o <textarea> usa a largura
             // intrínseca do atributo `cols` e, pior, pode ser ARRASTADO na
             // horizontal pela alça do canto — o arraste grava uma largura
             // inline que empurra a coluna e faz a aba "Loja" ficar mais larga
             // que a aba "Conta". Travar em `resize-y` mantém o ajuste de
             // altura (útil pra um template longo) e elimina o vetor
             // horizontal.
-            className="w-full resize-y rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:placeholder:text-gray-600 dark:focus:ring-blue-400/20"
+            // `resize-none`: a alça de arrastar saiu — com a caixa crescendo
+            // sozinha ela não tem mais função, e era o último resquício de
+            // "campo que o usuário precisa ajustar na mão".
+            // `min-h-[260px]`: piso confortável para o template padrão, com
+            // folga visível abaixo da última linha.
+            // `field-sizing-content` + `min-h`: a caixa cresce junto com o
+            // template em vez de mostrar barra de rolagem. Um template de
+            // pedido é curto e é lido inteiro na hora de conferir; rolar
+            // dentro de um campo de 6 linhas escondia justamente o fim da
+            // mensagem, que é onde ficam preço e link.
+            // O `rows` continua como piso para navegadores sem `field-sizing`.
+            className="w-full resize-none field-sizing-content min-h-[260px] rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:placeholder:text-gray-600 dark:focus:ring-blue-400/20"
           />
           {errors.messageTemplate && (
             <span className="text-sm text-error-fg">{errors.messageTemplate.message}</span>
@@ -811,8 +850,13 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
         {/* `lg:col-start-2 lg:row-start-1`: posição explícita porque, com o
             form em `display: contents`, esta seção vem DEPOIS do botão
             "Salvar alterações" no DOM — a auto-colocação da grade a jogaria
-            para a linha de baixo. */}
-        <section className="flex flex-col gap-5 rounded-[2rem] border border-gray-200 bg-white p-6 lg:col-start-2 lg:row-start-1 lg:h-full dark:border-gray-800 dark:bg-gray-900">
+            para a linha de baixo.
+            Este wrapper existe para os botões de ação caberem na MESMA célula
+            da grade que o card: em células separadas eles cairiam na linha 2,
+            que só começa depois da coluna esquerda (bem mais alta) e ficavam
+            longe do card a que pertencem. */}
+        <div className="flex flex-col gap-6 lg:col-start-2 lg:row-start-1">
+        <section className="flex flex-col gap-5 rounded-[2rem] border border-gray-200 bg-white p-6 lg:pb-8 dark:border-gray-800 dark:bg-gray-900">
           <div className="flex items-center gap-2 text-gray-900 dark:text-gray-50">
             <LinkIcon className="h-5 w-5" />
             <h2 className="font-display font-bold">Link e QR code da vitrine</h2>
@@ -824,14 +868,12 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
 
           <QrCodePanel publicUrl={publicUrl} storeName={store.name} accentColor={accentColorValue} />
         </section>
-      </SlugFieldProvider>
-
       {/* Linha de ações. O `order`/`col-start` que antes vivia no botão de
           salvar mudou para este container: com o <form> em `display: contents`
           quem é filho da grade agora é ele, não o botão.
           Secundário à esquerda, primário à direita — e é por isso que
           "Reverter" aparecendo/sumindo não empurra o "Salvar" de lugar. */}
-      <div className="flex flex-col-reverse gap-2 max-lg:order-last sm:flex-row sm:justify-end lg:col-span-2 lg:col-start-1 lg:row-start-2">
+      <div className="flex flex-col-reverse gap-2 max-lg:order-last sm:flex-row sm:justify-end">
         {/* Só existe quando há algo por salvar: um botão de reverter sempre
             visível seria um controle morto na maior parte do tempo, e um
             convite a cliques sem efeito. */}
@@ -851,9 +893,12 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
           disabled={isPending || slugBlocksSave || !hasLogo}
           className="w-full sm:w-auto rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow active:translate-y-0 active:bg-primary-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none dark:disabled:bg-gray-800 dark:disabled:text-gray-600"
         >
-          {isPending ? "Salvando…" : "Salvar alterações"}
+          {isPending ? "Salvando…" : "Salvar Mudanças"}
         </button>
       </div>
+        </div>
+      </SlugFieldProvider>
+
     </form>
   );
 }

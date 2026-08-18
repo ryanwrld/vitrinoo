@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Copy, Download, QrCode } from "lucide-react";
+import { Copy, Download, Camera, MessageCircle, Printer, QrCode } from "lucide-react";
 import { copyText } from "@/lib/clipboard";
 import { generateQrDataUrl, QR_DOWNLOAD_SIZE } from "@/lib/qr";
 import { drawShareCard, SHARE_CARD_HEIGHT, SHARE_CARD_WIDTH } from "@/lib/qr-share-card";
@@ -123,16 +123,23 @@ export function QrCodePanel({ publicUrl, storeName, accentColor }: QrCodePanelPr
     // tracejada abaixo é o que faz este bloco absorver a altura que sobra na
     // coluna da direita — no desktop ela precisa terminar junto com a coluna
     // do formulário, que é bem mais alta.
-    <div className="flex flex-col gap-4 lg:flex-1">
-      {/* Quem cresce para alinhar o pé das duas colunas é este wrapper SEM
-          borda, não a moldura tracejada. Antes o `lg:flex-1` estava na própria
-          moldura, que virava um retângulo enorme em volta de um cartão
-          pequeno. `justify-center` mantém cartão e botões no meio da sobra. */}
-      <div className="flex flex-col items-center gap-4 lg:flex-1 lg:justify-center">
-        {/* `w-fit` em todas as larguras: a moldura encolhe até o tamanho do
-            cartão + padding, emoldurando-o de fato em vez de virar um
-            retângulo grande com o cartão perdido no meio. */}
-        <div className="flex w-fit items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50/50 p-6 dark:border-gray-700 dark:bg-gray-925/40">
+    <div className="flex flex-col gap-4">
+      {/* `justify-start`, não `center`: centralizar o bloco na sobra abria
+          DOIS vãos (um acima do cartão, outro abaixo dos botões) e é
+          justamente espaço vazio em volta que faz um objeto ler como pequeno.
+          Ancorado no topo, o cartão encosta no divisor do slug — onde o olho
+          já está — e a sobra vira uma folga única antes da URL, no rodapé do
+          card. */}
+      <div className="flex flex-col items-center gap-4">
+        {/* Sem moldura em volta do cartão (era tracejada, com 24px de
+            respiro): duas bordas concêntricas fazem o olho medir o assunto
+            pela externa, e o cartão — que é o protagonista aqui — lia como um
+            objeto pequeno dentro de uma caixa grande. Sem ela, ele é a única
+            figura do bloco e ganha presença sem mudar de tamanho. */}
+        {/* `lg:pt-4`: reduzir o cartão não resolvia o aperto contra o divisor
+            do slug logo acima — falta de respiro vertical não se conserta
+            encolhendo o objeto, se conserta afastando. */}
+        <div className="flex w-full max-w-[240px] items-center justify-center lg:mt-[36px] lg:max-w-[313px] lg:pt-4">
           {/* `width`/`height` são a resolução REAL do arquivo (1080×1350); o
               CSS só reduz a exibição. É por isso que o download sai em alta
               mesmo com a prévia pequena na tela.
@@ -146,7 +153,23 @@ export function QrCodePanel({ publicUrl, storeName, accentColor }: QrCodePanelPr
             height={SHARE_CARD_HEIGHT}
             aria-label={`Cartão de divulgação da vitrine${storeName ? ` de ${storeName}` : ""}`}
             role="img"
-            className="h-auto w-full max-w-[240px] lg:max-w-[288px]"
+            // Cresce no desktop para ocupar a sobra da coluna: 288px deixava
+            // um vão morto entre a lista e a URL. Mobile intocado (240px).
+            // Largura fixa, altura automática pela proporção do arquivo.
+            //
+            // Tentei antes fazer o cartão medir pela altura que sobrava na
+            // coluna (`h-full` + `object-contain`), para o vão zerar sozinho.
+            // Parecia resolvido — mas `object-contain` só CENTRALIZA o desenho
+            // dentro da caixa: o vão não sumia, virava tarja transparente
+            // dentro do próprio canvas, e ainda empurrava os botões de
+            // download para fora da primeira dobra. Medir e desenhar não são a
+            // mesma coisa.
+            //
+            // A largura é do CONTAINER (compartilhado com a lista logo
+            // abaixo, para as bordas dos dois baterem). Teto de 313px, que é
+            // a medida validada visualmente; em colunas mais estreitas o
+            // `w-full` encolhe junto e a margem lateral nunca some.
+            className="h-auto w-full"
           />
         </div>
 
@@ -181,9 +204,42 @@ export function QrCodePanel({ publicUrl, storeName, accentColor }: QrCodePanelPr
             Baixar QR code
           </button>
         </div>
+
+        {/* Só no desktop (`hidden lg:flex`): esta coluna é bem mais curta que
+            a do formulário e sobrava altura vazia entre o cartão e a URL. Em
+            vez de centralizar o vazio, ele passa a carregar o uso — que é
+            recorrente, não de uma vez só, e não estava dito em lugar nenhum.
+            No mobile não existe sobra nenhuma, então nada disso aparece. */}
+        <ul className="hidden w-full max-w-[240px] flex-col lg:max-w-[313px] gap-2 text-xs leading-relaxed text-gray-500 lg:flex dark:text-gray-500">
+          {/* Mesma largura do cartão (`w-[92%] max-w-[340px]`, idêntico ao
+              container): antes a caixa da lista era mais larga, e mesmo com os
+              centros coincidindo o texto começava 13px à esquerda da borda do
+              cartão — desalinho visível, porque o olho alinha por borda, não
+              por centro.
+              Da frase mais curta para a mais longa: a lista é lida de relance,
+              e começar pela linha mais leve dá o primeiro entendimento antes
+              de exigir mais atenção. */}
+          <li className="flex gap-2">
+            <MessageCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            Compartilhe nos grupos de WhatsApp.
+          </li>
+          <li className="flex gap-2">
+            <Camera className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            Posta no story, quem vê já abre sua vitrine.
+          </li>
+          <li className="flex gap-2">
+            <Printer className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            Imprime e cola no balcão ou na porta da loja.
+          </li>
+        </ul>
       </div>
 
-      <div className="flex flex-col gap-1">
+      {/* `lg:mt-[56px]`: alinha este campo com o input de WhatsApp do card ao
+          lado (medido no navegador). É um alinhamento entre CARDS diferentes,
+          então não existe mecanismo automático — é um deslocamento fixo e vai
+          sair do lugar se o conteúdo acima de qualquer um dos dois mudar de
+          altura. */}
+      <div className="flex flex-col gap-1 lg:mt-[56px]">
         <label htmlFor="publicUrl" className="text-sm font-medium text-gray-700 dark:text-gray-300">
           URL pública
         </label>
@@ -193,14 +249,18 @@ export function QrCodePanel({ publicUrl, storeName, accentColor }: QrCodePanelPr
             type="text"
             value={publicUrl}
             readOnly
-            className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 h-11 text-base text-gray-900 outline-none dark:border-gray-800 dark:bg-gray-925/40 dark:text-gray-50"
+            // `min-w-0`: filho de flex não encolhe abaixo do próprio conteúdo
+            // por padrão (`min-width: auto`), então em telas de 375px a URL
+            // empurrava o botão "Copiar" 2px para fora e a página ganhava
+            // rolagem horizontal.
+            className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 h-11 text-base text-gray-900 outline-none dark:border-gray-800 dark:bg-gray-925/40 dark:text-gray-50"
           />
           <button
             type="button"
             onClick={handleCopy}
             disabled={isCopying}
             aria-label="Copiar"
-            className="flex items-center gap-2 rounded-full bg-primary p-3 text-sm font-semibold text-white transition-all duration-150 hover:bg-primary-hover active:bg-primary-active active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:bg-gray-100 disabled:text-gray-400 disabled:pointer-events-none dark:disabled:bg-gray-800 dark:disabled:text-gray-600"
+            className="shrink-0 flex items-center gap-2 rounded-full bg-primary p-3 text-sm font-semibold text-white transition-all duration-150 hover:bg-primary-hover active:bg-primary-active active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:bg-gray-100 disabled:text-gray-400 disabled:pointer-events-none dark:disabled:bg-gray-800 dark:disabled:text-gray-600"
           >
             <Copy className="h-4 w-4" aria-hidden="true" />
             Copiar

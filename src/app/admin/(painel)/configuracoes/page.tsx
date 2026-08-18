@@ -322,18 +322,21 @@ export default async function ConfiguracoesPage({
         // único "Salvar alterações" no fim); à direita o que se usa pra
         // divulgar (link + QR code).
         //
-        // Sem `items-start`: o padrão `items-stretch` do grid é o que faz a
-        // coluna da direita acompanhar a altura da esquerda, e o card de lá
-        // absorve essa altura via `lg:flex-1` internos — as duas colunas
-        // terminam alinhadas embaixo, sem vão sobrando dentro de nenhum card.
-        // Mesma técnica já usada no Dashboard.
+        // `items-start`, e não o `items-stretch` que estava aqui antes.
         //
-        // O alinhamento é CARD a CARD, não coluna a coluna: a coluna esquerda
-        // termina com o botão "Salvar alterações", que fica FORA do último
-        // card. Sem o espaçador espelho abaixo, o card do QR esticava até o
-        // rodapé do botão e ficava visivelmente mais alto que o card do
-        // WhatsApp ao lado.
-        <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-stretch">
+        // O stretch fazia o card da direita acompanhar a altura da coluna
+        // esquerda — que tem três cards e é MUITO mais alta. Como o conteúdo
+        // de lá (slug + QR + URL) não tem essa altura, sobrava um buraco de
+        // ~280px DENTRO do card, entre a lista e a URL pública. Tentamos
+        // fechá-lo esticando o cartão do QR: ou ele virava a coisa mais pesada
+        // da tela e empurrava os botões de download para fora da dobra, ou o
+        // vão só mudava de lugar.
+        //
+        // Duas colunas terminarem juntas é uma simetria que ninguém sente
+        // falta; um buraco dentro de um card com borda é visível na hora. O
+        // card agora termina onde o conteúdo dele acaba, e o que sobra é fundo
+        // de página — que não é vão, é respiro.
+        <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start">
           <SettingsForm
             store={{
               name: store.name,

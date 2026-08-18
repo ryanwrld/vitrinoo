@@ -11,7 +11,7 @@ import {
   MIN_ZOOM,
   type CoverFrame,
 } from "@/lib/store/cover-frame";
-import { coverGradientEndHex, coverGradientMidHex } from "@/lib/color/cover-gradient";
+import { coverGradientMidHex } from "@/lib/color/cover-gradient";
 import { getMaxContrastTone } from "@/lib/color/contrast";
 
 export type CoverEditorProps = {
@@ -27,6 +27,10 @@ export type CoverEditorProps = {
   onPickColor: () => void;
   /** Cor de destaque atual — base do gradiente e, sem capa, do contraste do botão. */
   accentColor: string;
+  /** Remove a capa e volta ao gradiente. Fica ao lado de "Ajustar
+      enquadramento" porque as duas agem sobre a MESMA imagem — separá-las em
+      linhas diferentes fazia a segunda parecer uma opção da tela, não da capa. */
+  onRemove: () => void;
 };
 
 /**
@@ -97,11 +101,14 @@ export function CoverEditor({
   imageUrl,
   fallbackBackground,
   accentColor,
+  onRemove,
   frame,
   onChange,
   onPickColor,
 }: CoverEditorProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  /** Faixa de prévia do card — precisa das medidas reais para saber que pedaço da arte fica sob o botão. */
+  const previewBandRef = useRef<HTMLDivElement>(null);
   const bandRef = useRef<HTMLDivElement>(null);
   const dragStateRef = useRef<{ pointerId: number; x: number; y: number; posX: number; posY: number } | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -207,6 +214,8 @@ export function CoverEditor({
 
   useEffect(() => {
     if (!imageUrl) return;
+    const band = previewBandRef.current;
+    if (!band) return;
     let cancelled = false;
 
     const probe = new Image();
@@ -220,16 +229,43 @@ export function CoverEditor({
         const context = canvas.getContext("2d", { willReadFrequently: true });
         if (!context) return;
 
-        // Desenha só o canto inferior direito da arte esticado no canvas: é a
-        // região que fica atrás do botão, e a média dela é o que importa.
-        const cropW = probe.naturalWidth * 0.35;
-        const cropH = probe.naturalHeight * 0.35;
+        const bandRect = band.getBoundingClientRect();
+        const { naturalWidth: nw, naturalHeight: nh } = probe;
+        if (!nw || !nh || !bandRect.width) return;
+
+        // QUE PEDAÇO DO ARQUIVO ESTÁ REALMENTE ATRÁS DO BOTÃO
+        //
+        // A versão anterior amostrava o canto do ARQUIVO, e não o que a faixa
+        // mostra. São coisas diferentes: `object-fit: cover` já recorta, e o
+        // enquadramento (`object-position` + zoom) desloca esse recorte. Com
+        // este banner, o canto do arquivo é claro e o pedaço visível no canto
+        // é escuro — e o botão saía preto sobre preto, invisível.
+        //
+        // Aqui a conta é a mesma que o CSS faz: escala de cobertura vezes
+        // zoom, sobra distribuída pelo percentual do `object-position`, e a
+        // caixa do botão convertida de volta para coordenadas do arquivo.
+        const scale = Math.max(bandRect.width / nw, bandRect.height / nh) * frame.zoom;
+        const overflowX = nw * scale - bandRect.width;
+        const overflowY = nh * scale - bandRect.height;
+        const originX = (overflowX * frame.posX) / 100;
+        const originY = (overflowY * frame.posY) / 100;
+
+        // Caixa do botão na faixa (8px de margem + 28px de lado), com uma
+        // folga de 4px para amostrar também o que encosta na borda dele.
+        const boxX = 8 - 4;
+        const boxY = 8 - 4;
+        const boxSize = 28 + 8;
+
+        const sourceX = Math.max(0, (boxX + originX) / scale);
+        const sourceY = Math.max(0, (boxY + originY) / scale);
+        const sourceSize = boxSize / scale;
+
         context.drawImage(
           probe,
-          probe.naturalWidth - cropW,
-          probe.naturalHeight - cropH,
-          cropW,
-          cropH,
+          sourceX,
+          sourceY,
+          Math.min(sourceSize, nw - sourceX),
+          Math.min(sourceSize, nh - sourceY),
           0,
           0,
           16,
@@ -257,9 +293,15 @@ export function CoverEditor({
     return () => {
       cancelled = true;
     };
-  }, [imageUrl]);
+    // `frame` entra nas dependências porque mover ou dar zoom na arte muda o
+    // pedaço que fica sob o botão — e portanto a cor certa dele.
+  }, [imageUrl, frame.zoom, frame.posX, frame.posY]);
 
-  const tone = imageUrl ? imageTone : getMaxContrastTone(coverGradientEndHex(accentColor));
+  // Canto SUPERIOR ESQUERDO: é exatamente onde o gradiente de 135° começa,
+  // então o que está atrás do botão é a cor de destaque exata (parada de 0%).
+  // Ler a ponta do gradiente daria a resposta errada justamente nos extremos —
+  // um azul escuro termina 24% mais claro no canto oposto.
+  const tone = imageUrl ? imageTone : getMaxContrastTone(accentColor);
   const labelTone = getMaxContrastTone(coverGradientMidHex(accentColor));
 
   const sliderClass =
@@ -271,8 +313,14 @@ export function CoverEditor({
       {/* Prévia no card: só leitura. Mostra o enquadramento vigente sem
           competir com os campos do formulário por espaço e atenção. */}
       <div
+        ref={previewBandRef}
         style={{ ...coverBandStyle(frame), ...(imageUrl ? null : { backgroundImage: fallbackBackground }) }}
-        className="relative w-full overflow-hidden rounded-[1.25rem] border border-gray-200 dark:border-gray-800"
+        // `min-h-24` só no celular: a faixa tem proporção fixa, então numa
+        // coluna de ~292px ela renderiza com 58px de altura contra os 99px do
+        // desktop — pequena demais para julgar o enquadramento no aparelho em
+        // que a maioria dos revendedores usa o painel. O piso de altura
+        // equaliza as duas telas.
+        className="relative min-h-24 w-full overflow-hidden rounded-[1.25rem] border border-gray-200 sm:min-h-0 dark:border-gray-800"
       >
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- prévia local (object URL) ou capa já salva; sem ganho no next/image aqui
@@ -306,21 +354,36 @@ export function CoverEditor({
           aria-label="Escolher cor de destaque"
           title="Cor de destaque"
           style={{ color: tone === "dark" ? "#000000" : "#ffffff", borderColor: "currentColor" }}
-          className="absolute bottom-2 right-2 flex h-9 w-9 items-center justify-center rounded-full border outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary-subtle"
+          className="absolute left-2 top-2 flex h-7 w-7 items-center justify-center rounded-full border outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary-subtle"
         >
-          <PaintBucket className="h-4 w-4" aria-hidden="true" />
+          <PaintBucket className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
       </div>
 
+      {/* `mt-1.5 -mb-1.5` na linha abaixo: ela desce 6px sem alterar a altura
+          do card — o que ganha acima, devolve abaixo. */}
       {imageUrl && (
-        <button
-          type="button"
-          onClick={openEditor}
-          className="flex w-fit items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 outline-none transition-colors duration-150 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
-        >
-          <Crop className="h-3.5 w-3.5" aria-hidden="true" />
-          Ajustar enquadramento
-        </button>
+        <div className="-mb-1.5 mt-1.5 flex flex-wrap items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={openEditor}
+            className="flex w-fit items-center gap-1.5 rounded-full border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 outline-none transition-colors duration-150 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+          >
+            <Crop className="h-3 w-3" aria-hidden="true" />
+            Ajustar enquadramento
+          </button>
+
+          <button
+            type="button"
+            onClick={onRemove}
+            // Azul da marca no claro; `blue-400` no escuro pela mesma razão já
+            // documentada no botão "Baixar cartão": o #0D21A1 puro, num texto
+            // fino sobre fundo escuro, lê como quase preto.
+            className="text-xs font-medium text-primary underline underline-offset-2 outline-none transition-colors duration-150 hover:text-primary-hover focus-visible:ring-2 focus-visible:ring-primary-subtle dark:text-blue-400 dark:hover:text-blue-300"
+          >
+            Desfazer
+          </button>
+        </div>
       )}
 
       <dialog
