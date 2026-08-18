@@ -5,7 +5,6 @@ import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { AsYouType } from "libphonenumber-js";
 import { ChevronDown, Paintbrush, MessageCircle, SlidersHorizontal, Eye, Link as LinkIcon } from "lucide-react";
 import { onboardingSchema, type OnboardingInput } from "@/lib/validation/onboarding";
 import { saveStoreSettings, updateStoreSlug } from "@/lib/settings/actions";
@@ -19,6 +18,7 @@ import { useSlugField } from "@/lib/slug/use-slug-field";
 import { SlugFieldProvider } from "./slug-field-context";
 import { SlugEditor } from "./slug-editor";
 import { QrCodePanel } from "./qr-code-panel";
+import { WhatsappField } from "@/components/whatsapp-field";
 
 /**
  * Formulário de edição pós-onboarding (Loja + WhatsApp), escrito do zero
@@ -107,6 +107,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
     register,
     handleSubmit,
     watch,
+    setValue,
     reset,
     formState: { errors, isDirty },
   } = useForm<OnboardingInput>({
@@ -152,7 +153,6 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
   // lógica exata de contraste, não uma aproximação, senão ela pode mostrar
   // uma combinação legível aqui e ilegível na vitrine de verdade.
   const heroIsDarkText = getContrastTextColor(accentColorValue) === "dark";
-  const formattedPreview = whatsappValue ? new AsYouType("BR").input(whatsappValue) : "";
 
   // --- Campo "Slug" -------------------------------------------------------
   // Mora aqui, e não mais no `SlugEditor`, porque quem salva o slug agora é o
@@ -719,16 +719,13 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
           <label htmlFor="whatsapp" className="text-sm font-medium text-gray-700 dark:text-gray-300">
             WhatsApp
           </label>
-          <input
-            id="whatsapp"
-            type="tel"
-            placeholder="(11) 99999-9999"
-            {...register("whatsapp")}
-            className="rounded-xl border border-gray-300 bg-white px-3 h-11 text-base text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:placeholder:text-gray-600 dark:focus:ring-blue-400/20"
+          <WhatsappField
+            value={whatsappValue ?? ""}
+            onChange={(stored) => setValue("whatsapp", stored, { shouldDirty: true, shouldValidate: true })}
+            wrapperClassName="flex items-center rounded-xl border border-gray-300 bg-white transition-colors duration-150 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary-subtle dark:border-gray-700 dark:bg-gray-900 dark:focus-within:ring-blue-400/20"
+            prefixClassName="pl-3 text-base text-gray-500 dark:text-gray-400"
+            inputClassName="h-11 w-full bg-transparent px-2 text-base text-gray-900 outline-none placeholder:text-gray-400 dark:text-gray-50 dark:placeholder:text-gray-600"
           />
-          {formattedPreview && (
-            <span className="text-xs text-gray-500 dark:text-gray-400">Prévia: {formattedPreview}</span>
-          )}
           {errors.whatsapp && <span className="text-sm text-error-fg">{errors.whatsapp.message}</span>}
         </div>
 

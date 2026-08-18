@@ -4,7 +4,6 @@ import { useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { AsYouType } from "libphonenumber-js";
 import {
   onboardingSchema,
   DEFAULT_MESSAGE_TEMPLATE,
@@ -12,6 +11,7 @@ import {
 } from "@/lib/validation/onboarding";
 import { saveOnboarding } from "@/lib/onboarding/actions";
 import { LogoMark } from "@/components/logo-mark";
+import { WhatsappField } from "@/components/whatsapp-field";
 import { slugify } from "@/lib/slug/slugify";
 import { useSlugField } from "@/lib/slug/use-slug-field";
 import { resolveAvailableSlug } from "@/lib/slug/resolve-available";
@@ -44,6 +44,7 @@ export function OnboardingWizard({ provisionalSlug }: { provisionalSlug: string 
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<OnboardingInput>({
     resolver: zodResolver(onboardingSchema),
@@ -57,7 +58,6 @@ export function OnboardingWizard({ provisionalSlug }: { provisionalSlug: string 
   });
 
   const whatsappValue = watch("whatsapp");
-  const formattedPreview = whatsappValue ? new AsYouType("BR").input(whatsappValue) : "";
 
   // --- Campo "@" -----------------------------------------------------------
   // Mesmo hook que Configurações usa (`useSlugField`), com duas diferenças
@@ -262,16 +262,13 @@ export function OnboardingWizard({ provisionalSlug }: { provisionalSlug: string 
           <label htmlFor="whatsapp" className="text-sm font-medium text-gray-700">
             WhatsApp
           </label>
-          <input
-            id="whatsapp"
-            type="tel"
-            placeholder="(11) 99999-9999"
-            {...register("whatsapp")}
-            className="rounded-xl border border-gray-300 bg-white px-3 h-11 text-base text-gray-900 outline-none transition-colors duration-150 focus:border-primary focus:ring-2 focus:ring-primary-subtle placeholder:text-gray-400"
+          <WhatsappField
+            value={whatsappValue ?? ""}
+            onChange={(stored) => setValue("whatsapp", stored, { shouldDirty: true, shouldValidate: true })}
+            wrapperClassName="flex items-center rounded-xl border border-gray-300 bg-white transition-colors duration-150 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary-subtle"
+            prefixClassName="pl-3 text-base text-gray-500"
+            inputClassName="h-11 w-full bg-transparent px-2 text-base text-gray-900 outline-none placeholder:text-gray-400"
           />
-          {formattedPreview && (
-            <span className="text-xs text-gray-500">Prévia: {formattedPreview}</span>
-          )}
           {errors.whatsapp && <span className="text-sm text-error-solid">{errors.whatsapp.message}</span>}
         </div>
 
