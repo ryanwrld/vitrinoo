@@ -16,6 +16,7 @@ import { resolveVisitorId } from "@/lib/analytics/visitor-id";
 import { useOpensInNewTab } from "@/lib/ui/use-opens-in-new-tab";
 import { RichText } from "@/components/rich-text";
 import { parseRichText } from "@/lib/rich-text/document";
+import { DescriptionAutoFit } from "./description-auto-fit";
 import { ImageWithFallback } from "../image-with-fallback";
 import { FavoriteButton } from "../favorite-button";
 
@@ -245,7 +246,7 @@ export function ProductOrderPanel({
   const descriptionDoc = parseRichText(product.description);
 
   const gallery = (
-    <div className={cn("flex flex-col gap-2", isModal && "md:w-1/2 md:shrink-0")}>
+    <div data-panel-gallery className={cn("flex flex-col gap-2", isModal && "md:w-1/2 md:shrink-0")}>
       <div
         ref={galleryRef}
         onScroll={handleGalleryScroll}
@@ -317,8 +318,15 @@ export function ProductOrderPanel({
           nunca pode empurrar as pílulas para baixo da dobra no celular. */}
       {descriptionDoc && (
         <div className="flex flex-col gap-2">
+          {/* O h2 fica FORA do auto-ajuste: é o rótulo da seção e precisa
+              manter o mesmo tamanho de "Escolha o tamanho". Só o conteúdo
+              encolhe quando precisa caber ao lado da foto. */}
           <h2 className="text-sm font-semibold text-gray-900">Descrição</h2>
-          <RichText doc={descriptionDoc} className="text-gray-600" />
+          {isModal ? (
+            <DescriptionAutoFit doc={descriptionDoc} />
+          ) : (
+            <RichText doc={descriptionDoc} className="text-gray-600" />
+          )}
         </div>
       )}
     </div>
@@ -334,7 +342,10 @@ export function ProductOrderPanel({
       )}
 
       {isModal ? (
-        <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto overscroll-contain p-4 md:flex-row md:gap-6">
+        <div
+          data-panel-row
+          className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto overscroll-contain p-4 md:flex-row md:gap-6"
+        >
           {gallery}
           {details}
         </div>

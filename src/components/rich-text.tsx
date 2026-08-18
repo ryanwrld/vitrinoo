@@ -69,9 +69,12 @@ function renderBlock(block: RichTextBlock, key: number): ReactNode {
         key={key}
         className={[
           "font-display text-gray-900",
+          /* Tamanhos em `em`, não em passos fixos do Tailwind: o container
+             define UM font-size e todo o bloco escala junto quando o
+             auto-ajuste do popup entra em ação (ver DescriptionAutoFit). */
           block.attrs.level === 2
-            ? "mt-1 text-base font-bold"
-            : "mt-1 text-xs font-bold uppercase tracking-wide",
+            ? "mt-1 text-[1.14em] font-bold"
+            : "mt-1 text-[0.86em] font-bold uppercase tracking-wide",
           align,
         ]
           .filter(Boolean)
@@ -94,7 +97,18 @@ function renderBlock(block: RichTextBlock, key: number): ReactNode {
   );
 }
 
-export function RichText({ doc, className }: { doc: RichTextDoc; className?: string }) {
+export function RichText({
+  doc,
+  className,
+  fontSize,
+}: {
+  doc: RichTextDoc;
+  className?: string;
+  /** Tamanho base em px. Omitido = 14px (o `text-sm` do painel). O popup
+   * passa um valor menor quando precisa encaixar a descrição ao lado da
+   * foto — ver `DescriptionAutoFit`. */
+  fontSize?: number;
+}) {
   return (
     /* `overflow-wrap: anywhere` (não `break-word`): o texto vem do revendedor e
        pode conter uma "palavra" gigante sem espaço (link colado, "kkkkkk…").
@@ -103,7 +117,8 @@ export function RichText({ doc, className }: { doc: RichTextDoc; className?: str
        `break-word` não resolve: ele quebra a palavra mas não encolhe o
        min-content, então a caixa continua esticando. */
     <div
-      className={["flex min-w-0 flex-col gap-2 text-sm leading-relaxed [overflow-wrap:anywhere]", className]
+      style={{ fontSize: `${fontSize ?? 14}px` }}
+      className={["flex min-w-0 flex-col gap-2 leading-relaxed [overflow-wrap:anywhere]", className]
         .filter(Boolean)
         .join(" ")}
     >
