@@ -351,24 +351,25 @@ export function ProductForm({ header, defaultValues, productId, status, initialP
               </div>
             </div>
 
-            {/* Botões de ação — largura da coluna esquerda no desktop. */}
-            <div className="flex flex-col gap-3 sm:flex-row lg:max-w-[calc(50%-0.75rem)]">
+            {/* Botões de ação — mesmo padrão visual do rodapé de
+                Configurações da loja (`settings-form.tsx`): largura total só
+                no mobile (`w-full sm:w-auto` em vez de `flex-1`, que sempre
+                esticava o primário) e o mesmo efeito de "levantar" no hover
+                (`shadow-sm` + `hover:-translate-y-0.5 hover:shadow`) no
+                primário. Diferente de Configurações (que alinha à direita,
+                `sm:justify-end`): aqui esta faixa é full-width e não termina
+                colada em nenhum outro elemento à direita, então o par fica
+                CENTRALIZADO (`sm:justify-center`) em vez de ancorado numa
+                borda. */}
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-center">
               {currentStatus === "published" ? (
                 <>
-                  <button
-                    type="submit"
-                    onClick={() => { submitIntentRef.current = "save"; }}
-                    disabled={isPending}
-                    className="flex-1 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-primary-hover active:bg-primary-active active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:bg-gray-100 disabled:text-gray-400 disabled:pointer-events-none dark:disabled:bg-gray-800 dark:disabled:text-gray-600"
-                  >
-                    {isPending ? "Salvando…" : "Salvar alterações"}
-                  </button>
                   {isDirty ? (
                     <button
                       type="button"
                       onClick={handleRevert}
                       disabled={isPending}
-                      className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700"
+                      className="w-full sm:w-auto rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700"
                     >
                       Reverter alterações
                     </button>
@@ -377,33 +378,41 @@ export function ProductForm({ header, defaultValues, productId, status, initialP
                       type="button"
                       onClick={handleUnpublish}
                       disabled={isPublishPending}
-                      className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700"
+                      className="w-full sm:w-auto rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700"
                     >
                       {isPublishPending ? "Salvando…" : "Rascunho"}
                     </button>
                   )}
+                  <button
+                    type="submit"
+                    onClick={() => { submitIntentRef.current = "save"; }}
+                    disabled={isPending}
+                    className="w-full sm:w-auto rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow active:translate-y-0 active:bg-primary-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none dark:disabled:bg-gray-800 dark:disabled:text-gray-600"
+                  >
+                    {isPending ? "Salvando…" : "Salvar alterações"}
+                  </button>
                 </>
               ) : (
                 <>
                   <button
                     type="submit"
-                    onClick={() => { submitIntentRef.current = "publish"; }}
-                    disabled={isPending}
-                    className="flex-1 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-primary-hover active:bg-primary-active active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:bg-gray-100 disabled:text-gray-400 disabled:pointer-events-none dark:disabled:bg-gray-800 dark:disabled:text-gray-600"
-                  >
-                    {isPending && submitIntentRef.current === "publish" ? "Publicando…" : "Publicar"}
-                  </button>
-                  <button
-                    type="submit"
                     onClick={() => { submitIntentRef.current = productId ? "save" : "draft"; }}
                     disabled={isPending}
-                    className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700"
+                    className="w-full sm:w-auto rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700"
                   >
                     {isPending && submitIntentRef.current !== "publish"
                       ? "Salvando…"
                       : productId
                         ? "Salvar"
                         : "Rascunho"}
+                  </button>
+                  <button
+                    type="submit"
+                    onClick={() => { submitIntentRef.current = "publish"; }}
+                    disabled={isPending}
+                    className="w-full sm:w-auto rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow active:translate-y-0 active:bg-primary-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none dark:disabled:bg-gray-800 dark:disabled:text-gray-600"
+                  >
+                    {isPending && submitIntentRef.current === "publish" ? "Publicando…" : "Publicar"}
                   </button>
                 </>
               )}
