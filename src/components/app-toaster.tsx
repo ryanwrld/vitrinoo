@@ -33,8 +33,26 @@ export function AppToaster() {
           // passa a caber no conteúdo em vez de quebrar linha; `max-w-[90vw]`
           // é só uma rede de segurança pra uma mensagem absurdamente longa
           // não vazar da tela numa viewport bem estreita.
+          //
+          // `left-0 right-0 mx-auto` (sem `!`): sem isso o toast ficava
+          // visualmente fora do centro. O `<li>` do sonner é
+          // `position: absolute` sem `left` próprio — ele só "parece"
+          // centralizado porque, por padrão, tem `width: var(--width)`
+          // (356px) IGUAL ao `<ol>` pai já centralizado, preenchendo-o por
+          // inteiro. Ao encolher a largura com `!w-max`, o `<li>` passou a
+          // ocupar só ~155px colado na borda ESQUERDA desses 356px —
+          // sobrando ~200px de vão vazio à direita, um desalinhamento de
+          // ~100px em relação ao centro real da tela.
+          // `left:0` + `right:0` + `margin-inline:auto` centraliza um
+          // elemento absoluto de largura desconhecida dentro do pai, sem
+          // tocar `transform` (que o sonner usa, via JS, para a animação de
+          // entrada/saída e para empilhar toasts simultâneos verticalmente —
+          // sobrescrever `transform` aqui quebraria isso). SEM `!`: o sonner
+          // não define `left`/`right`/margem nenhuma para a posição
+          // "center" (só para os gatilhos `left`/`right`), então não há
+          // nada pra vencer — `!important` aqui seria só ruído.
           toast:
-            "notification-glow-border !w-max !max-w-[90vw] !rounded-3xl !border-0 !bg-transparent !shadow-[0_25px_50px_-12px_rgba(3,8,33,0.16),0_0_0_1px_rgba(3,8,33,0.06)] backdrop-blur-xl backdrop-saturate-75" +
+            "notification-glow-border !w-max !max-w-[90vw] left-0 right-0 mx-auto !rounded-3xl !border-0 !bg-transparent !shadow-[0_25px_50px_-12px_rgba(3,8,33,0.16),0_0_0_1px_rgba(3,8,33,0.06)] backdrop-blur-xl backdrop-saturate-75" +
             (isDark ? " !shadow-[0_25px_50px_-12px_rgba(0,0,0,0.55)]" : ""),
           title: (isDark ? "!text-gray-50" : "!text-gray-900") + " !whitespace-nowrap",
           description: (isDark ? "!text-gray-400" : "!text-gray-600") + " !whitespace-nowrap",
