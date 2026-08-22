@@ -73,7 +73,49 @@ export function ProductModal({ children }: { children: ReactNode }) {
         // Cliques dentro do card nunca devem borbulhar até o overlay e
         // fechar o modal no meio da escolha de tamanho.
         onClick={(event) => event.stopPropagation()}
-        className="relative flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-[2rem] bg-white shadow-xl outline-none md:max-h-[88dvh] md:rounded-[2rem] lg:max-w-4xl xl:max-w-5xl"
+        // `md:max-h-[552px]` — SÓ desktop, decisão do usuário (2026-08-20/
+        // 21). `px` fixo não escala com a tela (ao contrário de `dvh`, que
+        // num monitor grande de verdade dá folga de sobra e deixa a
+        // descrição inteira caber em vez de cortar). Valor calibrado junto
+        // com a largura da foto (`md:w-1/2`, product-order-panel.tsx — a
+        // foto é quadrada, então largura ≈ altura): 24px de padding-top do
+        // painel + ~488px de foto + margem. Os +12px por cima do que a
+        // conta fechava (540px) são de propósito — produto SEM descrição
+        // media 543px de conteúdo real contra um teto de 540px (folga do
+        // `aspect-square`/flex fica 3-7px "solta" por arredondamento de
+        // sub-pixel), e o `overflow-y-auto` do painel, corretíssimo,
+        // liberava scroll por causa desses poucos pixels — sem NENHUM
+        // motivo real pro usuário rolar (2026-08-21: "scroll só quando
+        // tiver elemento que precise, senão desativado"). Com folga, esse
+        // caso fecha sem sobra nenhuma; a descrição longa continua exigindo
+        // rolagem normalmente, o comportamento CONDICIONAL de sempre do
+        // `overflow-y-auto` (never `overflow-y-scroll`) — mostra a barra
+        // SÓ quando o conteúdo realmente excede, nunca por padrão. Acima
+        // do teto, a descrição nunca aparece sem rolar, em
+        // NENHUM tamanho de monitor — a rolagem que já existe dentro do
+        // painel (`product-order-panel.tsx`, overflow-y-auto) cobre o
+        // resto, sem segunda barra. Mobile (`max-h-[92dvh]`, sem `md:`)
+        // não muda.
+        //
+        // `min-[1280px]:max-[1599px]:max-w-[950px] min-[1600px]:max-w-5xl`
+        // — decisão do usuário (2026-08-20): notebooks reais (MacBook
+        // 1470×956 e parecidos, faixa 1280-1599px) caíam no MESMO
+        // `xl:max-w-5xl` (1024px) que um monitor 4K de verdade — o popup
+        // ficava do tamanho de monitor grande dentro de uma tela de
+        // notebook. Faixa nova só pra esse intervalo, um pouco menor
+        // (950px, ~439px de foto em vez de ~481px); monitores grandes de
+        // verdade (≥1600px) continuam no `max-w-5xl` de sempre, sem
+        // mudança nenhuma. TODAS as faixas de largura usam
+        // `min-[...]:max-[...]:` arbitrário, nunca `lg:`/`xl:` nomeado
+        // junto: são intervalos SEM sobreposição, então a ordem de
+        // geração do CSS do Tailwind não pode causar a regra errada
+        // ganhando a cascata. Descobri isso na prática, testando ao vivo:
+        // o Tailwind sempre põe breakpoints NOMEADOS (`lg:`, `xl:`) DEPOIS
+        // dos arbitrários no arquivo gerado, não importa o valor em px —
+        // `lg:max-w-4xl` (sem teto superior) vencia em TODAS as larguras
+        // acima de 1024px, até nas faixas que deviam usar 950px ou
+        // max-w-5xl. Convertendo TUDO pra arbitrário isso some.
+        className="relative flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-[2rem] bg-white shadow-xl outline-none md:max-h-[552px] md:rounded-[2rem] min-[1024px]:max-[1279px]:max-w-4xl min-[1280px]:max-[1599px]:max-w-[950px] min-[1600px]:max-w-5xl"
       >
         <button
           type="button"

@@ -231,6 +231,28 @@ html.dark:has(.admin-scope) {
 }
 
 /*
+ * Scrollbar nativa escondida no popup de produto (SÓ desktop — o `md:max-
+ * h-[490px]` fixo em `product-modal.tsx` corta o card antes da descrição,
+ * decisão do usuário 2026-08-20; sem esconder a barra, o corte fica com uma
+ * trilha de scrollbar visível na lateral, o que quebra a ilusão de "o card
+ * termina aqui" que era o objetivo). Mesmo truque de sempre — o scroll em
+ * si continua funcionando normal (roda do mouse, trackpad, teclado), só o
+ * indicador visual some. Configurações de SO com "sempre mostrar barra de
+ * rolagem" (em vez de overlay automática) são exatamente o caso que motivou
+ * isto — sem esse ajuste, a trilha fica sempre visível ali, não só ao
+ * rolar.
+ */
+@media (min-width: 768px) {
+  .product-panel-scroll {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .product-panel-scroll::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/*
  * Autofill do navegador (credencial salva, ex.: login/e-mail) pinta o
  * próprio fundo do <input> por cima de qualquer `background-color` do site
  * — nenhum `bg-white`/`dark:bg-gray-900` sozinho vence essa pintura nativa

@@ -7,11 +7,11 @@ import type { ProductOrderPanelProps } from "./product-order-panel";
 
 /**
  * Resolução compartilhada dos dados de detalhe do produto — consumida
- * IGUALMENTE pela página cheia (`[produto]/page.tsx`, acesso direto/OG/
- * compartilhamento) e pelo modal interceptado (`@modal/(.)[produto]/
- * page.tsx`, navegação a partir do grid). Uma única fonte garante que o
- * modal nunca divirja da página em guard de visibilidade, template de
- * mensagem ou URL do produto.
+ * IGUALMENTE por `generateMetadata` e pelo corpo de `/[slug]/page.tsx`
+ * (popup `?produto=<id>` sobre o grid, único caminho de detalhe do produto
+ * hoje — `[produto]/page.tsx` é só um redirect pra links antigos). Uma
+ * única fonte garante que os dois nunca divirjam em guard de visibilidade,
+ * template de mensagem ou URL do produto.
  *
  * Retorna `null` em dois casos distintos, sinalizados por `reason`:
  * - "store": o slug não existe → chamador usa notFound()
@@ -31,7 +31,7 @@ export async function loadProductDetail(slug: string, produto: string): Promise<
 
   const { data: store, error: storeError } = await supabase
     .from("stores")
-    .select("id, name, slug, hide_sold_out_default")
+    .select("id, name, slug, hide_sold_out_default, accent_color")
     .eq("slug", slug)
     .single();
 
@@ -77,6 +77,7 @@ export async function loadProductDetail(slug: string, produto: string): Promise<
       productId: detail.id,
       slug,
       productUrl: buildProductUrl(slug, detail.id),
+      accentColor: store.accent_color ?? "#000000",
     },
   };
 }
