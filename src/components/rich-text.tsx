@@ -118,7 +118,7 @@ export function RichText({
        min-content, então a caixa continua esticando. */
     <div
       style={{ fontSize: `${fontSize ?? 14}px` }}
-      className={["flex min-w-0 flex-col gap-2 leading-relaxed [overflow-wrap:anywhere]", className]
+      className={["flex min-w-0 flex-col gap-2 leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere]", className]
         .filter(Boolean)
         .join(" ")}
     >
