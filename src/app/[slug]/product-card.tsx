@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
-import { PriceDisplay } from "@/components/price-display";
+import { PriceDisplay, calculateDiscountPercent } from "@/components/price-display";
 import { ImageWithFallback } from "./image-with-fallback";
 import { FavoriteButton } from "./favorite-button";
 
@@ -51,6 +51,7 @@ export function ProductCard({
 }) {
   const params = new URLSearchParams(query);
   params.set("produto", product.id);
+  const discountPct = calculateDiscountPercent(product.price, product.promotional_price);
 
   return (
     <Link
@@ -68,13 +69,23 @@ export function ProductCard({
           alt={product.name}
           sizes="(min-width: 1600px) 190px, (min-width: 1280px) 12.5vw, (min-width: 1024px) 16.6vw, (min-width: 768px) 20vw, (min-width: 640px) 25vw, 33vw"
         />
-        <FavoriteButton
-          slug={slug}
-          productId={product.id}
-          productName={product.name}
-          variant="overlay"
-          className="absolute right-2 top-2 z-10"
-        />
+        {/* Linha única em flex, não dois `absolute top-2` separados: o selo
+            (~18px de altura) e o coração (28px, h-7) têm alturas
+            diferentes — com `top-2` cada um alinhava pela BORDA superior,
+            então o selo, mais baixo, sobrava mais alto que o centro do
+            coração (reportado pelo usuário). `items-center` nesta linha
+            centraliza os dois na mesma altura, seja qual for a caixa de
+            cada um. */}
+        <div className="absolute inset-x-2 top-2 z-10 flex items-center justify-between">
+          {discountPct !== null ? (
+            <span className="inline-flex items-center rounded-md bg-[#00D864] px-1.5 py-0.5 text-[10px] font-bold text-white">
+              -{discountPct}%
+            </span>
+          ) : (
+            <span />
+          )}
+          <FavoriteButton slug={slug} productId={product.id} productName={product.name} variant="overlay" />
+        </div>
       </div>
 
       {/* Nome, preço e disponibilidade — a linha "marca · linha" saiu (decisão
