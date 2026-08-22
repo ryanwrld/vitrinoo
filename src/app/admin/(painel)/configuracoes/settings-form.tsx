@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import { ChevronDown, Paintbrush, MessageCircle, SlidersHorizontal, Eye, Link as LinkIcon } from "lucide-react";
 import { onboardingSchema, type OnboardingInput } from "@/lib/validation/onboarding";
 import { saveStoreSettings, updateStoreSlug } from "@/lib/settings/actions";
-import { getContrastTextColor } from "@/lib/color/contrast";
 import { buildCoverGradient } from "@/lib/color/cover-gradient";
 import { measureImageRatio, resolveCoverRatio } from "@/lib/store/cover-ratio";
 import { resolveCoverFrame, type CoverFrame } from "@/lib/store/cover-frame";
@@ -18,6 +17,7 @@ import { useSlugField } from "@/lib/slug/use-slug-field";
 import { SlugFieldProvider } from "./slug-field-context";
 import { SlugEditor } from "./slug-editor";
 import { QrCodePanel } from "./qr-code-panel";
+import { VitrinePreviewDialog } from "./vitrine-preview-dialog";
 import { WhatsappField } from "@/components/whatsapp-field";
 
 /**
@@ -142,6 +142,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
   const whatsappValue = watch("whatsapp");
   const taglineValue = watch("tagline") ?? "";
   const nameValue = watch("name");
+  const instagramValue = watch("instagram") ?? "";
   const accentColorValue = watch("accentColor") || "#0D21A1";
   const { ref: accentColorRef, ...accentColorField } = register("accentColor");
   const heroLogoUrl = logoPreviewUrl ?? store.logoUrl;
@@ -149,11 +150,6 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
   // remoção no meio, clicar em "Usar o gradiente" não mudaria nada na tela
   // até salvar, e o revendedor clicaria de novo achando que falhou.
   const coverPreview = coverPreviewUrl ?? (coverRemoved ? null : store.coverUrl);
-  // Mesma função usada em store-hero.tsx (a vitrine REAL) — a prévia usa a
-  // lógica exata de contraste, não uma aproximação, senão ela pode mostrar
-  // uma combinação legível aqui e ilegível na vitrine de verdade.
-  const heroIsDarkText = getContrastTextColor(accentColorValue) === "dark";
-
   // --- Campo "Slug" -------------------------------------------------------
   // Mora aqui, e não mais no `SlugEditor`, porque quem salva o slug agora é o
   // botão "Salvar alterações" deste formulário. O `SlugEditor` virou só a
@@ -372,55 +368,25 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
           </button>
         </div>
 
-        <dialog
-          ref={previewDialogRef}
-          className="dialog-modal m-auto w-full max-w-xs rounded-[2rem] bg-white p-6 shadow-lg backdrop:bg-black/45 backdrop:backdrop-blur-[2px] dark:bg-gray-900"
-        >
-          <div className="flex flex-col gap-4">
-            <h3 className="font-display text-sm font-bold text-gray-900 dark:text-gray-50">
-              Assim fica o topo da sua vitrine
-            </h3>
-
-            {/* Mesma composição de store-hero.tsx (fundo = accentColor, logo
-                circular, nome, frase), inclusive a MESMA função de contraste
-                (getContrastTextColor) — não uma aproximação. Reflete o estado
-                ATUAL do formulário (via watch), incluindo o que ainda não foi
-                salvo. */}
-            <div
-              style={{ backgroundColor: accentColorValue }}
-              className={`flex flex-col items-center gap-2 rounded-lg px-4 py-6 text-center ${
-                heroIsDarkText ? "text-gray-900" : "text-white"
-              }`}
-            >
-              <div
-                className={`relative h-12 w-12 overflow-hidden rounded-full ${
-                  heroIsDarkText ? "bg-black/10" : "bg-white/20"
-                }`}
-              >
-                {heroLogoUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element -- prévia local/já salva, mesma justificativa do avatar abaixo
-                  <img src={heroLogoUrl} alt="" className="h-full w-full object-cover" />
-                )}
-              </div>
-              <span className="font-display text-base font-extrabold tracking-tight">
-                {nameValue || "Nome da loja"}
-              </span>
-              {taglineValue && (
-                <span className={`max-w-xs text-xs ${heroIsDarkText ? "text-gray-900/85" : "text-white/85"}`}>
-                  {taglineValue}
-                </span>
-              )}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => previewDialogRef.current?.close()}
-              className="self-end rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700"
-            >
-              Fechar
-            </button>
-          </div>
-        </dialog>
+        {/* A prévia é o `StoreHero` de verdade, não um markup paralelo — ver
+            vitrine-preview-dialog.tsx. Os campos vêm do estado ATUAL do
+            formulário (via `watch`), então o que ainda não foi salvo já
+            aparece. Os três números do rodapé do cabeçalho saem como tarjas
+            (`censorStats`), sem nenhuma leitura de catálogo por trás. */}
+        <VitrinePreviewDialog
+          dialogRef={previewDialogRef}
+          store={{
+            name: nameValue || "Nome da loja",
+            slug: slug || currentSlug,
+            logoUrl: heroLogoUrl,
+            coverUrl: coverPreview,
+            accentColor: accentColorValue,
+            tagline: taglineValue || null,
+            instagram: instagramValue || null,
+            coverFrame,
+            timezone: null,
+          }}
+        />
 
         {/* Linha de upload: logo e banner lado a lado, os dois arquivos da
             identidade visual no mesmo lugar. */}

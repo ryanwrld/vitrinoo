@@ -850,3 +850,51 @@ input:autofill {
     animation: slide-left 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 }
+
+/*
+ * Alternância computador ↔ celular da prévia da vitrine (Configurações →
+ * Identidade visual → ícone do olho).
+ *
+ * A troca de modo muda a LARGURA do diálogo (1120px no computador, 460px no
+ * celular). Sem transição, ele salta de um valor para o outro e a prévia lê
+ * como duas telas diferentes piscando no lugar uma da outra; com a largura
+ * animada, é o MESMO cartão se estreitando — que é o que a alternância
+ * realmente significa.
+ *
+ * Mesma CURVA da gaveta "Ordenar por" da vitrine pública (`--vt-drawer-ease`,
+ * ver `animate-sort-drawer-down` acima) — são dois lugares onde uma caixa
+ * cresce e encolhe, e curvas diferentes para o mesmo gesto fazem o produto
+ * parecer montado por pessoas que nunca se falaram.
+ *
+ * A DURAÇÃO, porém, é maior aqui (440ms contra os 260ms da gaveta), por
+ * decisão do usuário. Faz sentido: a gaveta abre uma lista de quatro opções
+ * e o olho já sabe o que vai encontrar, enquanto isto reconstrói a vitrine
+ * inteira num enquadramento diferente — a 260ms o resultado aparecia antes
+ * de dar tempo de acompanhar a mudança.
+ *
+ * SÓ NO DESKTOP: a classe é aplicada apenas quando a janela tem 1024px ou
+ * mais (ver `isWideScreen` em vitrine-preview-dialog.tsx). Num celular os
+ * dois modos ocupam quase a mesma largura — animar ali seria movimento sem
+ * informação, num aparelho onde ele custa mais caro.
+ */
+/*
+ * O seletor precisa casar `.dialog-modal[open]` (classe + atributo) porque é
+ * essa regra que já declara a transição de entrada do diálogo — uma regra só
+ * de classe perderia por especificidade e a largura voltaria a saltar. Por
+ * isso a lista repete opacity/transform/overlay/display: `transition` é
+ * atalho, e declarar só `width` aqui APAGARIA a animação de abertura.
+ */
+.dialog-modal[open].vt-preview-resize {
+  transition:
+    opacity 220ms cubic-bezier(0.2, 0, 0, 1),
+    transform 220ms cubic-bezier(0.2, 0, 0, 1),
+    overlay 220ms allow-discrete,
+    display 220ms allow-discrete,
+    width 440ms var(--vt-drawer-ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog-modal[open].vt-preview-resize {
+    transition: none;
+  }
+}

@@ -57,6 +57,17 @@ export type StoreHeroStats = {
  * ser qualquer coisa (amarelo-limão, rosa-choque, branco) sem nunca decidir
  * se um texto é legível.
  *
+ * BREAKPOINTS DE CONTAINER, NÃO DE JANELA
+ *
+ * Todo prefixo responsivo aqui é `@min-[…]`/`@max-[…]` sobre o `@container`
+ * do próprio `<header>`, e não o `sm:`/`lg:` de sempre. Na vitrine pública
+ * não muda nada — o cabeçalho ocupa a largura inteira da janela, então os
+ * dois critérios dão o mesmo resultado nos mesmos 640/768/1024/1280/1536px.
+ * A diferença aparece na PRÉVIA do painel: lá o hero é desenhado dentro de
+ * uma moldura de 390px numa janela de desktop, e com breakpoint de janela
+ * ele mostrava tipografia e avatar de desktop espremidos numa coluna de
+ * celular — ou seja, um enquadramento que nenhum cliente jamais veria.
+ *
  * RITMO DE ESPAÇAMENTO
  *
  * Um valor por degrau, sem exceção: `gap-1` dentro de um par (nome/@),
@@ -65,10 +76,28 @@ export type StoreHeroStats = {
  * único negativo aqui é o do avatar, que precisa atravessar a emenda com a
  * capa.
  */
-export function StoreHero({ store, stats }: { store: StoreHeroData; stats: StoreHeroStats }) {
+export function StoreHero({
+  store,
+  stats,
+  censorStats = false,
+}: {
+  store: StoreHeroData;
+  stats: StoreHeroStats;
+  /**
+   * Só a prévia do painel usa isto. Os três números da linha de baixo
+   * (quantos modelos, a partir de quanto, quando foi atualizado) falam de
+   * ESTOQUE, e a prévia existe para conferir IDENTIDADE VISUAL — capa,
+   * avatar, nome, selo, @, Instagram e frase, que continuam exatamente
+   * iguais à vitrine pública porque é o MESMO componente. Cada valor vira
+   * uma tarja cinza do tamanho aproximado do texto real, para a linha
+   * manter o ritmo que vai ter na vitrine; os RÓTULOS ficam, senão a tarja
+   * não diz o que está escondendo.
+   */
+  censorStats?: boolean;
+}) {
   const accent = store.accentColor ?? "#0D21A1";
   const freshness = formatStoreFreshness(stats.lastUpdatedAt, store.timezone);
-  // `sm:h-auto` na classe + estes estilos: no celular a altura fixa de 128px
+  // `@min-[640px]:h-auto` na classe + estes estilos: no celular a altura fixa de 128px
   // continua valendo (`h-32`), e a proporção/limite só entram a partir de
   // `sm`. Como os estilos inline não têm breakpoint, o `aspect-ratio` é
   // inofensivo no celular — lá `h-32` já define a altura e vence.
@@ -78,25 +107,44 @@ export function StoreHero({ store, stats }: { store: StoreHeroData; stats: Store
   // Os três números são condicionais e independentes. Loja recém-criada não
   // deve anunciar "0 modelos" nem "a partir de R$ 0" — número ruim em vitrine
   // nova destrói mais confiança do que a ausência dele.
-  const statItems: { value: string; label: string }[] = [];
-  if (stats.modelCount > 0) {
+  //
+  // A PRÉVIA passa pelo MESMO caminho. `censorStats` decide apenas se o VALOR
+  // é substituído por uma tarja; rótulo, ordem e largura de cada item saem
+  // daqui de qualquer forma. Uma lista paralela só para a prévia foi tentada
+  // antes e é exatamente o que deixa o painel mostrando uma vitrine que não
+  // existe mais: quem mudasse "atualizados" aqui teria de lembrar de mudar
+  // lá. Com um caminho só, um item novo já nasce aparecendo (censurado) na
+  // prévia, sem ninguém sincronizar nada.
+  //
+  // Na prévia as três condições são forçadas a passar, porque as tarjas não
+  // dependem de estoque nenhum — a tela de Configurações não consulta o
+  // catálogo para desenhar retângulos cinza.
+  const statItems: { value: string; label: string; censoredWidth: string }[] = [];
+  if (censorStats || stats.modelCount > 0) {
     statItems.push({
       value: String(stats.modelCount),
       label: stats.modelCount === 1 ? "modelo" : "modelos",
+      censoredWidth: "w-6",
     });
   }
-  if (stats.minPrice !== null) {
-    statItems.push({ value: formatBRLPrice(stats.minPrice), label: "a partir de" });
+  if (censorStats || stats.minPrice !== null) {
+    statItems.push({
+      value: stats.minPrice === null ? "" : formatBRLPrice(stats.minPrice),
+      label: "a partir de",
+      censoredWidth: "w-20",
+    });
   }
-  if (freshness) {
-    statItems.push({ value: freshness, label: "atualizado" });
+  if (censorStats || freshness) {
+    // Plural por decisão do usuário, aqui e na prévia — mesmo o rótulo vindo
+    // logo depois de uma data ("ontem atualizados").
+    statItems.push({ value: freshness ?? "", label: "atualizados", censoredWidth: "w-14" });
   }
 
   const actionButtonClass =
     "flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700 transition-colors duration-150 hover:border-gray-400 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60";
 
   return (
-    <header className="w-full border-b border-gray-200 bg-white">
+    <header className="@container w-full border-b border-gray-200 bg-white">
       {/* CAPA
           ----
           A caixa ocupa a largura inteira da tela e tem a PROPORÇÃO DA IMAGEM
@@ -133,7 +181,7 @@ export function StoreHero({ store, stats }: { store: StoreHeroData; stats: Store
           camada), sumindo na metade de cima. Reintroduzir `relative` aqui
           sem necessidade real volta a quebrar isso. */}
       <div
-        className="h-32 w-full overflow-hidden sm:h-auto"
+        className="h-32 w-full overflow-hidden @min-[640px]:h-auto"
         style={{
           // A altura da faixa, o zoom e a posição vêm do EDITOR DE CAPA, não
           // mais de números fixos no código. Quem decide o que fica de fora é
@@ -157,17 +205,17 @@ export function StoreHero({ store, stats }: { store: StoreHeroData; stats: Store
         )}
       </div>
 
-      <div className="mx-auto w-full max-w-[100rem] px-4 pb-6 sm:px-6 sm:pb-7 md:px-12 lg:px-20 xl:px-24 2xl:px-28">
+      <div className="mx-auto w-full max-w-[100rem] px-4 pb-6 @min-[640px]:px-6 @min-[640px]:pb-7 @min-[768px]:px-12 @min-[1024px]:px-20 @min-[1280px]:px-24 @min-[1536px]:px-28">
         {/* Avatar e ações na MESMA linha, alinhados pela BASE (`items-end`).
             Antes as ações flutuavam no topo do bloco sem se alinhar a
             elemento nenhum — a borda inferior do avatar dá a elas uma linha
             de apoio real. O negativo aqui é o único do componente: é ele que
             faz o avatar subir sobre a capa. */}
-        <div className="-mt-10 flex items-end justify-between gap-4 sm:-mt-12 lg:-mt-14">
+        <div className="-mt-10 flex items-end justify-between gap-4 @min-[640px]:-mt-12 @min-[1024px]:-mt-14">
           {/* Anel branco: separa o avatar da capa sem depender da cor dela —
               um anel colorido sumiria contra uma capa da mesma família. */}
           <div className="shrink-0 rounded-full bg-white p-1 shadow-sm">
-            <div className="relative h-20 w-20 overflow-hidden rounded-full bg-gray-100 sm:h-24 sm:w-24 lg:h-28 lg:w-28">
+            <div className="relative h-20 w-20 overflow-hidden rounded-full bg-gray-100 @min-[640px]:h-24 @min-[640px]:w-24 @min-[1024px]:h-28 @min-[1024px]:w-28">
               <ImageWithFallback src={store.logoUrl} alt={store.name} />
             </div>
           </div>
@@ -175,7 +223,7 @@ export function StoreHero({ store, stats }: { store: StoreHeroData; stats: Store
           {/* `pb-1` compensa exatamente o `p-1` do anel do avatar, para as
               duas bases caírem na mesma linha ótica.
 
-              `max-md:translate-y-2`: no mobile a capa termina a 128px e estes
+              `@max-[768px]:translate-y-2`: no mobile a capa termina a 128px e estes
               botões começavam a 132px — 4px de folga, que a olho nu lê como
               se estivessem encostados/vazando no banner escuro. O avatar pode
               invadir a capa (é o desenho), mas eles não: são controles, não
@@ -186,7 +234,7 @@ export function StoreHero({ store, stats }: { store: StoreHeroData; stats: Store
               `translate` e não margem/padding de propósito: transform não
               reflui o layout, então nada abaixo (nome da loja, @, stats) se
               desloca por causa deste ajuste. */}
-          <div className="flex shrink-0 items-center gap-2 pb-1 max-md:translate-y-2">
+          <div className="flex shrink-0 items-center gap-2 pb-1 @max-[768px]:translate-y-2">
             <QrCodeButton
               url={buildStoreUrl(store.slug)}
               storeName={store.name}
@@ -204,13 +252,13 @@ export function StoreHero({ store, stats }: { store: StoreHeroData; stats: Store
         </div>
 
         <div className="mt-4 flex flex-col gap-1">
-          <h1 className="flex items-center gap-1.5 font-display text-xl font-extrabold tracking-tight text-gray-900 sm:text-2xl lg:text-3xl">
+          <h1 className="flex items-center gap-1.5 font-display text-xl font-extrabold tracking-tight text-gray-900 @min-[640px]:text-2xl @min-[1024px]:text-3xl">
             {store.name}
             {/* Selo de verificado — vale pra TODA loja publicada (decisão do
                 usuário), não condicionado a nenhum campo de "verificação"
                 real no banco; é puramente visual/confiança de marca. */}
             <BadgeCheck
-              className="relative top-[2px] h-[22px] w-[22px] shrink-0 sm:top-[3px] sm:h-6 sm:w-6 lg:top-1 lg:h-7 lg:w-7"
+              className="relative top-[2px] h-[22px] w-[22px] shrink-0 @min-[640px]:top-[3px] @min-[640px]:h-6 @min-[640px]:w-6 @min-[1024px]:top-1 @min-[1024px]:h-7 @min-[1024px]:w-7"
               style={{ fill: "#1DA1F2", color: "white" }}
               aria-label="Loja verificada"
             />
@@ -236,7 +284,7 @@ export function StoreHero({ store, stats }: { store: StoreHeroData; stats: Store
           // Teto de 2 linhas com reticências. Sem ele uma frase longa empurra
           // o primeiro produto para fora da dobra no celular — e a frase de
           // apresentação não vale o catálogo inteiro.
-          <p className="mt-2 line-clamp-2 max-w-2xl text-sm leading-relaxed text-gray-600 sm:text-base">
+          <p className="mt-2 line-clamp-2 max-w-2xl text-sm leading-relaxed text-gray-600 @min-[640px]:text-base">
             {store.tagline}
           </p>
         )}
@@ -250,9 +298,21 @@ export function StoreHero({ store, stats }: { store: StoreHeroData; stats: Store
             {statItems.map((item) => (
               <div
                 key={item.label}
-                className="flex flex-col items-start sm:flex-row sm:items-baseline sm:gap-1.5"
+                className="flex flex-col items-start @min-[640px]:flex-row @min-[640px]:items-baseline @min-[640px]:gap-1.5"
               >
-                <dd className="text-sm font-bold text-gray-900 sm:text-base">{item.value}</dd>
+                <dd className="text-sm font-bold text-gray-900 @min-[640px]:text-base">
+                  {censorStats ? (
+                    // Tarja, não asteriscos: mantém a LARGURA do texto real na
+                    // linha, então a prévia mostra o mesmo ritmo de espaçamento
+                    // que a vitrine vai ter de verdade.
+                    <span
+                      aria-label="número oculto na prévia"
+                      className={`inline-block h-4 translate-y-[1px] rounded bg-gray-300 @min-[640px]:h-[18px] ${item.censoredWidth}`}
+                    />
+                  ) : (
+                    item.value
+                  )}
+                </dd>
                 <dt className="text-sm text-gray-500">{item.label}</dt>
               </div>
             ))}
