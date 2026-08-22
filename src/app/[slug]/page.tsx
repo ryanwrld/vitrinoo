@@ -1,9 +1,14 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { resolveCoverFrame } from "@/lib/store/cover-frame";
 import { queryPublicProducts, resolveSort } from "@/lib/products/public-list";
+import { queryPublicProductDetail } from "@/lib/products/public-detail";
 import { parseFavoriteIds } from "@/lib/products/public-favorites";
 import { queryStorefrontProfile, EMPTY_PROFILE } from "@/lib/store/storefront-profile";
+import { getProductImagePublicUrl } from "@/lib/storage/product-image-url";
+import { buildProductUrl } from "@/lib/slug/store-url";
+import { formatBRLPrice } from "@/lib/currency/brl";
 import { EmptyState } from "@/components/empty-state";
 import { StoreHero } from "./store-hero";
 import { ProductGrid } from "./product-grid";
@@ -68,6 +73,51 @@ type PageProps = {
 function toArray(value: string | string[] | undefined): string[] {
   if (!value) return [];
   return Array.isArray(value) ? value : [value];
+}
+
+/**
+ * Open Graph do produto (título/descrição/imagem) quando `?produto=` está
+ * presente — mesma lógica que antes vivia em `[produto]/page.tsx`, movida
+ * pra cá porque o popup sobre o grid é o único lugar onde o produto é
+ * exibido agora (`buildProductUrl`, store-url.ts, aponta pra esta URL).
+ * Sem `?produto=`, cai no metadata padrão da vitrine (layout.tsx/default).
+ * Falha silenciosa (sem metadata) se loja/produto não existem — o corpo da
+ * página já resolve o 404 correto nesse caso; generateMetadata só precisa
+ * não quebrar o build.
+ */
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const sp = await searchParams;
+  if (!sp.produto) return {};
+
+  const supabase = await createClient();
+
+  const { data: store } = await supabase
+    .from("stores")
+    .select("id, hide_sold_out_default")
+    .eq("slug", slug)
+    .single();
+
+  if (!store) return {};
+
+  const detail = await queryPublicProductDetail(supabase, store.id, sp.produto, store.hide_sold_out_default);
+  if (!detail) return {};
+
+  const coverPhoto = detail.photos[0];
+  const coverUrl = coverPhoto ? getProductImagePublicUrl(supabase, coverPhoto.storage_path) : null;
+  const title = detail.line ? `${detail.name} - ${detail.line}` : detail.name;
+  const description = `${formatBRLPrice(detail.price)} — disponível no Vitrinoo`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: coverUrl ? [{ url: coverUrl }] : [],
+      url: buildProductUrl(slug, detail.id),
+    },
+  };
 }
 
 export default async function LojaPublicaPage({ params, searchParams }: PageProps) {
@@ -260,9 +310,9 @@ export default async function LojaPublicaPage({ params, searchParams }: PageProp
       {productDetail && (
         <ProductModal>
           {productDetail.ok ? (
-            <ProductOrderPanel {...productDetail.panel} variant="modal" />
+            <ProductOrderPanel {...productDetail.panel} />
           ) : (
-            <ProductNotFoundContent backHref={`/${slug}`} variant="modal" />
+            <ProductNotFoundContent backHref={`/${slug}`} />
           )}
         </ProductModal>
       )}

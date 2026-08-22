@@ -22,18 +22,21 @@ export function buildStoreUrl(slug: string): string {
 }
 
 /**
- * Constrói a URL pública completa da página de detalhe de um produto
- * (mesma base de `buildStoreUrl`). Usada como link "Foto:" da mensagem de
- * pedido do WhatsApp (05-04) em vez da URL crua do arquivo de imagem no
- * Storage — no iOS, um link `wa.me` cujo `text` termina numa URL que
- * resolve como `image/*` direto dispara o fluxo nativo de "compartilhar
- * como foto" do sistema, pulando a caixa de composição de texto inteira
- * (mensagem pré-formatada nunca chega ao revendedor). Como esta página é
- * HTML com Open Graph (`generateMetadata` em page.tsx), o WhatsApp ainda
- * gera o preview visual da foto (og:image), sem acionar esse desvio —
- * e o revendedor ganha um link de volta pro produto ao vivo, não um
- * arquivo estático.
+ * Constrói a URL pública completa do produto — a vitrine da loja com o
+ * popup do produto já aberto (`?produto=<id>` sobre `/[slug]`, mesmo
+ * mecanismo do clique num card do grid). Não existe mais uma página cheia
+ * própria: `/[slug]/[produto]` foi reduzida a um redirect pra esta mesma
+ * URL, mantido só pra links antigos já compartilhados. Usada como link
+ * "Foto:" da mensagem de pedido do WhatsApp em vez da URL crua do arquivo
+ * de imagem no Storage — no iOS, um link `wa.me` cujo `text` termina numa
+ * URL que resolve como `image/*` direto dispara o fluxo nativo de
+ * "compartilhar como foto" do sistema, pulando a caixa de composição de
+ * texto inteira (mensagem pré-formatada nunca chega ao revendedor). Como
+ * `/[slug]` é HTML com Open Graph (`generateMetadata` em page.tsx, também
+ * cobrindo o caso `?produto=`), o WhatsApp ainda gera o preview visual da
+ * foto (og:image) sem acionar esse desvio — e o revendedor ganha um link
+ * de volta pra vitrine com o produto aberto, não um arquivo estático.
  */
 export function buildProductUrl(slug: string, productId: string): string {
-  return `${buildStoreUrl(slug)}/${productId}`;
+  return `${buildStoreUrl(slug)}?produto=${productId}`;
 }
