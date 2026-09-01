@@ -133,61 +133,70 @@ export function SorteioAmostra({
   storeId: string;
   onFechar: () => void;
 }) {
-  // Estado inicial calculado no primeiro render, não num efeito: começar em
-  // "sorteando" e corrigir depois faria a animação piscar antes de sumir.
-  const [fase, setFase] = useState<"sorteando" | "revelando">(() => {
-    if (typeof window === "undefined") return "sorteando";
+
+  /**
+   * Entrada direta no resultado, decidida no PRIMEIRO RENDER — não num efeito:
+   * começar em "sorteando" e corrigir depois faz a animação piscar antes de
+   * sumir. Dois caminhos levam aqui:
+   *
+   *   - já assistiu ao sorteio antes (localStorage);
+   *   - pediu menos movimento no sistema.
+   *
+   * Nos dois, a revelação aparece estática. Não é só estética: a animação
+   * depende de as fotos já estarem decodificadas, e quem entra direto pula o
+   * pré-carregamento que acontece durante o baralho — animar aqui
+   * reintroduziria o travamento de ~900 ms que o pré-carregamento resolveu.
+   */
+  const [entrarDireto] = useState(() => {
+    if (typeof window === "undefined") return false;
+    let jaViu = false;
     try {
-      if (window.localStorage.getItem(CHAVE_SORTEADO + storeId)) return "revelando";
+      jaViu = Boolean(window.localStorage.getItem(CHAVE_SORTEADO + storeId));
     } catch {
       // localStorage bloqueado (janela anônima, cookies restritos): a animação
       // roda de novo, que é degradação aceitável.
     }
-    return "sorteando";
-  });
-
-  /**
-   * Reabertura: já viu o sorteio antes, então entra direto no resultado — SEM a
-   * animação de entrada.
-   *
-   * Não é só estética. A animação de revelação depende de as fotos já estarem
-   * decodificadas, e quem entra direto em "revelando" pula o pré-carregamento
-   * que acontece durante o baralho. Animar aqui reintroduziria exatamente o
-   * travamento de ~900 ms que o pré-carregamento resolveu. Mostrar estático é
-   * mais rápido E mais correto: o sorteio já foi assistido uma vez.
-   */
-  const [reabertura] = useState(() => {
-    if (typeof window === "undefined") return false;
-    try {
-      return Boolean(window.localStorage.getItem(CHAVE_SORTEADO + storeId));
-    } catch {
-      return false;
-    }
+    return jaViu || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   });
   const [pendente, iniciar] = useTransition();
   const [passouTempoMinimo, setPassouTempoMinimo] = useState(false);
+  /**
+   * Quantas fotos já pintaram. O CONTADOR VEM DO onLoad DAS IMAGENS REAIS, e
+   * não de um pré-carregamento manual. A versão anterior chamava `new Image()`
+   * com a URL do Supabase — só que o `next/image` não requisita essa URL: ele
+   * pede a do otimizador (`/_next/image?url=…&w=…`). O pré-carregamento aquecia
+   * um cache que nunca era consultado, e as fotos continuavam chegando depois
+   * da animação. Montar as imagens de verdade durante o baralho resolve sem
+   * adivinhar URL: quem carrega é o mesmo componente que vai aparecer.
+   */
   const [carregadas, setCarregadas] = useState(0);
   const router = useRouter();
 
   const restantes = itens.filter((i) => !i.jaImportado);
+  const totalComFoto = itens.filter((i) => i.fotoUrl).length;
 
-  // Chave ESTÁVEL das fotos, para a dependência do efeito de pré-carregamento.
-  // `itens` é um array novo a cada render do pai; usá-lo direto faria o efeito
-  // reiniciar sozinho e recomeçar o baralho no meio, adiando a revelação.
-  const chaveFotos = itens.map((i) => i.fotoUrl ?? "").join("|");
+  /**
+   * `fase` é DERIVADA, não guardada em estado.
+   *
+   * Ela é função de coisas que já estão no estado — se entrou direto, se o
+   * baralho cumpriu o tempo mínimo e se as fotos já pintaram. Guardá-la exigia
+   * um efeito que chamava `setFase` depois que essas peças mudavam, e efeito
+   * que seta estado em cadeia é um render a mais por transição (é o que a regra
+   * react-hooks/set-state-in-effect acusa). Calculando no render, a fase já sai
+   * certa de primeira e não existe estado para dessincronizar.
+   *
+   * O que terminar por último manda: o tempo mínimo do baralho ou as fotos.
+   */
+  const fase: "sorteando" | "revelando" =
+    entrarDireto || (passouTempoMinimo && carregadas >= totalComFoto)
+      ? "revelando"
+      : "sorteando";
 
   useEffect(() => {
     if (fase === "revelando") return;
 
-    // Respeita quem pediu menos movimento: vai direto ao resultado.
-    const semMovimento = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (semMovimento) {
-      setFase("revelando");
-      return;
-    }
-
-    // Tempo mínimo do baralho. A revelação também espera as fotos (ver
-    // `prontasParaRevelar` abaixo) — o que terminar por último manda.
+    // Tempo mínimo do baralho. A revelação também espera as fotos — quem
+    // terminar por último manda (ver o cálculo de `fase` acima).
     const t = setTimeout(() => setPassouTempoMinimo(true), MS_SORTEIO);
     // Teto: numa conexão ruim, prender o usuário embaralhando para sempre seria
     // pior que revelar com as fotos ainda chegando.
@@ -200,24 +209,6 @@ export function SorteioAmostra({
       clearTimeout(limite);
     };
   }, [fase]);
-
-  /**
-   * Revela quando o baralho cumpriu o tempo E as fotos já pintaram.
-   *
-   * O CONTADOR VEM DO onLoad DAS IMAGENS REAIS, e não de um pré-carregamento
-   * manual. A versão anterior chamava `new Image()` com a URL do Supabase — só
-   * que o `next/image` não requisita essa URL: ele pede a do otimizador
-   * (`/_next/image?url=…&w=…`). O pré-carregamento aquecia um cache que nunca
-   * era consultado, e as fotos continuavam chegando depois da animação.
-   *
-   * Montar as imagens de verdade durante o baralho resolve sem adivinhar URL:
-   * quem carrega é exatamente o mesmo componente que vai aparecer.
-   */
-  useEffect(() => {
-    if (fase === "revelando") return;
-    const totalComFoto = itens.filter((i) => i.fotoUrl).length;
-    if (passouTempoMinimo && carregadas >= totalComFoto) setFase("revelando");
-  }, [fase, passouTempoMinimo, carregadas, itens]);
 
   // Marca como visto assim que a revelação acontece — inclusive quando o
   // usuário fecha o pop-up sem importar nada. O sorteio já foi assistido.
@@ -341,13 +332,13 @@ export function SorteioAmostra({
                 <article
                   key={item.id}
                   className={`flex flex-col ${
-                    fase === "revelando" && !reabertura ? "vt-reveal" : ""
+                    fase === "revelando" && !entrarDireto ? "vt-reveal" : ""
                   }`}
                   style={{ ["--atraso" as string]: `${i * MS_ENTRE_CARTAS}ms` }}
                 >
                   <div
                     className={`relative aspect-square overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800 ${
-                      fase === "revelando" && !reabertura ? "vt-shine" : ""
+                      fase === "revelando" && !entrarDireto ? "vt-shine" : ""
                     }`}
                     style={{ ["--atraso" as string]: `${i * MS_ENTRE_CARTAS}ms` }}
                   >
