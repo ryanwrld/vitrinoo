@@ -39,7 +39,7 @@ export type PublicProductDetail = {
    * por `parseRichText` na camada de render. */
   description: string | null;
   sizes: { size: number; available: boolean }[];
-  photos: { id: string; storage_path: string }[];
+  photos: { id: string; storage_path: string; source: string | null }[];
 };
 
 export async function queryPublicProductDetail(
@@ -68,7 +68,7 @@ export async function queryPublicProductDetail(
 
   const { data: photoRows } = await supabase
     .from("product_photos")
-    .select("id, storage_path")
+    .select("id, storage_path, source")
     .eq("product_id", productId)
     .order("position", { ascending: true });
 

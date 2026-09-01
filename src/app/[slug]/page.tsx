@@ -104,7 +104,9 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   if (!detail) return {};
 
   const coverPhoto = detail.photos[0];
-  const coverUrl = coverPhoto ? getProductImagePublicUrl(supabase, coverPhoto.storage_path) : null;
+  const coverUrl = coverPhoto
+    ? getProductImagePublicUrl(supabase, coverPhoto.storage_path, coverPhoto.source)
+    : null;
   const title = detail.line ? `${detail.name} - ${detail.line}` : detail.name;
   const description = `${formatBRLPrice(detail.price)} — disponível no Vitrinoo`;
 
@@ -164,7 +166,7 @@ export default async function LojaPublicaPage({ params, searchParams }: PageProp
   const productsWithCoverUrl = products.map((product) => ({
     ...product,
     coverUrl: product.coverPath
-      ? supabase.storage.from("product-images").getPublicUrl(product.coverPath).data.publicUrl
+      ? getProductImagePublicUrl(supabase, product.coverPath, product.coverSource)
       : null,
   }));
 

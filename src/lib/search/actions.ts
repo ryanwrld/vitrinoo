@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getProductImagePublicUrl } from "@/lib/storage/product-image-url";
 
 /**
  * Busca de produtos pra a busca global do painel. Escopada pela loja do
@@ -53,27 +54,31 @@ export async function searchProducts(query: string): Promise<ProductSearchResult
     supabase.from("product_sizes").select("product_id, available").in("product_id", ids),
     supabase
       .from("product_photos")
-      .select("product_id, storage_path, position")
+      .select("product_id, storage_path, position, source")
       .in("product_id", ids)
       .order("position", { ascending: true }),
   ]);
 
   const availableIds = new Set((sizeRows ?? []).filter((row) => row.available).map((row) => row.product_id));
   const coverPathByProduct = new Map<string, string>();
+  const coverSourceByProduct = new Map<string, string | null>();
   for (const photo of photoRows ?? []) {
     if (!coverPathByProduct.has(photo.product_id)) {
       coverPathByProduct.set(photo.product_id, photo.storage_path);
+      coverSourceByProduct.set(photo.product_id, photo.source);
     }
   }
 
-  const resolveCover = (path: string | undefined) =>
-    path ? supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl : null;
+  // Bucket pela origem: sem isto, buscar um produto importado devolvia resultado
+  // com a miniatura quebrada.
+  const resolveCover = (path: string | undefined, source: string | null | undefined) =>
+    getProductImagePublicUrl(supabase, path ?? null, source ?? null);
 
   return products.map((product) => ({
     id: product.id,
     name: product.name,
     price: product.price,
     disponivel: availableIds.has(product.id),
-    coverUrl: resolveCover(coverPathByProduct.get(product.id)),
+    coverUrl: resolveCover(coverPathByProduct.get(product.id), coverSourceByProduct.get(product.id)),
   }));
 }

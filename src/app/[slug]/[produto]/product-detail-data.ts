@@ -51,8 +51,12 @@ export async function loadProductDetail(slug: string, produto: string): Promise<
     .eq("store_id", store.id)
     .single();
 
+  // `photo.source` é obrigatório aqui: sem ele toda foto de produto importado
+  // do marketplace resolvia no bucket `product-images`, onde o arquivo não
+  // existe, e a galeria do pop-up abria vazia — justo a tela em que o cliente
+  // final decide a compra.
   const galleryUrls = detail.photos
-    .map((photo) => getProductImagePublicUrl(supabase, photo.storage_path))
+    .map((photo) => getProductImagePublicUrl(supabase, photo.storage_path, photo.source))
     .filter((url): url is string => url !== null);
 
   return {

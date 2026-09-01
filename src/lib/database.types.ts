@@ -135,6 +135,7 @@ export type Database = {
           id: string
           position: number
           product_id: string
+          source: string
           storage_path: string
         }
         Insert: {
@@ -142,6 +143,7 @@ export type Database = {
           id?: string
           position: number
           product_id: string
+          source?: string
           storage_path: string
         }
         Update: {
@@ -149,6 +151,7 @@ export type Database = {
           id?: string
           position?: number
           product_id?: string
+          source?: string
           storage_path?: string
         }
         Relationships: [

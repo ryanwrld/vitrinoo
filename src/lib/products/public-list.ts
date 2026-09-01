@@ -93,6 +93,8 @@ export type PublicProduct = {
   disponivel: boolean;
   /** storage_path da foto de posição mais baixa (capa), ou null sem foto. */
   coverPath: string | null;
+  /** Origem da capa: decide de qual bucket a URL é montada. */
+  coverSource: string | null;
 };
 
 /**
@@ -194,7 +196,7 @@ export async function queryPublicProducts(
 
   const { data: photoRows } = await supabase
     .from("product_photos")
-    .select("product_id, storage_path, position")
+    .select("product_id, storage_path, position, source")
     .in("product_id", productIds)
     .order("position", { ascending: true });
 
@@ -205,9 +207,11 @@ export async function queryPublicProducts(
   // photoRows já vem ordenado por position asc — a primeira ocorrência por
   // product_id encontrada no loop é sempre a de menor position (capa).
   const coverPathByProductId = new Map<string, string>();
+  const coverSourceByProductId = new Map<string, string>();
   for (const photo of photoRows ?? []) {
     if (!coverPathByProductId.has(photo.product_id)) {
       coverPathByProductId.set(photo.product_id, photo.storage_path);
+      coverSourceByProductId.set(photo.product_id, photo.source ?? "own");
     }
   }
 
@@ -230,6 +234,7 @@ export async function queryPublicProducts(
     price: product.price,
     promotional_price: product.promotional_price,
     disponivel: availableProductIds.has(product.id),
+    coverSource: coverSourceByProductId.get(product.id) ?? null,
     coverPath: coverPathByProductId.get(product.id) ?? null,
   }));
 

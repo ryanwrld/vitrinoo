@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { getProductImagePublicUrl } from "@/lib/storage/product-image-url";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DELETE_ACCOUNT_CONFIRMATION } from "@/lib/account/constants";
 import { signUpSchema } from "@/lib/validation/auth";
@@ -132,7 +133,7 @@ export async function exportAccountDataAction(): Promise<
     supabase
       .from("products")
       .select(
-        "id, name, brand, brand_other, line, sole, category, fulfillment, description, price, status, hide_when_sold_out, created_at, product_sizes(size, available), product_photos(storage_path, position)"
+        "id, name, brand, brand_other, line, sole, category, fulfillment, description, price, status, hide_when_sold_out, created_at, product_sizes(size, available), product_photos(storage_path, position, source)"
       )
       .eq("store_id", store.id)
       .order("created_at", { ascending: true }),
@@ -147,8 +148,11 @@ export async function exportAccountDataAction(): Promise<
     return { error: "Não foi possível ler seus produtos." };
   }
 
-  const publicPhotoUrl = (storagePath: string) =>
-    supabase.storage.from("product-images").getPublicUrl(storagePath).data.publicUrl;
+  // Backup também precisa da origem: um link para o bucket errado gera um
+  // arquivo de backup com URLs que já nascem mortas, e o revendedor só
+  // descobriria no dia em que fosse usar.
+  const publicPhotoUrl = (storagePath: string, source: string | null) =>
+    getProductImagePublicUrl(supabase, storagePath, source)!;
 
   const payload = {
     exportadoEm: new Date().toISOString(),
@@ -165,7 +169,7 @@ export async function exportAccountDataAction(): Promise<
         tamanhos: [...(product_sizes ?? [])].sort((a, b) => a.size - b.size),
         fotos: [...(product_photos ?? [])]
           .sort((a, b) => a.position - b.position)
-          .map((photo) => ({ posicao: photo.position, url: publicPhotoUrl(photo.storage_path) })),
+          .map((photo) => ({ posicao: photo.position, url: publicPhotoUrl(photo.storage_path, photo.source) })),
       };
     }),
   };

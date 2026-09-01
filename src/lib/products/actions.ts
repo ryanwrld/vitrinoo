@@ -556,6 +556,34 @@ export async function addProductPhotos(productId: string, formData: FormData): P
 }
 
 /**
+ * Ids das fotos do produto, na ordem atual.
+ *
+ * Serve ao commit do formulário: depois de aplicar remoções e uploads, o
+ * cliente precisa saber quais ids as fotos NOVAS receberam para poder mandar a
+ * ordem final. Sem isto, uma foto adicionada e arrastada para capa voltaria
+ * para o fim da fila ao salvar.
+ */
+export async function listProductPhotoIds(
+  productId: string
+): Promise<{ ids: string[] } | { error: string }> {
+  const owned = await getOwnedStore();
+  if ("error" in owned) {
+    return { error: owned.error };
+  }
+
+  const { data, error } = await owned.supabase
+    .from("product_photos")
+    .select("id")
+    .eq("product_id", productId)
+    .order("position", { ascending: true });
+
+  if (error) {
+    return { error: "Não foi possível ler as fotos do produto." };
+  }
+  return { ids: (data ?? []).map((row) => row.id) };
+}
+
+/**
  * Persiste a nova ordem de fotos após um drag-and-drop (D-12) — nunca
  * renomeia/move o blob no bucket, só atualiza a coluna `position`
  * (03-RESEARCH.md Pattern 2). Como `(product_id, position)` é UNIQUE
@@ -621,7 +649,7 @@ export async function removePhoto(photoId: string): Promise<ProductActionResult>
 
   const { data: photo, error: fetchError } = await owned.supabase
     .from("product_photos")
-    .select("storage_path")
+    .select("storage_path, source")
     .eq("id", photoId)
     .single();
 
@@ -629,7 +657,16 @@ export async function removePhoto(photoId: string): Promise<ProductActionResult>
     return { error: "Não foi possível encontrar essa foto." };
   }
 
-  await owned.supabase.storage.from("product-images").remove([photo.storage_path]);
+  // NUNCA apagar o arquivo de uma foto herdada do marketplace: o blob é do
+  // acervo global e está sendo usado por todas as outras lojas que importaram o
+  // mesmo modelo. Só a LINHA sai; o arquivo continua onde está.
+  //
+  // Hoje isso não chegava a causar dano por acidente (a remoção mirava
+  // `product-images`, onde o caminho não existe, e falhava sem efeito), mas
+  // dependia de o bucket errado salvar a situação.
+  if (photo.source !== "marketplace") {
+    await owned.supabase.storage.from("product-images").remove([photo.storage_path]);
+  }
 
   const { error: deleteError } = await owned.supabase.from("product_photos").delete().eq("id", photoId);
   if (deleteError) {
@@ -653,10 +690,18 @@ export async function deleteProductPhotosStorage(
   supabase: SupabaseClient<Database>,
   productId: string
 ): Promise<void> {
-  const { data: photos } = await supabase.from("product_photos").select("storage_path").eq("product_id", productId);
+  const { data: photos } = await supabase
+    .from("product_photos")
+    .select("storage_path, source")
+    .eq("product_id", productId);
 
-  if (photos && photos.length > 0) {
-    await supabase.storage.from("product-images").remove(photos.map((photo) => photo.storage_path));
+  // Só os arquivos PRÓPRIOS. Fotos herdadas do marketplace vivem no bucket
+  // global e são compartilhadas entre todas as lojas que importaram o modelo —
+  // excluir o produto de uma loja não pode arrastar a imagem das outras.
+  const proprias = (photos ?? []).filter((photo) => photo.source !== "marketplace");
+
+  if (proprias.length > 0) {
+    await supabase.storage.from("product-images").remove(proprias.map((photo) => photo.storage_path));
   }
 }
 

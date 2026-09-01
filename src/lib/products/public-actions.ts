@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { queryPublicProducts, type QueryPublicProductsParams } from "@/lib/products/public-list";
 import type { PublicProductCardData } from "@/app/[slug]/product-card";
+import { getProductImagePublicUrl } from "@/lib/storage/product-image-url";
 
 /**
  * Server Actions PÚBLICAS/ANÔNIMAS da vitrine — arquivo deliberadamente
@@ -58,7 +59,7 @@ export async function fetchNextPage(
   const productsWithCoverUrl: PublicProductCardData[] = products.map((product) => ({
     ...product,
     coverUrl: product.coverPath
-      ? supabase.storage.from("product-images").getPublicUrl(product.coverPath).data.publicUrl
+      ? getProductImagePublicUrl(supabase, product.coverPath, product.coverSource)
       : null,
   }));
 
