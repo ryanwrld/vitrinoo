@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireCompletedOnboarding } from "@/lib/auth/onboarding-guard";
 import { createClient } from "@/lib/supabase/server";
+import { getProductImagePublicUrl } from "@/lib/storage/product-image-url";
 import { formatBRLPriceInput } from "@/lib/currency/brl";
 import type { ProductInput } from "@/lib/validation/product";
 import { ProductForm } from "../../product-form";
@@ -64,13 +65,18 @@ export default async function EditarProdutoPage({ params }: PageProps) {
 
   const { data: photoRows } = await supabase
     .from("product_photos")
-    .select("id, storage_path")
+    .select("id, storage_path, source")
     .eq("product_id", id)
     .order("position", { ascending: true });
 
+  // O BUCKET DEPENDE DA ORIGEM. Produto importado do marketplace não tem cópia
+  // das fotos: `storage_path` aponta para `marketplace-assets`, não para
+  // `product-images`. Este arquivo montava a URL fixa no bucket próprio, então
+  // toda foto importada respondia 400 e a tela de edição ficava vazia — mesmo
+  // com o card da listagem funcionando, porque lá já se passava `coverSource`.
   const photos: SavedPhoto[] = (photoRows ?? []).map((photo) => ({
     id: photo.id,
-    url: supabase.storage.from("product-images").getPublicUrl(photo.storage_path).data.publicUrl,
+    url: getProductImagePublicUrl(supabase, photo.storage_path, photo.source)!,
   }));
 
   const defaultValues: Partial<ProductInput> = {
@@ -107,7 +113,10 @@ export default async function EditarProdutoPage({ params }: PageProps) {
         className={`mt-1 inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
           product.status === "published"
             ? "bg-success-bg text-success-fg dark:bg-success-solid/15"
-            : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+            : // Mesmos tokens do selo em /admin/produtos. O cinza daqui fazia
+              // "Rascunho" ler como informação desligada, quando na listagem a
+              // mesma palavra é um aviso de que o produto não está na vitrine.
+              "bg-warning-bg text-warning-solid dark:bg-warning-solid/15"
         }`}
       >
         {product.status === "published" ? "Publicado" : "Rascunho"}

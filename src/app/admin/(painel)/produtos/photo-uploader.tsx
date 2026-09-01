@@ -4,7 +4,6 @@ import {
   useEffect,
   useRef,
   useState,
-  useTransition,
   type ChangeEvent,
   type PointerEvent as ReactPointerEvent,
   type WheelEvent as ReactWheelEvent,
@@ -32,8 +31,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Plus, X, Loader2, ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
-import { createClient } from "@/lib/supabase/client";
-import { addProductPhotos, updatePhotoOrder, removePhoto } from "@/lib/products/actions";
 
 /**
  * Uploader de até 5 fotos por produto (D-11–D-13, PROD-03,
@@ -47,10 +44,15 @@ import { addProductPhotos, updatePhotoOrder, removePhoto } from "@/lib/products/
  *   memória (slots "pending"); `onPendingFilesChange` notifica
  *   product-form.tsx a cada mudança, para anexar ao mesmo FormData de
  *   `saveProduct` no submit (nunca upload antes do produto existir).
- * - **Edição** (`productId` presente, Plan 03-05): cada ação
- *   (adicionar/remover/reordenar) chama imediatamente a Server Action
- *   dedicada (`addProductPhotos`/`removePhoto`/`updatePhotoOrder`) — os
- *   slots são sempre "saved" (id real + URL pública).
+ * - **Edição** (`productId` presente): IGUAL À CRIAÇÃO. Adicionar, remover e
+ *   reordenar são todas alterações pendentes, aplicadas só no Salvar.
+ *
+ *   Antes cada uma tinha uma regra: remover era imediato e definitivo,
+ *   adicionar subia na hora, reordenar gravava ao soltar o arrasto. O
+ *   resultado é que "Reverter alterações" desfazia parte do que o usuário via
+ *   na tela e deixava o resto — ele apagava uma foto, arrastava outra para
+ *   capa, revertia, e a foto voltava enquanto a capa nova ficava. Uma caixa,
+ *   três comportamentos, nenhum indicado na interface.
  *
  * Layout:
  * - Preview grande fixo no topo: mostra a foto ativa (capa por padrão).
@@ -66,10 +68,23 @@ type Slot =
   | { kind: "saved"; id: string; url: string }
   | { kind: "pending"; localId: string; file: File; previewUrl: string };
 
+export type PhotoArrangement = ({ kind: "saved"; id: string } | { kind: "pending"; index: number })[];
+
 export type PhotoUploaderProps = {
-  productId?: string;
   initialPhotos?: SavedPhoto[];
   onPendingFilesChange?: (files: File[]) => void;
+  /**
+   * Fotos já salvas que o usuário tirou da grade e que só serão apagadas no
+   * Salvar. Ver `handleRemove`.
+   */
+  onRemovedPhotoIdsChange?: (ids: string[]) => void;
+  /** Muda de valor quando o form pede "Reverter alterações". */
+  resetSignal?: number;
+  /**
+   * Ordem desejada das fotos. Slots pendentes são identificados pelo índice
+   * dentro de `onPendingFilesChange`, porque ainda não têm id no banco.
+   */
+  onArrangementChange?: (arranjo: PhotoArrangement) => void;
 };
 
 function slotKey(slot: Slot): string {
@@ -99,34 +114,18 @@ function pendingFilesOf(slots: Slot[]): File[] {
     .map((slot) => slot.file);
 }
 
-/**
- * Modo edição: após adicionar uma foto via `addProductPhotos`, a Server
- * Action não retorna os dados da foto criada (só `{success, id: productId}`)
- * — recarregar via o client de browser (RLS já garante escopo por dono) é
- * mais simples do que estender o retorno da action só para isso.
- */
-async function refreshSavedPhotos(productId: string): Promise<SavedPhoto[]> {
-  const supabase = createClient();
-  const { data } = await supabase
-    .from("product_photos")
-    .select("id, storage_path")
-    .eq("product_id", productId)
-    .order("position", { ascending: true });
-
-  if (!data) {
-    return [];
-  }
-
-  return data.map((row) => ({
-    id: row.id,
-    url: supabase.storage.from("product-images").getPublicUrl(row.storage_path).data.publicUrl,
-  }));
-}
-
-export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange }: PhotoUploaderProps) {
+export function PhotoUploader({
+  initialPhotos,
+  onPendingFilesChange,
+  onRemovedPhotoIdsChange,
+  resetSignal = 0,
+  onArrangementChange,
+}: PhotoUploaderProps) {
   const [slots, setSlots] = useState<Slot[]>(() =>
     (initialPhotos ?? []).map((photo) => ({ kind: "saved" as const, id: photo.id, url: photo.url }))
   );
+  // Ids de fotos salvas marcadas para exclusão — aplicadas só no Salvar.
+  const [removedIds, setRemovedIds] = useState<string[]>([]);
   // Índice da foto ativa no preview grande — por padrão a capa (0).
   const [activeIndex, setActiveIndex] = useState<number>(0);
   // Id do slot sendo arrastado no momento — alimenta o `DragOverlay` (ver
@@ -138,7 +137,6 @@ export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange }
   // continua só com a opacidade reduzida (`isDragging`) no lugar dele.
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [processingCount, setProcessingCount] = useState(0);
-  const [, startBackgroundTransition] = useTransition();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -256,11 +254,44 @@ export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange }
   // Notifica o form pai (modo criação) DEPOIS do commit, nunca de dentro do
   // updater de `setSlots` — chamar o setState do pai ali dentro disparava
   // "Cannot update a component while rendering a different component".
+  // Também em edição: as fotos novas agora esperam o Salvar, igual à criação.
   useEffect(() => {
-    if (!productId) {
-      onPendingFilesChange?.(pendingFilesOf(slots));
+    onPendingFilesChange?.(pendingFilesOf(slots));
+  }, [slots, onPendingFilesChange]);
+
+  useEffect(() => {
+    let pendente = 0;
+    onArrangementChange?.(
+      slots.map((slot) =>
+        slot.kind === "saved"
+          ? ({ kind: "saved", id: slot.id } as const)
+          : ({ kind: "pending", index: pendente++ } as const)
+      )
+    );
+  }, [slots, onArrangementChange]);
+
+
+  useEffect(() => {
+    onRemovedPhotoIdsChange?.(removedIds);
+  }, [removedIds, onRemovedPhotoIdsChange]);
+
+  // "Reverter alterações" devolve a grade ao estado do carregamento: fotos
+  // marcadas para exclusão voltam, fotos novas ainda não enviadas somem.
+  const primeiroReset = useRef(true);
+  useEffect(() => {
+    if (primeiroReset.current) {
+      primeiroReset.current = false;
+      return;
     }
-  }, [slots, productId, onPendingFilesChange]);
+    setSlots(
+      (initialPhotos ?? []).map((photo) => ({ kind: "saved" as const, id: photo.id, url: photo.url }))
+    );
+    setRemovedIds([]);
+    setActiveIndex(0);
+    // `initialPhotos` é estável entre renders do server component; depender dele
+    // aqui reexecutaria o reset a cada re-render do pai.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetSignal]);
 
   async function handleFilesSelected(event: ChangeEvent<HTMLInputElement>) {
     const fileList = event.target.files;
@@ -295,23 +326,11 @@ export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange }
           useWebWorker: true,
         });
 
-        if (productId) {
-          const formData = new FormData();
-          formData.append("photos", compressed);
-          const result = await addProductPhotos(productId, formData);
-          if ("error" in result) {
-            toast.error(result.error);
-          } else {
-            const refreshed = await refreshSavedPhotos(productId);
-            setSlots(refreshed.map((photo) => ({ kind: "saved" as const, id: photo.id, url: photo.url })));
-          }
-        } else {
-          const previewUrl = URL.createObjectURL(compressed);
-          setSlots((prev) => [
-            ...prev,
-            { kind: "pending" as const, localId: localSlotId(), file: compressed, previewUrl },
-          ]);
-        }
+        const previewUrl = URL.createObjectURL(compressed);
+        setSlots((prev) => [
+          ...prev,
+          { kind: "pending" as const, localId: localSlotId(), file: compressed, previewUrl },
+        ]);
       } catch {
         toast.error("Não foi possível processar a foto.");
       } finally {
@@ -320,6 +339,17 @@ export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange }
     }
   }
 
+  /**
+   * Tirar uma foto da grade NÃO apaga nada ainda.
+   *
+   * Antes, remover uma foto já salva chamava `removePhoto()` na hora: o clique
+   * era destrutivo e definitivo, sem confirmação, sem passar pelo Salvar e sem
+   * marcar o formulário como alterado — então nem o botão "Reverter alterações"
+   * aparecia. Um clique errado apagava a foto e o arquivo no Storage, sem volta.
+   *
+   * Agora a exclusão fica pendente e só acontece no Salvar, igual às fotos
+   * novas, que também só sobem nesse momento. Reverter devolve tudo.
+   */
   function handleRemove(slot: Slot) {
     if (slot.kind === "pending") {
       URL.revokeObjectURL(slot.previewUrl);
@@ -328,14 +358,8 @@ export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange }
     }
 
     const photoId = slot.id;
-    // Otimista: esvazia o slot na hora (D-13), toast só se a remoção falhar.
     setSlots((prev) => prev.filter((item) => slotKey(item) !== photoId));
-    startBackgroundTransition(async () => {
-      const result = await removePhoto(photoId);
-      if ("error" in result) {
-        toast.error(result.error);
-      }
-    });
+    setRemovedIds((prev) => (prev.includes(photoId) ? prev : [...prev, photoId]));
   }
 
   function handleDragStart(event: DragStartEvent) {
@@ -367,21 +391,8 @@ export function PhotoUploader({ productId, initialPhotos, onPendingFilesChange }
     const newActive = reordered.findIndex((s) => slotKey(s) === movedKey);
     if (newActive !== -1) setActiveIndex(newActive);
 
-    if (productId) {
-      const order = reordered
-        .filter((slot): slot is Extract<Slot, { kind: "saved" }> => slot.kind === "saved")
-        .map((slot, index) => ({ id: slot.id, position: index }));
-
-      // Otimista (D-12): reordena na hora, persiste em background, toast só em falha.
-      startBackgroundTransition(async () => {
-        const result = await updatePhotoOrder(order);
-        if ("error" in result) {
-          toast.error(result.error);
-        }
-      });
-    }
-    // Modo criação (!productId): a notificação ao form pai acontece no
-    // useEffect acima, disparado pela mudança de `slots`.
+    // Nada é persistido aqui: a ordem nova viaja ao form pelo `onArrangementChange`
+    // (useEffect acima) e vira `updatePhotoOrder` só no Salvar.
   }
 
   return (

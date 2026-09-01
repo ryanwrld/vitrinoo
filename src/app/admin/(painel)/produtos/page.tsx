@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/empty-state";
 import { HeaderActions } from "@/components/header-actions";
 import { ProductList } from "./product-list";
 import { ProductToolbar } from "./product-toolbar";
+import { getProductImagePublicUrl } from "@/lib/storage/product-image-url";
 
 type ProdutosSearchParams = {
   q?: string;
@@ -87,7 +88,7 @@ export default async function ProdutosPage({
   const productsWithCoverUrl = products.map((product) => ({
     ...product,
     coverUrl: product.coverPath
-      ? supabase.storage.from("product-images").getPublicUrl(product.coverPath).data.publicUrl
+      ? getProductImagePublicUrl(supabase, product.coverPath, product.coverSource)
       : null,
   }));
 

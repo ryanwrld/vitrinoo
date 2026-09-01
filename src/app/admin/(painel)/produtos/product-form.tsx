@@ -8,10 +8,18 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ChevronDown } from "lucide-react";
 import { productSchema, type ProductInput } from "@/lib/validation/product";
-import { saveProduct, updateProduct, unpublishProduct } from "@/lib/products/actions";
+import {
+  saveProduct,
+  updateProduct,
+  unpublishProduct,
+  removePhoto,
+  addProductPhotos,
+  updatePhotoOrder,
+  listProductPhotoIds,
+} from "@/lib/products/actions";
 import { BRANDS, SOLES, CATEGORIES, FULFILLMENTS, DEFAULT_SIZE_RANGE } from "@/lib/products/constants";
 import { SizeGrid } from "./size-grid";
-import { PhotoUploader, type SavedPhoto } from "./photo-uploader";
+import { PhotoUploader, type SavedPhoto, type PhotoArrangement } from "./photo-uploader";
 import { ProductLayout } from "./product-layout";
 import { DescriptionEditor } from "./description-editor";
 
@@ -60,6 +68,16 @@ export function ProductForm({ header, defaultValues, productId, status, initialP
   const [isPublishPending, startPublishTransition] = useTransition();
   const [currentStatus, setCurrentStatus] = useState(status ?? "draft");
   const [pendingPhotoFiles, setPendingPhotoFiles] = useState<File[]>([]);
+  // Fotos já salvas que o usuário tirou da grade. Só somem de verdade no
+  // Salvar — ver o comentário em `handleRemove` do PhotoUploader.
+  const [removedPhotoIds, setRemovedPhotoIds] = useState<string[]>([]);
+  // Incrementado pelo "Reverter alterações" para o uploader voltar ao estado
+  // inicial: `reset()` do react-hook-form só conhece os campos do formulário.
+  const [photoResetSignal, setPhotoResetSignal] = useState(0);
+  // Ordem desejada das fotos, incluindo as que ainda não subiram.
+  const [photoArrangement, setPhotoArrangement] = useState<PhotoArrangement>([]);
+  // Arranjo do carregamento, para saber se o usuário mexeu na ordem.
+  const arranjoInicialRef = useRef<string>("");
   const submitIntentRef = useRef<"publish" | "draft" | "save">("draft");
   const isSubmittingRef = useRef(false);
   const createdIdRef = useRef<string | null>(null);
@@ -99,10 +117,71 @@ export function ProductForm({ header, defaultValues, productId, status, initialP
   const brandValue = watch("brand");
   const isBrandOther = brandValue === "Outra";
 
+  // "Alterado" agora inclui foto tirada da grade: sem isto o botão de reverter
+  // nem aparecia depois de remover uma foto, e o usuário não tinha como desfazer.
+  const arranjoAtual = JSON.stringify(photoArrangement);
+  if (arranjoInicialRef.current === "" && photoArrangement.length > 0) {
+    arranjoInicialRef.current = arranjoAtual;
+  }
+  const temAlteracao =
+    isDirty ||
+    removedPhotoIds.length > 0 ||
+    pendingPhotoFiles.length > 0 ||
+    (arranjoInicialRef.current !== "" && arranjoAtual !== arranjoInicialRef.current);
+
   const handleRevert = () => {
     reset();
+    setRemovedPhotoIds([]);
+    setPendingPhotoFiles([]);
+    setPhotoResetSignal((n) => n + 1);
     toast.success("Alterações revertidas.");
   };
+
+  /**
+   * Aplica remoções, uploads e ordem das fotos, nesta sequência.
+   *
+   * A ORDEM DOS PASSOS IMPORTA. Remover primeiro libera posições e evita
+   * estourar o limite de 5 fotos quando o usuário troca uma foto por outra.
+   * Reordenar por último porque só depois do upload as fotos novas existem —
+   * e é preciso descobrir que ids elas receberam para colocá-las no lugar em
+   * que o usuário as arrastou. Sem esse passo, uma foto nova promovida a capa
+   * voltaria calada para o fim da fila.
+   */
+  async function aplicarAlteracoesDeFoto(targetId: string): Promise<string | null> {
+    for (const photoId of removedPhotoIds) {
+      const r = await removePhoto(photoId);
+      if ("error" in r) return r.error;
+    }
+
+    if (pendingPhotoFiles.length > 0) {
+      const fd = new FormData();
+      for (const file of pendingPhotoFiles) fd.append("photos", file);
+      const r = await addProductPhotos(targetId, fd);
+      if ("error" in r) return r.error;
+    }
+
+    if (photoArrangement.length === 0) return null;
+
+    const atuais = await listProductPhotoIds(targetId);
+    if ("error" in atuais) return atuais.error;
+
+    // As fotos recém-criadas são as que o arranjo ainda não conhece. Vêm no fim
+    // da lista, na ordem em que foram enviadas — a mesma ordem dos slots
+    // pendentes, que é o que liga uma coisa à outra.
+    const conhecidos = new Set(
+      photoArrangement.filter((s) => s.kind === "saved").map((s) => s.id)
+    );
+    const novos = atuais.ids.filter((id) => !conhecidos.has(id));
+
+    const ordemFinal = photoArrangement
+      .map((slot) => (slot.kind === "saved" ? slot.id : novos[slot.index]))
+      .filter((id): id is string => Boolean(id));
+
+    if (ordemFinal.length === 0) return null;
+
+    const r = await updatePhotoOrder(ordemFinal.map((id, position) => ({ id, position })));
+    return "error" in r ? r.error : null;
+  }
 
   const onSubmit = (values: ProductInput) => {
     if (isSubmittingRef.current) return;
@@ -136,6 +215,18 @@ export function ProductForm({ header, defaultValues, productId, status, initialP
         }
 
         createdIdRef.current = result.id;
+
+        // Todas as alterações de foto são aplicadas AQUI, depois de o produto
+        // ter sido salvo com sucesso — nada acontece se o save falhar.
+        //
+        // Na CRIAÇÃO as fotos já foram anexadas ao FormData do `saveProduct`,
+        // então só a edição passa por este bloco.
+        if (productId) {
+          const erroFotos = await aplicarAlteracoesDeFoto(result.id);
+          if (erroFotos) toast.error(erroFotos);
+          setRemovedPhotoIds([]);
+          setPendingPhotoFiles([]);
+        }
 
         if (result.warning) {
           toast.error(`${result.warning} Produto salvo, reenvie a foto.`);
@@ -319,9 +410,11 @@ export function ProductForm({ header, defaultValues, productId, status, initialP
             {/* ── Col. direita: Fotos + Tamanhos ── */}
             <div>
               <PhotoUploader
-                productId={productId}
                 initialPhotos={initialPhotos}
                 onPendingFilesChange={setPendingPhotoFiles}
+                onRemovedPhotoIdsChange={setRemovedPhotoIds}
+                onArrangementChange={setPhotoArrangement}
+                resetSignal={photoResetSignal}
               />
             </div>
 
@@ -364,7 +457,7 @@ export function ProductForm({ header, defaultValues, productId, status, initialP
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-center">
               {currentStatus === "published" ? (
                 <>
-                  {isDirty ? (
+                  {temAlteracao ? (
                     <button
                       type="button"
                       onClick={handleRevert}
@@ -394,6 +487,20 @@ export function ProductForm({ header, defaultValues, productId, status, initialP
                 </>
               ) : (
                 <>
+                  {/* Rascunho também precisa de desfazer. Antes o "Reverter
+                      alterações" só existia no ramo publicado, então quem
+                      editava um rascunho — e tirava uma foto da grade sem
+                      querer — não tinha nenhuma saída visível na tela. */}
+                  {productId && temAlteracao && (
+                    <button
+                      type="button"
+                      onClick={handleRevert}
+                      disabled={isPending}
+                      className="w-full sm:w-auto rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700"
+                    >
+                      Reverter alterações
+                    </button>
+                  )}
                   <button
                     type="submit"
                     onClick={() => { submitIntentRef.current = productId ? "save" : "draft"; }}
