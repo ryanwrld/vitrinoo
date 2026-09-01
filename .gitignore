@@ -49,3 +49,10 @@ next-env.d.ts
 /.claude/scripts/
 /.claude/skills/
 /skills-lock.json
+
+# Saída do raspador do marketplace (scripts/marketplace/*.mjs).
+# São ~4.950 fotos .webp, 531 MB, e elas JÁ vivem no Supabase Storage. O que
+# entra no histórico do git não sai mais sem reescrever a história, então isto
+# fica de fora de propósito: os scripts que geram a pasta estão versionados,
+# a pasta gerada não.
+/scripts/marketplace/saida/
