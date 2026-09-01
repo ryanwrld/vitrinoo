@@ -44,7 +44,7 @@ export const productSchema = z.object({
    * servidor (`productSchema.shape.sizes.safeParse`) para revalidar o JSON
    * recebido em `saveProduct` antes de inserir em `product_sizes`.
    */
-  sizes: z.array(z.object({ size: z.number().int().min(36).max(45), available: z.boolean() })).optional(),
+  sizes: z.array(z.object({ size: z.number().int().min(35).max(46), available: z.boolean() })).optional(),
   /**
    * Visibilidade de esgotado por produto (D-09/D-10, Plan 04-05). Três
    * estados via select: "" (herdar o padrão global da loja — D-10, mapeia

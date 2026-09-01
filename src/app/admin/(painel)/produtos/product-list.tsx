@@ -45,6 +45,15 @@ export type ProductListProps = {
  * Server Action dedicada (só a coluna `price`) — nunca `updateProduct`, que
  * exigiria o FormData inteiro do formulário (tamanhos incluídos).
  */
+/**
+ * Largura ÚNICA da célula de preço — usada tanto pelas pills de input
+ * (Preço/Promocional) quanto pelos rótulos da guia de colunas acima delas.
+ * Fixar os dois na MESMA medida é o que mantém cada rótulo centrado no seu
+ * input: antes o rótulo era do tamanho do próprio texto ("Promocional" tem
+ * o dobro da largura de "Preço") e ficava deslocado ~22px do centro da pill.
+ */
+const PRICE_CELL_WIDTH = "w-[109px]";
+
 function ProductPriceInput({ productId, price }: { productId: string; price: number }) {
   const router = useRouter();
   const [value, setValue] = useState(() => formatBRLPriceInput(price));
@@ -75,7 +84,7 @@ function ProductPriceInput({ productId, price }: { productId: string; price: num
   }
 
   return (
-    <div className="flex h-9 items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-3 transition-colors duration-150 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary-subtle dark:border-gray-700 dark:bg-gray-800/60 dark:focus-within:ring-blue-400/20">
+    <div className={`${PRICE_CELL_WIDTH} flex h-9 items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-3 transition-colors duration-150 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary-subtle dark:border-gray-700 dark:bg-gray-800/60 dark:focus-within:ring-blue-400/20`}>
       <span className="text-xs text-gray-500 dark:text-gray-400">R$</span>
       <input
         type="text"
@@ -178,7 +187,7 @@ function ProductPromoPriceInput({
   return (
     <div
       key={errorKey}
-      className={`flex h-9 items-center gap-1 rounded-full border bg-gray-50 px-3 transition-colors duration-150 focus-within:ring-2 dark:bg-gray-800/60 ${
+      className={`${PRICE_CELL_WIDTH} flex h-9 items-center gap-1 rounded-full border bg-gray-50 px-3 transition-colors duration-150 focus-within:ring-2 dark:bg-gray-800/60 ${
         hasError
           ? "animate-shake border-error-solid focus-within:border-error-solid focus-within:ring-error-bg dark:focus-within:ring-error-solid/20"
           : "border-gray-200 focus-within:border-primary focus-within:ring-primary-subtle dark:border-gray-700 dark:focus-within:ring-blue-400/20"
@@ -374,9 +383,17 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
                 funcionando) — "Preço" e "Promocional" liam como uma
                 palavra só sem esse respiro (pedido explícito do usuário
                 pra separar visualmente). */}
-            <div className="absolute left-1/2 flex -translate-x-1/2" style={{ gap: "2.5rem" }}>
-              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Preço</span>
-              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Promocional</span>
+            {/* Espelha EXATAMENTE o par de pills da linha de dado: mesma
+                largura por célula (`PRICE_CELL_WIDTH`), mesmo `gap-2` e
+                mesma centralização absoluta. Cada rótulo fica centrado no
+                seu próprio input, em qualquer largura de tela. */}
+            <div className="absolute left-1/2 flex -translate-x-1/2 gap-2">
+              <span className={`${PRICE_CELL_WIDTH} text-center text-xs font-semibold text-gray-700 dark:text-gray-300`}>
+                Preço
+              </span>
+              <span className={`${PRICE_CELL_WIDTH} text-center text-xs font-semibold text-gray-700 dark:text-gray-300`}>
+                Promocional
+              </span>
             </div>
           </div>
           <span className="w-[72px] shrink-0 text-center text-xs font-semibold text-gray-700 dark:text-gray-300">Status</span>

@@ -35,10 +35,14 @@ export const SOLES = ["AG", "MG", "SG", "TF", "IC", "FG"] as const;
  * antes desta mudança quebra. O formulário do painel admin continua usando
  * `SOLES` cru — lá a sigla sozinha é o vocabulário correto.
  */
+// Correção 2026-08-24: SG estava rotulado "Trava Mista", que descreve MG
+// (multi-ground). SG é soft ground — trava de alumínio, para campo mole/molhado,
+// e é a mais cara da grade. Só o rótulo mudou; o valor gravado continua "SG",
+// então nenhum link compartilhado (`?sole=SG`) quebra.
 export const SOLE_LABELS: Record<(typeof SOLES)[number], string> = {
   AG: "Grama sintética (AG)",
   MG: "Multiterreno (MG)",
-  SG: "Trava Mista (SG)",
+  SG: "Trava de alumínio (SG)",
   TF: "Society (TF)",
   IC: "Futsal (IC)",
   FG: "Campo (FG)",
@@ -91,10 +95,15 @@ export const DEFAULT_SORT: SortOption = "recentes";
 /**
  * Pré-seleção padrão de tamanhos ao cadastrar um produto novo (D-02):
  * a faixa mais comum, marcada como esgotado por padrão (D-03). O grid
- * completo (D-01) continua 36-45 — usado pelo Plan 03-03 para permitir
- * marcar manualmente 36/44/45.
+ * completo (D-01) é 35-46 — usado pelo Plan 03-03 para permitir marcar
+ * manualmente as pontas.
  */
 export const DEFAULT_SIZE_RANGE = [37, 38, 39, 40, 41, 42, 43] as const;
 
-/** Grid completo de tamanhos disponíveis (36-45), usado pelo Plan 03-03. */
-export const SIZE_GRID = [36, 37, 38, 39, 40, 41, 42, 43, 44, 45] as const;
+/**
+ * Grid completo de tamanhos disponíveis (35-46), usado pelo Plan 03-03.
+ * Ampliado de 36-45 na migration 0024: o catálogo do marketplace traz grades
+ * 35-46 vindas do fornecedor, e 35/46 são numerações legítimas — não casos de
+ * borda. O check no banco acompanha esta lista.
+ */
+export const SIZE_GRID = [35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46] as const;

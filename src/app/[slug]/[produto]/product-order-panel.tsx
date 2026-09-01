@@ -182,6 +182,15 @@ export function ProductOrderPanel({
   const [isPending, startCopyTransition] = useTransition();
   const opensInNewTab = useOpensInNewTab();
 
+  // Regra do usuário (2026-08-23): SÓ com 9 tamanhos ou mais na grade, a
+  // borda direita de "Pedir agora" recua um pouco (não bate mais exatamente
+  // na borda do último tamanho) — 12px (`mr-3`), ajustado a pedido do
+  // usuário a partir de 8px (`mr-2`). A margem no wrapper `flex-1` "come"
+  // do espaço que ele ocupava, empurrando só a borda DIREITA pra dentro; a
+  // esquerda (onde o botão começa, logo após "Copiar pedido") não muda.
+  // Com 8 ou menos, sem alteração nenhuma.
+  const manySizes = sizes.length >= 9;
+
   function handleSelectSize(size: number, available: boolean) {
     // Revalidação no clique (mouse E teclado, Pitfall 1) — pointer-events-none
     // não bloqueia Enter/Space, então este early-return é a defesa real.
@@ -308,23 +317,6 @@ export function ProductOrderPanel({
 
   const gallery = <ProductGallery photos={photosToRender} alt={product.name} />;
 
-  // Largura exata da grade de tamanhos (SÓ usada no desktop, ver
-  // `md:w-[var(--size-grid-width)]` abaixo) — aritmética pura a partir da
-  // quantidade de pílulas (44px cada, `h-11 w-11`, + 8px de gap entre
-  // elas, `gap-2`), nunca detecção de tela/dispositivo. Decisão do
-  // usuário (2026-08-21): `md:w-fit` sozinho no wrapper pegava a largura
-  // NATURAL da linha de botões (mais larga que a grade), sobrando espaço
-  // vazio à direita do último tamanho — as pílulas ficam alinhadas à
-  // esquerda (`justify-content` padrão) dentro dessa sobra, então a
-  // borda direita visível de "43" nunca batia com a do botão. Calculando
-  // a largura da grade e aplicando ela DIRETO no wrapper (em vez de
-  // deixar o `fit-content` escolher entre os dois filhos) elimina essa
-  // ambiguidade — só funciona porque todos os tamanhos sempre couberam
-  // numa linha só nesta coluna (nunca quebrou em 2 linhas nos testes);
-  // se algum dia quebrar, a largura calculada ainda é a de UMA linha
-  // completa, então o alinhamento vale pra essa largura de referência.
-  const sizeGridWidth = sizes.length * 44 + Math.max(sizes.length - 1, 0) * 8;
-
   const details = (
     <div className="flex min-w-0 flex-col gap-6 md:flex-1">
       <div className="flex flex-col gap-1.5">
@@ -359,19 +351,27 @@ export function ProductOrderPanel({
 
       <PaymentBadges />
 
-      {/* `md:w-[var(--size-grid-width)] md:self-start` — SÓ desktop,
-          decisão do usuário (2026-08-21). Esta div envolve a grade de
-          tamanhos E a linha de botões (mais abaixo) juntas, na largura
-          EXATA calculada em `sizeGridWidth` — não `w-fit` (que pegava a
-          largura da linha de botões, mais larga naturalmente que a
-          grade, deixando "43" sobrar longe da borda direita real).
-          `self-start` cancela o `align-items: stretch` padrão do flex-col
-          pai (`details`), senão esta div esticaria de volta pra largura
-          cheia da coluna mesmo com a largura fixa. */}
-      <div
-        style={{ "--size-grid-width": `${sizeGridWidth}px` } as CSSProperties}
-        className="flex flex-col gap-6 md:w-[var(--size-grid-width)] md:self-start"
-      >
+      {/* `md:w-fit md:max-w-full md:self-start` — SÓ desktop (2026-08-23,
+          3ª tentativa). As duas tentativas anteriores usavam uma largura
+          CALCULADA (aritmética `tamanhos × 44px + gaps`): funcionava na
+          maioria dos casos, mas com 9-10 pílulas o valor calculado
+          divergia por poucos pixels da largura REAL renderizada pelo
+          navegador (arredondamento de sub-pixel em telas reais — visto ao
+          vivo no MacBook do usuário, "Pedir agora" sobrando visivelmente
+          além do último tamanho só nesses casos). `w-fit` não calcula
+          nada: mede o `max-content` de verdade, então NUNCA diverge do
+          que está na tela. Reage sozinho à ocasião — produtos com poucos
+          tamanhos (grade mais estreita que os botões) usam a largura
+          natural dos botões; produtos com muitos tamanhos (grade mais
+          larga) usam a largura da grade — sem regra fixa, sem tratar
+          nenhum produto como exceção. `max-w-full` é o teto de segurança
+          (era `min(...,100%)` antes): se a grade natural for mais larga
+          que a coluna disponível, trava em 100% dela e a grade quebra
+          linha sozinha (`flex-wrap` já existente) em vez de estourar o
+          card. `self-start` cancela o `align-items: stretch` padrão do
+          flex-col pai (`details`), senão esta div sempre esticaria pra
+          largura cheia da coluna, disfarçando o `w-fit`. */}
+      <div className="flex flex-col gap-6 md:w-fit md:max-w-full md:self-start">
       <div className="flex flex-col gap-2">
         <h2 className="text-sm font-semibold text-gray-900">Escolha o tamanho</h2>
         <div className="flex flex-wrap gap-2">
@@ -440,7 +440,7 @@ export function ProductOrderPanel({
             2026-08-21): "Copiar pedido" fica do tamanho do próprio
             conteúdo (`shrink-0` no wrapper dele), e "Pedir agora no
             WhatsApp" ocupa todo o espaço que sobra na linha. */}
-        <div className="relative flex-1">
+        <div className={cn("relative flex-1", manySizes && "md:mr-3")}>
           {tooltipTarget === "order" && (
             <div className="absolute -top-10 left-0 whitespace-nowrap rounded-md bg-gray-900 px-3 py-1.5 text-xs text-white">
               Selecione um tamanho
