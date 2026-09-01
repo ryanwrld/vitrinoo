@@ -1,0 +1,484 @@
+"use client";
+
+import { useEffect, useState, useTransition } from "react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Check, X, Sparkles } from "lucide-react";
+import { importarDoMarketplace } from "@/lib/marketplace/import-actions";
+
+const brl = (v: number) =>
+  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 });
+
+export type ItemAmostra = {
+  id: string;
+  name: string;
+  suggestedPrice: number;
+  sizeMin: number;
+  sizeMax: number;
+  fotoUrl: string | null;
+  jaImportado: boolean;
+};
+
+/**
+ * Chuteira em traço, para o verso das cartas.
+ *
+ * Desenhada aqui em vez de vir do lucide-react — a biblioteca não tem chuteira,
+ * e as alternativas (tênis, bota) descaracterizavam a peça inteira. O perfil é
+ * assimétrico de propósito: bico baixo à esquerda, calcanhar alto à direita.
+ * Uma primeira tentativa saiu simétrica demais e lia como uma cúpula com pernas.
+ */
+function IconeChuteira({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 38 24" fill="none" className={className} aria-hidden="true">
+      <path
+        d="M2.5 16.5c-.4-2 .6-3.4 3-4.1l11.8-3.4c1.6-.5 2.8-1.2 3.8-2.2l1.8-1.8c1.6-1.6 4-1.7 5.7-.3 1.9 1.6 3 3.9 3 6.4v3.9c0 .9-.7 1.6-1.6 1.6H4.1c-.8 0-1.5-.5-1.6-1.3z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12.5 12.2l1.6 2.6M16.4 11l1.6 2.6M20.3 9.6l1.7 2.6"
+        stroke="currentColor"
+        strokeWidth="1.1"
+        strokeLinecap="round"
+        opacity=".7"
+      />
+      <path
+        d="M27.6 6.4c1.4 1.3 2.2 3 2.2 5"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        opacity=".6"
+      />
+      <path
+        d="M6 18v2.5M12.5 18v2.5M19.5 18v2.5M26.5 18v2.5M32 18v2.5"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/**
+ * Duração do embaralhamento antes da revelação. Longo de propósito: a versão de
+ * 1,5s não dava tempo nem de ler o que estava escrito na tela, e a espera virava
+ * um flash sem função. Aqui ela sustenta três mensagens em sequência.
+ */
+const MS_SORTEIO = 4200;
+/**
+ * Intervalo entre a revelação de uma chuteira e a próxima.
+ *
+ * ZERO, por decisão do dono: as 10 aparecem JUNTAS. O escalonamento dava um
+ * efeito de cascata bonito no papel, mas na prática as últimas chegavam quase
+ * 1,2 s depois das primeiras — e o que se lia não era ritmo, era atraso. Com
+ * tudo sincronizado, a duração de cada card carrega sozinha a sensação de
+ * velocidade.
+ */
+const MS_ENTRE_CARTAS = 0;
+
+/**
+ * Quanto o baralho pode se estender além do tempo normal, esperando as fotos.
+ * Sem esse teto, uma conexão ruim prenderia o usuário embaralhando para sempre.
+ */
+const MS_ESPERA_MAXIMA_FOTOS = 2500;
+
+/**
+ * Mensagens que se sucedem durante o embaralhamento.
+ *
+ * NEUTRAS de propósito: descrevem só o que está acontecendo. O argumento de
+ * venda — exclusividade, facilidade, rapidez — fica inteiro no resultado, por
+ * decisão do dono do produto. Antecipá-lo aqui gastaria a mensagem antes de o
+ * usuário ter visto o que ganhou, e a revelação chegaria já sabida.
+ */
+const MENSAGENS = ["Verificando disponibilidade…", "Sorteando os modelos…", "Quase lá…"];
+
+/**
+ * Pop-up do teste grátis, com o sorteio encenado.
+ *
+ * O RESULTADO JÁ ESTÁ DECIDIDO quando este componente monta: a seleção é
+ * determinística a partir do id da loja (`lib/marketplace/amostra.ts`), então a
+ * mesma loja vê sempre as mesmas 10 e recarregar a página não muda nada. A
+ * animação não sorteia — ela apresenta.
+ *
+ * Isso é deliberado e importante: um sorteio de verdade a cada abertura deixaria
+ * o lojista girando a roleta até gostar do resultado, e transformaria a amostra
+ * numa forma de garimpar o acervo de graça.
+ *
+ * Modal por estado local, nunca por rota interceptada — o projeto tem decisão
+ * travada contra parallel/intercepting routes no Next 16.
+ */
+/**
+ * Chave que marca que esta loja JÁ viu o sorteio.
+ *
+ * Em localStorage, e não no banco: o que se guarda aqui é se a encenação já foi
+ * assistida — informação de interface, sem valor de negócio. O resultado em si
+ * nunca dependeu disso, porque é derivado do id da loja e é o mesmo sempre.
+ *
+ * O custo é conhecido e aceito: em outro aparelho ou outro navegador a animação
+ * roda uma vez de novo. Levar isso ao banco custaria uma migration e uma escrita
+ * a cada abertura de pop-up para resolver um incômodo que dura 4 segundos.
+ */
+const CHAVE_SORTEADO = "vitrinoo:amostra-sorteada:";
+
+export function SorteioAmostra({
+  itens,
+  hrefComprar,
+  storeId,
+  onFechar,
+}: {
+  itens: ItemAmostra[];
+  hrefComprar: string;
+  storeId: string;
+  onFechar: () => void;
+}) {
+  // Estado inicial calculado no primeiro render, não num efeito: começar em
+  // "sorteando" e corrigir depois faria a animação piscar antes de sumir.
+  const [fase, setFase] = useState<"sorteando" | "revelando">(() => {
+    if (typeof window === "undefined") return "sorteando";
+    try {
+      if (window.localStorage.getItem(CHAVE_SORTEADO + storeId)) return "revelando";
+    } catch {
+      // localStorage bloqueado (janela anônima, cookies restritos): a animação
+      // roda de novo, que é degradação aceitável.
+    }
+    return "sorteando";
+  });
+
+  /**
+   * Reabertura: já viu o sorteio antes, então entra direto no resultado — SEM a
+   * animação de entrada.
+   *
+   * Não é só estética. A animação de revelação depende de as fotos já estarem
+   * decodificadas, e quem entra direto em "revelando" pula o pré-carregamento
+   * que acontece durante o baralho. Animar aqui reintroduziria exatamente o
+   * travamento de ~900 ms que o pré-carregamento resolveu. Mostrar estático é
+   * mais rápido E mais correto: o sorteio já foi assistido uma vez.
+   */
+  const [reabertura] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return Boolean(window.localStorage.getItem(CHAVE_SORTEADO + storeId));
+    } catch {
+      return false;
+    }
+  });
+  const [pendente, iniciar] = useTransition();
+  const [passouTempoMinimo, setPassouTempoMinimo] = useState(false);
+  const [carregadas, setCarregadas] = useState(0);
+  const router = useRouter();
+
+  const restantes = itens.filter((i) => !i.jaImportado);
+
+  // Chave ESTÁVEL das fotos, para a dependência do efeito de pré-carregamento.
+  // `itens` é um array novo a cada render do pai; usá-lo direto faria o efeito
+  // reiniciar sozinho e recomeçar o baralho no meio, adiando a revelação.
+  const chaveFotos = itens.map((i) => i.fotoUrl ?? "").join("|");
+
+  useEffect(() => {
+    if (fase === "revelando") return;
+
+    // Respeita quem pediu menos movimento: vai direto ao resultado.
+    const semMovimento = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (semMovimento) {
+      setFase("revelando");
+      return;
+    }
+
+    // Tempo mínimo do baralho. A revelação também espera as fotos (ver
+    // `prontasParaRevelar` abaixo) — o que terminar por último manda.
+    const t = setTimeout(() => setPassouTempoMinimo(true), MS_SORTEIO);
+    // Teto: numa conexão ruim, prender o usuário embaralhando para sempre seria
+    // pior que revelar com as fotos ainda chegando.
+    const limite = setTimeout(
+      () => setPassouTempoMinimo(true),
+      MS_SORTEIO + MS_ESPERA_MAXIMA_FOTOS,
+    );
+    return () => {
+      clearTimeout(t);
+      clearTimeout(limite);
+    };
+  }, [fase]);
+
+  /**
+   * Revela quando o baralho cumpriu o tempo E as fotos já pintaram.
+   *
+   * O CONTADOR VEM DO onLoad DAS IMAGENS REAIS, e não de um pré-carregamento
+   * manual. A versão anterior chamava `new Image()` com a URL do Supabase — só
+   * que o `next/image` não requisita essa URL: ele pede a do otimizador
+   * (`/_next/image?url=…&w=…`). O pré-carregamento aquecia um cache que nunca
+   * era consultado, e as fotos continuavam chegando depois da animação.
+   *
+   * Montar as imagens de verdade durante o baralho resolve sem adivinhar URL:
+   * quem carrega é exatamente o mesmo componente que vai aparecer.
+   */
+  useEffect(() => {
+    if (fase === "revelando") return;
+    const totalComFoto = itens.filter((i) => i.fotoUrl).length;
+    if (passouTempoMinimo && carregadas >= totalComFoto) setFase("revelando");
+  }, [fase, passouTempoMinimo, carregadas, itens]);
+
+  // Marca como visto assim que a revelação acontece — inclusive quando o
+  // usuário fecha o pop-up sem importar nada. O sorteio já foi assistido.
+  useEffect(() => {
+    if (fase !== "revelando") return;
+    try {
+      window.localStorage.setItem(CHAVE_SORTEADO + storeId, "1");
+    } catch {
+      /* sem localStorage: nada a fazer, apenas repete a animação depois */
+    }
+  }, [fase, storeId]);
+
+  // Esc fecha — um modal que só fecha no X é uma armadilha de teclado.
+  useEffect(() => {
+    const aoTeclar = (e: KeyboardEvent) => e.key === "Escape" && onFechar();
+    window.addEventListener("keydown", aoTeclar);
+    return () => window.removeEventListener("keydown", aoTeclar);
+  }, [onFechar]);
+
+  function adicionar() {
+    iniciar(async () => {
+      const r = await importarDoMarketplace(restantes.map((i) => i.id));
+      if (!r.ok) {
+        toast.error(r.erro ?? "Não foi possível adicionar.");
+        return;
+      }
+      if (r.importados > 0) {
+        toast.success(
+          `${r.importados} ${r.importados === 1 ? "chuteira adicionada" : "chuteiras adicionadas"} como rascunho.`,
+          {
+            description: "Ajuste o preço e publique, a partir daí já estão prontas para vender.",
+            action: {
+              label: "Revisar",
+              onClick: () => router.push("/admin/produtos?status=draft"),
+            },
+          },
+        );
+        onFechar();
+        router.refresh();
+      } else {
+        toast.info("Essas chuteiras já estão na sua loja.");
+      }
+    });
+  }
+
+  return (
+    <div
+      className="animate-fade-in fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Teste grátis"
+      onClick={onFechar}
+    >
+      <div
+        className="animate-scale-in flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-3xl bg-white sm:rounded-3xl dark:bg-gray-900"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-gray-200 p-5 dark:border-gray-800">
+          <div>
+            {/*
+              Verde de sucesso do próprio design system, e não um tom novo:
+              `--color-success-bg` e `--color-success-fg` já são calibrados para
+              contraste nos dois temas, e o escopo `.dark .admin-scope` troca o
+              `-fg` sozinho (globals.css). Escrever um verde à mão aqui criaria
+              um quinto tom de verde no produto e exigiria variante `dark:` em
+              cada uso — que é justamente o que esses tokens existem para evitar.
+            */}
+            <span className="inline-flex items-center rounded-full bg-success-bg px-2.5 py-1 text-xs font-semibold text-success-fg dark:bg-success-solid/15">
+              Teste grátis
+            </span>
+            <h3 className="mt-2 font-display text-lg font-extrabold text-gray-900 dark:text-gray-50">
+              {fase === "sorteando" ? "Sorteando suas chuteiras…" : "Tá na mão"}
+            </h3>
+            <p
+              // `text-pretty` distribui as linhas evitando sobra grande no fim
+              // de uma e órfã na última. Sem ele, o navegador quebra de forma
+              // gulosa: enche cada linha até não caber mais a próxima palavra,
+              // e no celular isso deixava um vão visível depois de "Chegam".
+              className="mt-0.5 text-pretty text-sm text-gray-500 dark:text-gray-400"
+              aria-live="polite"
+            >
+              {fase === "sorteando"
+                ? "Isso leva só alguns segundos."
+                : `${itens.length} modelos reservados para a sua loja. Prontos para você começar a vender.`}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onFechar}
+            aria-label="Fechar"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-50"
+          >
+            <X className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="relative flex-1 overflow-y-auto p-5">
+          {fase === "sorteando" && <Embaralhando />}
+
+          {/*
+            O GRID É MONTADO DESDE O INÍCIO, invisível durante o baralho.
+            É isso que faz as fotos carregarem ANTES da revelação: são os mesmos
+            componentes <Image> que vão aparecer, então a URL que carrega é
+            exatamente a que será usada — sem precisar adivinhar o formato do
+            otimizador do Next.
+
+            `opacity-0` + `absolute`, e nunca `display:none` ou `hidden`: o
+            navegador não baixa imagem de elemento sem caixa, e era justamente
+            o download que queríamos adiantar.
+          */}
+          <div
+            className={
+              fase === "sorteando"
+                ? "pointer-events-none absolute inset-0 -z-10 overflow-hidden p-5 opacity-0"
+                : ""
+            }
+            aria-hidden={fase === "sorteando"}
+          >
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
+              {itens.map((item, i) => (
+                <article
+                  key={item.id}
+                  className={`flex flex-col ${
+                    fase === "revelando" && !reabertura ? "vt-reveal" : ""
+                  }`}
+                  style={{ ["--atraso" as string]: `${i * MS_ENTRE_CARTAS}ms` }}
+                >
+                  <div
+                    className={`relative aspect-square overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800 ${
+                      fase === "revelando" && !reabertura ? "vt-shine" : ""
+                    }`}
+                    style={{ ["--atraso" as string]: `${i * MS_ENTRE_CARTAS}ms` }}
+                  >
+                    {item.fotoUrl && (
+                      <Image
+                        src={item.fotoUrl}
+                        alt=""
+                        fill
+                        sizes="(min-width: 640px) 20vw, 50vw"
+                        className="object-cover"
+                        onLoad={() => setCarregadas((n) => n + 1)}
+                        // Conta o erro como "resolvido": uma foto quebrada não
+                        // pode prender o usuário embaralhando para sempre.
+                        onError={() => setCarregadas((n) => n + 1)}
+                      />
+                    )}
+                    {item.jaImportado && (
+                      <span className="absolute right-1.5 top-1.5 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-white">
+                        na loja
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1.5 line-clamp-2 text-[12px] font-semibold leading-snug text-gray-900 dark:text-gray-50">
+                    {item.name}
+                  </p>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                    {brl(item.suggestedPrice)} · {item.sizeMin}-{item.sizeMax}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {fase === "revelando" && (
+          <div className="animate-slide-up flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 p-5 dark:border-gray-800">
+            <a
+              href={hrefComprar}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm font-semibold text-primary transition-opacity duration-150 hover:opacity-80 dark:text-blue-300"
+            >
+              Quero o pacote completo
+            </a>
+            {restantes.length === 0 ? (
+              <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-gray-100 px-5 text-sm font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                <Check className="h-4 w-4" strokeWidth={3} aria-hidden="true" />
+                Já estão no seu estoque
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={adicionar}
+                disabled={pendente}
+                className="inline-flex min-h-10 items-center gap-2 rounded-full bg-primary px-5 text-[13px] font-semibold text-white transition-opacity duration-150 hover:opacity-90 disabled:opacity-60"
+              >
+                {pendente ? "Adicionando…" : "Adicionar ao meu estoque"}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * O baralho embaralhando.
+ *
+ * VERSO DE CARTA, e não as fotos reais: mostrar as chuteiras aqui entregava o
+ * resultado antes da revelação e matava o único momento de surpresa que a tela
+ * tem. O verso também é o que faz o conjunto ler como um baralho — cinco fotos
+ * diferentes girando parecem cinco coisas soltas, cinco versos iguais parecem um
+ * maço.
+ */
+function Embaralhando() {
+  const [passo, setPasso] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setPasso((p) => Math.min(p + 1, MENSAGENS.length - 1)), 1400);
+    return () => clearInterval(t);
+  }, []);
+
+  // Cada carta sai para um lado alternado, com atraso próprio: é o que produz a
+  // sensação de riffle em vez de um bloco só se mexendo.
+  const cartas = [0, 1, 2, 3, 4, 5];
+
+  return (
+    <div className="flex min-h-[18rem] flex-col items-center justify-center gap-8 py-8">
+      <div className="vt-baralho relative h-44 w-32">
+        <div
+          className="vt-halo absolute -inset-8 rounded-full bg-primary/20 blur-3xl dark:bg-blue-400/20"
+          aria-hidden="true"
+        />
+
+        {cartas.map((i) => (
+          <div
+            key={i}
+            className="vt-carta absolute inset-0 overflow-hidden rounded-xl border border-white/25 shadow-2xl"
+            style={{
+              ["--i" as string]: String(i),
+              ["--sx" as string]: String(i % 2 === 0 ? -1 : 1),
+              animationDelay: `${i * 230}ms`,
+            }}
+            aria-hidden="true"
+          >
+            {/* Verso: gradiente da marca + trama diagonal, como carta de baralho */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary to-blue-900" />
+            <div
+              className="absolute inset-0 opacity-30"
+              style={{
+                backgroundImage:
+                  "repeating-linear-gradient(45deg, rgba(255,255,255,.35) 0 2px, transparent 2px 9px)",
+              }}
+            />
+            <div className="absolute inset-[6px] rounded-lg border border-white/30" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <IconeChuteira className="w-14 text-white/85" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <p
+        key={passo}
+        className="animate-fade-in inline-flex items-center gap-2 text-sm font-semibold text-gray-600 dark:text-gray-300"
+        aria-live="polite"
+      >
+        <Sparkles className="h-4 w-4 text-amber-500" strokeWidth={2.5} aria-hidden="true" />
+        {MENSAGENS[passo]}
+      </p>
+    </div>
+  );
+}

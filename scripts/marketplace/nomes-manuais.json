@@ -1,0 +1,214 @@
+{
+  "_comentario": [
+    "Nomes definidos na mão, por álbum. Existe porque o Yupoo agrupa produtos distintos",
+    "sob uma única categoria — as 18 Jomas vêm todas da categoria 'JOMA', e a linha só se",
+    "identifica lendo o que está estampado no par. Marcadores usados na classificação:",
+    "  'REGATE REBOUND' na lateral        -> Regate Rebound",
+    "  'TOP-FLEX' + REBOUND na entressola -> Top Flex Rebound",
+    "  'TOP-FLEX' + REACTIVE BALL          -> Top Flex Plus Reactive Ball",
+    "  'TOP-FLEX ULTIMATE' + FOAM:REACTIVE -> Top Flex Ultimate (entressola ondulada)",
+    "Todas as Jomas do fornecedor são de quadra (IC), confirmado pelo dono do produto.",
+    "",
+    "2026-08-28 — 24 nomes que vinham só com a marca ou com a linha errada:",
+    "  New Balance: o chinês é '新百伦FG' para Furon E Tekela. Separados lendo o par —",
+    "    'FURON' impresso em 2, 'TEKELA' em 1, e 'SPEED CTRL STUD' (solado do Furon,",
+    "    confirmado no site da New Balance) nos demais. Os TF são o par dos FG.",
+    "  刺客1代 é Mercurial VAPOR 1, não 'Mercurial 1': a regra /^刺客\\s*([\\d.]+)/ do",
+    "    lib-traduz.mjs perde a palavra Vapor. Dois álbuns dessa categoria (220057368 e",
+    "    219850545) são Vapor da era CR7, não Vapor 1 — ficaram de fora de propósito.",
+    "  Adidas: 179266232 e 179266179 têm 'MUNDIAL SPZL' e 'COPA SPZL' estampados em dourado.",
+    "  Sem gerações: v7/v7+/v8 do Furon não são legíveis nas fotos, e chutar seria pior."
+  ],
+  "251708668": {
+    "nome": "Joma Top Flex Ultimate",
+    "sole": "IC"
+  },
+  "251708188": {
+    "nome": "Joma Top Flex Ultimate",
+    "sole": "IC"
+  },
+  "251707875": {
+    "nome": "Joma Top Flex Ultimate",
+    "sole": "IC"
+  },
+  "248200637": {
+    "nome": "Joma Top Flex Plus Reactive Ball",
+    "sole": "IC"
+  },
+  "229947100": {
+    "nome": "Joma Top Flex Plus Reactive Ball",
+    "sole": "IC"
+  },
+  "224267850": {
+    "nome": "Joma Top Flex Plus Reactive Ball",
+    "sole": "IC"
+  },
+  "224267823": {
+    "nome": "Joma Top Flex Plus Reactive Ball",
+    "sole": "IC"
+  },
+  "224170118": {
+    "nome": "Joma Top Flex Plus Reactive Ball",
+    "sole": "IC"
+  },
+  "224169689": {
+    "nome": "Joma Top Flex Plus Reactive Ball",
+    "sole": "IC"
+  },
+  "238478392": {
+    "nome": "Joma Top Flex Rebound",
+    "sole": "IC"
+  },
+  "227309613": {
+    "nome": "Joma Top Flex Rebound",
+    "sole": "IC"
+  },
+  "224170955": {
+    "nome": "Joma Top Flex Rebound",
+    "sole": "IC"
+  },
+  "217551595": {
+    "nome": "Joma Top Flex Rebound",
+    "sole": "IC"
+  },
+  "216577777": {
+    "nome": "Joma Top Flex Rebound",
+    "sole": "IC"
+  },
+  "213358323": {
+    "nome": "Joma Top Flex Rebound",
+    "sole": "IC"
+  },
+  "217551780": {
+    "nome": "Joma Regate Rebound",
+    "sole": "IC"
+  },
+  "209787395": {
+    "nome": "Joma Regate Rebound",
+    "sole": "IC"
+  },
+  "200420263": {
+    "nome": "Joma Regate Rebound",
+    "sole": "IC"
+  },
+  "224980929": {
+    "nome": "Copa",
+    "sole": "AG"
+  },
+  "224789645": {
+    "nome": "Copa",
+    "sole": "AG"
+  },
+  "224980959": {
+    "nome": "Copa",
+    "sole": "TF"
+  },
+  "224652199": {
+    "nome": "Copa",
+    "sole": "TF"
+  },
+  "186161046": {
+    "nome": "Nike SB Gato",
+    "sole": "IC"
+  },
+  "186160986": {
+    "nome": "Nike SB Gato",
+    "sole": "IC"
+  },
+  "184568701": {
+    "nome": "Nike SB Gato",
+    "sole": "IC"
+  },
+  "181854918": {
+    "nome": "Nike SB Gato",
+    "sole": "IC"
+  },
+  "176085906": {
+    "nome": "2024 Copa Gloro2",
+    "sole": "TF"
+  },
+  "175898038": {
+    "nome": "2024 Copa Gloro2",
+    "sole": "TF"
+  },
+  "175718372": {
+    "nome": "2024 Copa Gloro2",
+    "sole": "TF"
+  },
+  "175718340": {
+    "nome": "2024 Copa Gloro2",
+    "sole": "TF"
+  },
+  "242614948": {
+    "nome": "New Balance Furon"
+  },
+  "242209106": {
+    "nome": "New Balance Furon"
+  },
+  "214657868": {
+    "nome": "New Balance Furon"
+  },
+  "206908491": {
+    "nome": "New Balance Furon"
+  },
+  "205722674": {
+    "nome": "New Balance Furon"
+  },
+  "204648569": {
+    "nome": "New Balance Furon"
+  },
+  "204648506": {
+    "nome": "New Balance Furon"
+  },
+  "214657835": {
+    "nome": "New Balance Furon"
+  },
+  "209363465": {
+    "nome": "New Balance Furon"
+  },
+  "209185603": {
+    "nome": "New Balance Furon"
+  },
+  "209185545": {
+    "nome": "New Balance Furon"
+  },
+  "212321723": {
+    "nome": "New Balance Tekela"
+  },
+  "222982997": {
+    "nome": "Mercurial Vapor 1"
+  },
+  "222982958": {
+    "nome": "Mercurial Vapor 1"
+  },
+  "222982909": {
+    "nome": "Mercurial Vapor 1"
+  },
+  "222982869": {
+    "nome": "Mercurial Vapor 1"
+  },
+  "222982835": {
+    "nome": "Mercurial Vapor 1"
+  },
+  "222982802": {
+    "nome": "Mercurial Vapor 1"
+  },
+  "223389758": {
+    "nome": "Mercurial Vapor 1"
+  },
+  "223389750": {
+    "nome": "Mercurial Vapor 1"
+  },
+  "194151382": {
+    "nome": "Mercurial Vapor 1"
+  },
+  "182413064": {
+    "nome": "Mercurial Vapor 1"
+  },
+  "179266232": {
+    "nome": "Mundial SPZL"
+  },
+  "179266179": {
+    "nome": "Copa SPZL"
+  }
+}

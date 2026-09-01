@@ -231,25 +231,29 @@ html.dark:has(.admin-scope) {
 }
 
 /*
- * Scrollbar nativa escondida no popup de produto (SÓ desktop — o `md:max-
- * h-[490px]` fixo em `product-modal.tsx` corta o card antes da descrição,
- * decisão do usuário 2026-08-20; sem esconder a barra, o corte fica com uma
- * trilha de scrollbar visível na lateral, o que quebra a ilusão de "o card
- * termina aqui" que era o objetivo). Mesmo truque de sempre — o scroll em
- * si continua funcionando normal (roda do mouse, trackpad, teclado), só o
- * indicador visual some. Configurações de SO com "sempre mostrar barra de
- * rolagem" (em vez de overlay automática) são exatamente o caso que motivou
- * isto — sem esse ajuste, a trilha fica sempre visível ali, não só ao
- * rolar.
+ * Scrollbar nativa escondida no popup de produto, em QUALQUER tamanho de
+ * tela (mobile incluso — antes era só `min-width: 768px`, decisão de
+ * 2026-08-20 pensada só pro corte de altura do desktop). Motivo real,
+ * achado ao investigar uma inconsistência de tamanho entre produtos
+ * (2026-08-22, usuário reportou "Jordan Jr." menor que "Nike Phantom" no
+ * mesmo popup): com "scrollbar-width: auto" (padrão), um produto cujo
+ * conteúdo excede a altura do popup (ex.: tem descrição longa) GANHA uma
+ * barra de rolagem REAL, que rouba ~14px de largura do conteúdo
+ * (`clientWidth` fica menor que `offsetWidth`) — isso encolhe a foto, o
+ * texto e os botões só NAQUELE produto, proporcionalmente, comparado a um
+ * produto sem overflow que não perde esses 14px. O bug era universal (
+ * medido em mobile, tablet e desktop), então a correção precisa ser
+ * universal também — nunca escopar de novo pra só uma faixa de tela. O
+ * scroll em si continua funcionando normal (roda do mouse, trackpad,
+ * touch, teclado), só o indicador visual some.
  */
-@media (min-width: 768px) {
-  .product-panel-scroll {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  .product-panel-scroll::-webkit-scrollbar {
-    display: none;
-  }
+.product-panel-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.product-panel-scroll::-webkit-scrollbar {
+  display: none;
 }
 
 /*
@@ -898,3 +902,150 @@ input:autofill {
     transition: none;
   }
 }
+
+/* =============================================================================
+ * Sorteio da amostra grátis (marketplace)
+ * =============================================================================
+ * O sorteio é DETERMINÍSTICO no servidor — a mesma loja recebe sempre as mesmas
+ * 10 chuteiras (ver src/lib/marketplace/amostra.ts). A animação é encenação, não
+ * aleatoriedade: existe para dar peso ao momento em que o revendedor descobre o
+ * que ganhou, que é a única chance de o produto parecer um presente e não uma
+ * amostra grátis burocrática.
+ *
+ * Tudo em `transform` e `opacity` — as duas únicas propriedades que o navegador
+ * anima na GPU sem recalcular layout. Com 10 cards animando ao mesmo tempo,
+ * animar qualquer outra coisa engasgaria em celular.
+ */
+
+/* EMBARALHAMENTO DE VERDADE (riffle).
+ *
+ * A primeira versão dava a MESMA keyframe para todas as cartas, mudando só o
+ * atraso — e o resultado lia como uma carta só tremendo, porque elas
+ * percorriam o mesmo caminho quase sobrepostas. Aqui cada carta recebe o lado
+ * (`--sx`) e a posição na pilha (`--i`) por variável, então sai do baralho para
+ * um lado, arqueia e volta encaixando em outra altura: é o movimento de cortar
+ * e reempilhar, não um chacoalho.
+ */
+@keyframes vt-riffle {
+  0% {
+    transform: translate3d(0, calc(var(--i) * -3px), 0) rotate(0deg);
+    z-index: 1;
+  }
+  22% {
+    transform:
+      translate3d(calc(var(--sx) * 74px), calc(var(--i) * -3px - 26px), 0)
+      rotate(calc(var(--sx) * 16deg));
+    z-index: 10;
+  }
+  55% {
+    transform:
+      translate3d(calc(var(--sx) * 40px), calc(var(--i) * -3px - 6px), 0)
+      rotate(calc(var(--sx) * 7deg));
+  }
+  100% {
+    transform: translate3d(0, calc(var(--i) * -3px), 0) rotate(0deg);
+    z-index: 1;
+  }
+}
+
+/* O baralho inteiro respira devagar, para o conjunto não ficar estático entre
+   as passadas das cartas. */
+@keyframes vt-baralho {
+  0%, 100% { transform: rotate(-2deg) scale(1); }
+  50%      { transform: rotate(2deg) scale(1.03); }
+}
+
+
+/* Revelação de cada chuteira: entra girando no eixo Y, como carta virando.
+ *
+ * O ÂNGULO FOI DE 78° PARA 32°, e não por gosto. `rotateY` grande sobre um
+ * elemento que contém bitmap obriga o navegador a RE-RASTERIZAR a textura a cada
+ * quadro, porque a projeção em perspectiva muda a área de tela ocupada. Com 10
+ * cards escalonados mais um gradiente varrendo por cima, isso estourava o
+ * orçamento de quadro e travava. Em ângulo baixo a distorção cabe na mesma
+ * textura e o quadro volta a ser só composição.
+ */
+@keyframes vt-reveal {
+  0%   { opacity: 0; transform: perspective(900px) rotateY(-32deg) translate3d(0,14px,0) scale(.94); }
+  60%  { opacity: 1; }
+  100% { opacity: 1; transform: perspective(900px) rotateY(0deg) translate3d(0,0,0) scale(1); }
+}
+
+/* Brilho que atravessa a carta no instante em que ela termina de virar. */
+/* `translate3d` em vez de `translateX`: força a faixa para a própria camada de
+ * composição, em vez de ser repintada junto com a foto a cada quadro. */
+@keyframes vt-shine {
+  /* A opacidade sobe e desce de forma simétrica em torno do meio do trajeto —
+     antes ela chegava ao pico em 35% e passava o resto do caminho sumindo, o
+     que deixava um rastro arrastado depois que a faixa já tinha passado. */
+  0%   { transform: translate3d(-110%,0,0) skewX(-16deg); opacity: 0; }
+  25%  { opacity: .5; }
+  75%  { opacity: .5; }
+  100% { transform: translate3d(180%,0,0) skewX(-16deg); opacity: 0; }
+}
+
+/* Halo pulsando por trás do baralho enquanto sorteia. */
+@keyframes vt-halo {
+  0%, 100% { opacity: .25; transform: scale(.9); }
+  50%      { opacity: .6;  transform: scale(1.08); }
+}
+
+@keyframes vt-faisca {
+  0%   { opacity: 0; transform: translate3d(0,0,0) scale(0); }
+  30%  { opacity: 1; transform: translate3d(var(--dx), var(--dy), 0) scale(1); }
+  100% { opacity: 0; transform: translate3d(calc(var(--dx) * 2.1), calc(var(--dy) * 2.1), 0) scale(.2); }
+}
+
+.vt-carta   { animation: vt-riffle 1400ms cubic-bezier(.35,0,.25,1) infinite; }
+.vt-baralho { animation: vt-baralho 3.6s ease-in-out infinite; }
+.vt-halo    { animation: vt-halo 1.4s ease-in-out infinite; }
+.vt-faisca  { animation: vt-faisca 900ms cubic-bezier(.2,.7,.3,1) forwards; }
+
+.vt-reveal {
+  opacity: 0;
+  /* Promove a camada ANTES do primeiro quadro. Sem isso o navegador cria e
+     destrói a camada durante a animação, e a criação cai justamente no quadro
+     inicial — que é onde o engasgo aparecia. */
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  /* Isola a pintura do card: o que acontece dentro dele não invalida o resto do
+     grid, então revelar o 7º não força repintar os 6 primeiros. */
+  contain: paint;
+  animation: vt-reveal 620ms cubic-bezier(.2,.8,.2,1) forwards;
+  /* O atraso escalonado vem por variável inline, calculada no índice do card:
+     revelar tudo junto tira exatamente a sensação de "um a um" que o sorteio
+     precisa ter. */
+  animation-delay: var(--atraso, 0ms);
+}
+
+.vt-shine::after {
+  content: "";
+  position: absolute;
+  /* -30%/-30% na horizontal: a faixa nasce e morre FORA do recorte arredondado
+     do card. Terminando dentro, o navegador precisava recompor a máscara de
+     borda no último quadro, e era ali que a varredura dava o solavanco final. */
+  inset: 0 -30%;
+  will-change: transform;
+  backface-visibility: hidden;
+  background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,.75) 50%, transparent 70%);
+  /* LINEAR, e não uma curva com desaceleração.
+   *
+   * Medido no app real: com e sem o brilho o desempenho é idêntico (60 fps,
+   * pior quadro ~26 ms nos dois), então o que se lia como travamento não era
+   * queda de quadro — era a curva. `cubic-bezier(.25,0,.2,1)` arrancava rápido
+   * e freava no meio da foto, e um reflexo que desacelera parece engasgado.
+   * Luz não desacelera: velocidade constante do começo ao fim. */
+  animation: vt-shine 820ms linear forwards;
+  animation-delay: calc(var(--atraso, 0ms) + 240ms);
+  pointer-events: none;
+}
+
+/* Quem pediu menos movimento recebe o resultado, não a encenação. */
+@media (prefers-reduced-motion: reduce) {
+  .vt-carta, .vt-baralho, .vt-halo, .vt-faisca { animation: none; }
+  .vt-reveal { opacity: 1; animation: none; }
+  .vt-shine::after { display: none; }
+}
+
+
+

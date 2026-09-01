@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Home, List, Settings, ExternalLink, Bell, ChevronDown, Headset, LogOut } from "lucide-react";
+import { Menu, X, Home, List, Store, Settings, ExternalLink, Bell, ChevronDown, Headset, LogOut } from "lucide-react";
 import { LogoMark } from "@/components/logo-mark";
 import { StoreAvatar } from "@/components/store-avatar";
 import { ThemeMenuItem } from "@/components/theme-toggle-button";
@@ -13,13 +13,19 @@ import { buildSupportWhatsAppHref } from "@/lib/support/whatsapp";
 
 /**
  * Itens de navegação do painel (D-07, copy verbatim): Dashboard, Produtos,
- * Configurações. "Sair da conta" fica separado no rodapé, nunca na lista.
- * Ícones seguem `ui_kits/admin/AdminShell.jsx` do design system (casa,
- * lista, engrenagem).
+ * Marketplace, Configurações. "Sair da conta" fica separado no rodapé, nunca
+ * na lista. Ícones seguem `ui_kits/admin/AdminShell.jsx` do design system
+ * (casa, lista, engrenagem).
+ *
+ * Marketplace entra LOGO ABAIXO de Produtos, e não no fim: é de lá que os
+ * produtos passam a vir para boa parte dos revendedores, então a proximidade
+ * entre "meus produtos" e "de onde eu tiro produto" é o que torna a relação
+ * óbvia sem precisar de explicação na tela.
  */
 const NAV_ITEMS = [
   { href: "/admin/dashboard", label: "Dashboard", Icon: Home },
   { href: "/admin/produtos", label: "Produtos", Icon: List },
+  { href: "/admin/marketplace", label: "Marketplace", Icon: Store },
   { href: "/admin/configuracoes", label: "Configurações", Icon: Settings },
 ];
 
