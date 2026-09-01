@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { requireCompletedOnboarding } from "@/lib/auth/onboarding-guard";
 import { createClient } from "@/lib/supabase/server";
+import { getProductImagePublicUrl } from "@/lib/storage/product-image-url";
 import { queryProducts } from "@/lib/products/list";
 import {
   queryRecentActivity,
@@ -219,18 +220,31 @@ function RankingList({
   title,
   items,
   metricLabel,
+  metricLabelSingular,
   metricLabelMobile = metricLabel,
+  metricLabelMobileSingular = metricLabelSingular,
   MetricIcon,
+  comparable,
   days,
   emptyTitle,
   emptyMessage,
 }: {
   title: string;
   items: (TrendRankingItem & { coverUrl: string | null })[];
+  /** Plural do rótulo da métrica ("visualizações"/"cliques"). */
   metricLabel: string;
+  /** Singular do MESMO rótulo. Obrigatório: a lista mostra rotineiramente
+   *  linhas de 1 evento (o piso do ranking é 1), e "1 visualizações" foi um
+   *  dos defeitos que apareceram ao vivo no painel da rlesportes. */
+  metricLabelSingular: string;
   /** Rótulo curto usado só no mobile (ex.: "Views" no lugar de "visualizações").
    *  Omitido → cai no metricLabel normal (mesmo texto nos dois breakpoints). */
   metricLabelMobile?: string;
+  metricLabelMobileSingular?: string;
+  /** `false` quando a loja é mais nova que a janela de comparação — o selo de
+   *  tendência some e a lista explica o motivo uma vez, em vez de repetir
+   *  "+100%" em todas as linhas (ver `TrendRankingResult.comparable`). */
+  comparable: boolean;
   MetricIcon: typeof Eye;
   days: number;
   /** Copy do estado vazio — específica por métrica (visitas vs. pedidos são
@@ -245,7 +259,10 @@ function RankingList({
       {items.length > 0 ? (
         <ul className="flex flex-col gap-2">
           {items.map((item) => {
-            const urgent = !item.disponivel && (item.isNew || (item.deltaPct ?? 0) > 0);
+            // "Em alta e esgotado" só faz sentido com tendência confiável: sem
+            // base de comparação (`comparable === false`) toda linha teria
+            // parecido "em alta" só por a loja ser nova.
+            const urgent = !item.disponivel && comparable && (item.isNew || (item.deltaPct ?? 0) > 0);
             // Métrica (contagem + selo de "porcentagem de tendência": Novo / +% / −%)
             // reusada em dois lugares por breakpoint: inline na coluna de texto no
             // mobile (pro nome não disputar espaço com uma coluna à direita) e na
@@ -255,23 +272,27 @@ function RankingList({
                 <span className="flex items-center gap-1 text-sm font-medium text-gray-900 dark:text-gray-50">
                   <MetricIcon className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" aria-hidden="true" />
                   {item.current}{" "}
-                  <span className="sm:hidden">{metricLabelMobile}</span>
-                  <span className="hidden sm:inline">{metricLabel}</span>
+                  <span className="sm:hidden">{item.current === 1 ? metricLabelMobileSingular : metricLabelMobile}</span>
+                  <span className="hidden sm:inline">{item.current === 1 ? metricLabelSingular : metricLabel}</span>
                 </span>
-                {/* Tendência positiva usa o mesmo azul de marca do badge
-                    "Novo" (bg-primary-subtle/text-primary) — só a tendência
-                    NEGATIVA continua vermelha. "Disponível"/"Esgotado" (mais
-                    abaixo, no card do produto) é outro badge e continua
+                {/* Selo de tendência (variação simétrica, sempre entre -100% e
+                    +100%). Some por completo quando não há período anterior
+                    com que comparar — antes ele exibia "Novo" em toda linha
+                    numa loja nova, o que não informava nada. Tendência
+                    positiva usa o azul de marca; só a NEGATIVA é vermelha.
+                    "Disponível"/"Esgotado" é outro badge (abaixo) e continua
                     verde/vermelho — não mexer nele por engano. */}
-                <span
-                  className={`shrink-0 rounded-full px-2 py-px text-[10px] font-bold ${
-                    item.isNew || (item.deltaPct ?? 0) >= 0
-                      ? "bg-primary-subtle text-primary dark:bg-blue-400/15 dark:text-blue-300"
-                      : "bg-error-bg text-error-badge-fg dark:bg-error-solid/15"
-                  }`}
-                >
-                  {item.isNew ? "Novo" : `${(item.deltaPct ?? 0) >= 0 ? "+" : ""}${item.deltaPct}%`}
-                </span>
+                {(item.isNew || item.deltaPct !== null) && (
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-px text-[10px] font-bold ${
+                      item.isNew || (item.deltaPct ?? 0) >= 0
+                        ? "bg-primary-subtle text-primary dark:bg-blue-400/15 dark:text-blue-300"
+                        : "bg-error-bg text-error-badge-fg dark:bg-error-solid/15"
+                    }`}
+                  >
+                    {item.isNew ? "Novo" : `${(item.deltaPct ?? 0) >= 0 ? "+" : ""}${item.deltaPct}%`}
+                  </span>
+                )}
               </>
             );
             return (
@@ -334,6 +355,18 @@ function RankingList({
               </li>
             );
           })}
+
+          {/* A nota aparece quando NENHUMA linha conseguiu selo — seja porque a
+              loja é mais nova que a janela (`comparable === false`), seja
+              porque todo produto listado foi cadastrado dentro dela. Sem isso
+              a lista mostrava cinco linhas sem selo e nada explicando por quê,
+              que lê como métrica quebrada. Basta uma linha com selo para a
+              nota sumir: aí o contraste já se explica sozinho. */}
+          {items.every((item) => !item.isNew && item.deltaPct === null) && (
+            <li className="px-1 pt-1 text-xs text-gray-500 dark:text-gray-400">
+              Ainda não há {days} dias anteriores pra comparar — a variação aparece conforme sua vitrine acumula histórico.
+            </li>
+          )}
         </ul>
       ) : (
         <div className="flex flex-col gap-1 rounded-[2rem] border border-dashed border-gray-300 px-4 py-8 text-center dark:border-gray-700">
@@ -412,7 +445,7 @@ export default async function DashboardPage({
     queryRecentActivity(supabase, store.id, ACTIVITY_FEED_LIMIT),
     queryTrendRanking(supabase, store.id, "views", periodo, timeZone),
     queryTrendRanking(supabase, store.id, "clicks", periodo, timeZone),
-    querySizeDemand(supabase, store.id, periodo),
+    querySizeDemand(supabase, store.id, periodo, timeZone),
   ]);
   const maxSizeDemand = Math.max(...sizeDemand.map((item) => item.count), 1);
 
@@ -439,11 +472,20 @@ export default async function DashboardPage({
   const disponiveis = produtosPublicados.filter((product) => product.disponivel).length;
   const esgotados = produtosPublicados.length - disponiveis;
 
-  const resolveCover = (path: string | null) =>
-    path ? supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl : null;
+  // Bucket pela ORIGEM da foto, não fixo: um produto importado do marketplace
+  // aparece nestes rankings como qualquer outro, e com o bucket fixo a miniatura
+  // dele vinha quebrada.
+  const resolveCover = (path: string | null, source: string | null) =>
+    getProductImagePublicUrl(supabase, path, source);
 
-  const maisVisualizadosWithCover = maisVisualizados.map((item) => ({ ...item, coverUrl: resolveCover(item.coverPath) }));
-  const cliquesWhatsappWithCover = cliquesWhatsapp.map((item) => ({ ...item, coverUrl: resolveCover(item.coverPath) }));
+  const maisVisualizadosWithCover = maisVisualizados.items.map((item) => ({
+    ...item,
+    coverUrl: resolveCover(item.coverPath, item.coverSource),
+  }));
+  const cliquesWhatsappWithCover = cliquesWhatsapp.items.map((item) => ({
+    ...item,
+    coverUrl: resolveCover(item.coverPath, item.coverSource),
+  }));
 
   const feedIcon = (item: ActivityFeedItem) => (item.type === "click" ? MessageCircle : Eye);
 
@@ -739,7 +781,13 @@ export default async function DashboardPage({
           mesmo princípio de profundidade já usado no avatar de produto. */}
       <div className="flex flex-col gap-3 rounded-[2rem] border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="font-display font-bold text-gray-900 dark:text-gray-50">Demanda atual</h2>
+          {/* Era "Demanda atual". Demanda é intenção de comprar, e quem carrega
+              essa intenção é só a coluna da direita (cliques no WhatsApp) — a
+              da esquerda é atenção, não demanda. Na rlesportes isso ficava
+              gritante: 124 visualizações de produto contra 4 cliques em 17
+              dias, num bloco que prometia demanda e entregava curiosidade.
+              "Interesse dos clientes" é o guarda-chuva honesto das duas. */}
+          <h2 className="font-display font-bold text-gray-900 dark:text-gray-50">Interesse dos clientes</h2>
           <div className="inline-flex w-fit shrink-0 gap-1 rounded-full bg-gray-100 p-1 dark:bg-gray-800">
             {VALID_PERIODS.map((d) => (
               <Link
@@ -767,8 +815,11 @@ export default async function DashboardPage({
           <RankingList
             title="Mais visualizados"
             items={maisVisualizadosWithCover}
+            comparable={maisVisualizados.comparable}
             metricLabel="visualizações"
+            metricLabelSingular="visualização"
             metricLabelMobile="Views"
+            metricLabelMobileSingular="View"
             MetricIcon={Eye}
             days={periodo}
             emptyTitle={
@@ -790,7 +841,9 @@ export default async function DashboardPage({
             <RankingList
               title="Cliques no WhatsApp"
               items={cliquesWhatsappWithCover}
+              comparable={cliquesWhatsapp.comparable}
               metricLabel="cliques"
+              metricLabelSingular="clique"
               MetricIcon={MessageCircle}
               days={periodo}
               emptyTitle={

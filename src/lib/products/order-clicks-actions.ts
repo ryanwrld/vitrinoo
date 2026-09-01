@@ -32,24 +32,11 @@ import { createClient } from "@/lib/supabase/server";
 const PG_UNIQUE_VIOLATION = "23505";
 
 /**
- * Data civil brasileira, calculada SEMPRE no servidor. Nunca aceitar esta
- * data do cliente: relógio de visitante é desregulado e manipulável, e ela
- * é metade da chave de deduplicação. `en-CA` é usado só porque formata como
- * `YYYY-MM-DD`, que é o literal que o Postgres espera para `date`.
- *
- * Duplicado de pageview-actions.ts de propósito: as duas Server Actions
- * públicas são deliberadamente independentes (nenhuma importa da outra),
- * e uma helper compartilhada criaria acoplamento entre dois caminhos de
- * escrita anônima que o projeto mantém separados por segurança.
+ * A data de deduplicação (`click_date`) NÃO é mais calculada aqui — desde a
+ * migration 0023 o trigger `order_clicks_set_click_date` a preenche a partir
+ * de `stores.timezone`, ignorando qualquer valor enviado pelo cliente. Ver o
+ * comentário equivalente em `pageview-actions.ts` para o porquê completo.
  */
-function currentClickDateBR(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -72,7 +59,6 @@ export async function logOrderClick(
       product_id: productId,
       size,
       visitor_id: visitor,
-      click_date: currentClickDateBR(),
     });
 
     // Duplicata = este visitante já pediu este produto hoje. É o caminho

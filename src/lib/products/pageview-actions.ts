@@ -25,19 +25,24 @@ import { createClient } from "@/lib/supabase/server";
 const PG_UNIQUE_VIOLATION = "23505";
 
 /**
- * Data civil brasileira, calculada SEMPRE no servidor. Nunca aceitar esta
- * data do cliente: relógio de visitante é desregulado e manipulável, e ela
- * é metade da chave de deduplicação. `en-CA` é usado só porque formata como
- * `YYYY-MM-DD`, que é o literal que o Postgres espera para `date`.
+ * A data de deduplicação (`view_date`) NÃO é mais calculada aqui.
+ *
+ * Ela era `Intl.DateTimeFormat` com `America/Sao_Paulo` HARDCODED, enviada
+ * pronta no insert. Duas coisas estavam erradas nisso:
+ *
+ *   1. O painel lê tudo no fuso da LOJA (`startOfTodayInTimeZone`). Gravar em
+ *      São Paulo e ler em Boa Vista (UTC-4, o caso real da `rlesportes`)
+ *      colocava gravação e leitura em réguas diferentes — um acesso das 23h30
+ *      já era "amanhã" para a trava de dedup enquanto o dashboard ainda o
+ *      contava em "hoje".
+ *   2. A data era um valor ENVIADO pelo cliente num caminho anônimo, e o
+ *      Postgres aceitava o que viesse.
+ *
+ * Desde a migration 0023 o trigger `pageviews_set_view_date` preenche a
+ * coluna a partir de `stores.timezone`, ignorando qualquer valor enviado.
+ * Não reintroduzir o cálculo aqui: haveria duas fontes de verdade para a
+ * metade mais frágil da chave de deduplicação.
  */
-function currentViewDateBR(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -58,7 +63,6 @@ export async function logPageview(
       store_id: storeId,
       product_id: productId,
       visitor_id: visitor,
-      view_date: currentViewDateBR(),
     });
 
     // Duplicata = este visitante já foi contado neste produto hoje. É o

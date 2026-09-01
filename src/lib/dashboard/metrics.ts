@@ -28,6 +28,7 @@ export type TopViewedProduct = {
   secondary: string;
   views: number;
   coverPath: string | null;
+  coverSource: string | null;
 };
 
 export type TopOrderClickProduct = {
@@ -36,6 +37,7 @@ export type TopOrderClickProduct = {
   secondary: string;
   clicks: number;
   coverPath: string | null;
+  coverSource: string | null;
 };
 
 /**
@@ -99,14 +101,16 @@ export async function queryTopViewedProducts(
   // Busca a foto de capa de cada produto (position asc, primeira = capa)
   const { data: photoRows } = await supabase
     .from("product_photos")
-    .select("product_id, storage_path, position")
+    .select("product_id, storage_path, position, source")
     .in("product_id", productIds)
     .order("position", { ascending: true });
 
   const coverPathByProductId = new Map<string, string>();
+  const coverSourceByProductId = new Map<string, string | null>();
   for (const photo of photoRows ?? []) {
     if (!coverPathByProductId.has(photo.product_id)) {
       coverPathByProductId.set(photo.product_id, photo.storage_path);
+      coverSourceByProductId.set(photo.product_id, photo.source);
     }
   }
 
@@ -122,6 +126,7 @@ export async function queryTopViewedProducts(
         secondary: buildSecondaryLine(product),
         views: row.views,
         coverPath: coverPathByProductId.get(row.product_id) ?? null,
+        coverSource: coverSourceByProductId.get(row.product_id) ?? null,
       },
     ];
   });
@@ -160,14 +165,16 @@ export async function queryTopOrderClickProducts(
   // Busca a foto de capa de cada produto (position asc, primeira = capa)
   const { data: photoRows } = await supabase
     .from("product_photos")
-    .select("product_id, storage_path, position")
+    .select("product_id, storage_path, position, source")
     .in("product_id", productIds)
     .order("position", { ascending: true });
 
   const coverPathByProductId = new Map<string, string>();
+  const coverSourceByProductId = new Map<string, string | null>();
   for (const photo of photoRows ?? []) {
     if (!coverPathByProductId.has(photo.product_id)) {
       coverPathByProductId.set(photo.product_id, photo.storage_path);
+      coverSourceByProductId.set(photo.product_id, photo.source);
     }
   }
 
@@ -183,6 +190,7 @@ export async function queryTopOrderClickProducts(
         secondary: buildSecondaryLine(product),
         clicks: row.clicks,
         coverPath: coverPathByProductId.get(row.product_id) ?? null,
+        coverSource: coverSourceByProductId.get(row.product_id) ?? null,
       },
     ];
   });
@@ -408,18 +416,70 @@ export type TrendRankingItem = {
   price: number;
   disponivel: boolean;
   coverPath: string | null;
+  coverSource: string | null;
   current: number;
   /**
-   * Porcentagem de tendência (o selo do ranking) — compara a janela atual com a
-   * janela anterior de mesmo tamanho. `deltaPct` é a VARIAÇÃO da porcentagem de
-   * tendência (+ subiu, − caiu); fica null quando `isNew`, pois sem período
-   * anterior não há variação pra calcular. `isNew` = teve 0 na janela anterior
-   * e passou a ter movimento agora → o selo mostra "Novo" no lugar do %.
+   * Selo de tendência, em VARIAÇÃO SIMÉTRICA: `(atual - anterior) / (atual +
+   * anterior)`, arredondado para inteiro percentual. Fica `null` quando não
+   * há base de comparação (ver `comparable` em `TrendRankingResult`).
+   *
+   * A fórmula anterior era o crescimento relativo clássico
+   * `(atual - anterior) / anterior`. Ela não estava "errada" — 3→36 é mesmo
+   * doze vezes —, mas tinha dois defeitos que atrapalhavam a decisão de quem
+   * lê o painel:
+   *
+   *   1. ASSIMETRIA. Dobrar era +100%, cair pela metade era -50%. O MESMO
+   *      movimento, em direções opostas, aparecia com magnitudes diferentes,
+   *      e o painel fazia toda queda parecer menos grave que toda alta.
+   *   2. SEM TETO SOBRE BASE MINÚSCULA. 3→36 virava "+1100%" ao lado de um
+   *      11→51 marcado "+364%", como se o primeiro fosse três vezes mais
+   *      relevante — quando ele tinha 15 eventos a menos.
+   *
+   * A simétrica corrige as duas de uma vez: vive em [-100, +100], onde -100
+   * é "zerou", +100 é "não existia antes" e o mesmo movimento invertido tem
+   * a mesma magnitude com sinal trocado (2→4 = +33%, 4→2 = -33%). E ela
+   * continua sendo PROPORCIONAL, não absoluta: 3→36 e 300→3600 dão os mesmos
+   * +85%, então uma loja de cinco visitas e uma de cinco mil leem a mesma
+   * escala — o teto vem de a escala inteira caber ali, nunca de truncamento.
+   *
+   * Custo assumido: ela comprime. 3→36 (12x) vira 85% e 11→51 (4,6x) vira
+   * 65%, mais próximos entre si do que os múltiplos brutos sugerem. Em troca,
+   * o número deixa de explodir com ruído de base pequena.
    */
   deltaPct: number | null;
+  /**
+   * `true` quando o produto teve ZERO eventos no período anterior. Na fórmula
+   * simétrica isso dá exatamente +100%, e foi por isso que o badge "Novo"
+   * chegou a ser removido daqui — parecia redundante.
+   *
+   * Não é. Rodando o algoritmo novo sobre os dados reais da `rlesportes` no
+   * filtro de 15d, QUATRO das cinco linhas exibiam "+100%": o extremo da
+   * escala não estava reportando tendência, estava reportando ausência de
+   * histórico DAQUELE produto. "+100%" convida a comparar com "+64%" na linha
+   * de cima, como se fosse um crescimento maior; "Novo" diz a coisa certa —
+   * não havia com o que comparar. O `deltaPct` fica null junto, para nunca
+   * existir os dois selos na mesma linha.
+   */
   isNew: boolean;
   /** Contagem por dia dentro do período atual (length === days) — alimenta o sparkline sem query extra, reaproveitando as linhas já buscadas pro cálculo de tendência. */
   trend: number[];
+};
+
+export type TrendRankingResult = {
+  items: TrendRankingItem[];
+  /**
+   * `false` quando a loja é MAIS NOVA que a janela de comparação — ou seja,
+   * o período anterior inteiro é anterior ao primeiro evento registrado.
+   * Nesse caso todo produto teria `anterior = 0` e o selo diria "+100%" em
+   * TODA linha, o que não informa nada: é artefato de loja nova, não
+   * tendência. A UI esconde o selo e explica o motivo uma vez.
+   *
+   * Foi o que estava acontecendo ao vivo na `rlesportes`: com 17 dias de
+   * catálogo, os filtros de 15d e 30d marcavam 100% das linhas como "Novo",
+   * inclusive um produto com 62 visualizações. Dois dos três botões de
+   * período entregavam um painel sem tendência nenhuma.
+   */
+  comparable: boolean;
 };
 
 /**
@@ -432,23 +492,30 @@ export type TrendRankingItem = {
  * nome — a tela se contradizia e lia como sistema quebrado, não como filtro
  * de ruído.
  *
- * Com 1, um produto com um único evento aparece marcado como "Novo" (o selo
- * de `isNew`), nunca como uma porcentagem de tendência enganosa: `deltaPct`
- * fica null sempre que não houve período anterior, então o risco que o piso
- * 2 tentava evitar já é tratado por outro mecanismo.
+ * Com 1, um produto com um único evento aparece com sua contagem real e um
+ * selo de tendência que já é honesto por construção (a variação simétrica
+ * não estoura em base pequena, e some por completo quando não há base de
+ * comparação — ver `comparable`).
  */
 const TREND_MIN_CURRENT = 1;
 
 /**
- * MTR-06..MTR-10: ranking por TENDÊNCIA (período atual vs. período anterior
- * de mesma duração), não soma acumulada — `queryTopViewedProducts`/
- * `queryTopOrderClickProducts` continuam existindo (all-time), mas não
- * alimentam mais o dashboard.
+ * MTR-06..MTR-10: ranking dos produtos que mais recebem atenção no período,
+ * ORDENADO PELA PRÓPRIA MÉTRICA (visualizações ou cliques), do maior para o
+ * menor.
  *
- * Uma única query busca os eventos em `[hoje - 2*days, hoje]` e faz TUDO em
- * memória (contagem atual, contagem anterior, série diária pro sparkline) —
- * mesmo padrão "duas queries + junção em memória" já estabelecido no
- * projeto (03-RESEARCH.md "Don't Hand-Roll"), sem tabela nova.
+ * Antes a ordenação era por um score composto `%tendência * sqrt(atual)`,
+ * mantido em segredo do usuário. O efeito ao vivo na `rlesportes` era a
+ * lista intitulada "Mais visualizados" abrir com 36 visualizações ACIMA de
+ * 51 — o título contradizia o conteúdo, e não havia como o revendedor
+ * conferir a ordem com o próprio olho. Ordenar pelo número exibido é a única
+ * forma de a lista ser auditável por quem a lê; a tendência continua na tela,
+ * como ATRIBUTO de cada linha, nunca mais como critério oculto de ordem.
+ *
+ * Uma única query busca os eventos das duas janelas e faz TUDO em memória
+ * (contagem atual, contagem anterior, série diária pro sparkline) — mesmo
+ * padrão "duas queries + junção em memória" já estabelecido no projeto
+ * (03-RESEARCH.md "Don't Hand-Roll"), sem tabela nova.
  */
 export async function queryTrendRanking(
   supabase: SupabaseClient<Database>,
@@ -456,36 +523,65 @@ export async function queryTrendRanking(
   metric: "views" | "clicks",
   days: 7 | 15 | 30,
   timeZone: string = DEFAULT_TIMEZONE
-): Promise<TrendRankingItem[]> {
+): Promise<TrendRankingResult> {
   const table = metric === "views" ? "pageviews" : "order_clicks";
   const dayMs = 24 * 60 * 60 * 1000;
 
+  // As duas janelas têm EXATAMENTE `days` dias civis, e a atual INCLUI hoje.
+  //
+  // Antes a atual começava em `hoje - days` e ia até agora, ou seja: `days`
+  // dias completos MAIS o pedaço de hoje já decorrido — enquanto a anterior
+  // tinha `days` dias cravados. Medido ao vivo com o filtro de 7d: 7,26 dias
+  // contra 7,00. Toda porcentagem do painel carregava um viés positivo
+  // sistemático, porque o numerador tinha mais tempo para acumular que o
+  // denominador.
+  //
+  // O resíduo que sobra é o oposto e é inevitável se hoje aparece na tela: o
+  // último dia da janela atual está incompleto, então a tendência subestima
+  // um pouco no começo do dia e converge ao longo dele. Preferir errar para
+  // baixo aqui é deliberado — um painel que promete alta e não entrega custa
+  // mais caro ao revendedor do que um que reconhece a alta algumas horas
+  // depois.
   const todayStart = startOfToday(timeZone);
-  const periodStartMs = todayStart.getTime() - days * dayMs;
-  const priorStartMs = todayStart.getTime() - days * 2 * dayMs;
+  const periodStartMs = todayStart.getTime() - (days - 1) * dayMs;
+  const priorStartMs = periodStartMs - days * dayMs;
 
-  // Janela real de leitura: `days * 2` (o período atual E o anterior, para
-  // calcular a variação). Com 30 dias são 60 dias de eventos — é a query mais
-  // exposta ao teto de 1000 linhas do PostgREST de todo o painel: ~17
-  // eventos/dia já estouram. Pior: sem `.order()` a ordem das linhas
-  // descartadas era indefinida, então o ranking seria calculado sobre uma
-  // amostra sem critério nenhum. `fetchAllRows` + ordenação estável resolvem
-  // as duas coisas de uma vez.
-  const rows = await fetchAllRows<{ product_id: string | null; created_at: string }>((from, to) => {
-    let query = supabase
+  // Janela real de leitura: `days * 2`. Com 30 dias são 60 dias de eventos —
+  // é a query mais exposta ao teto de 1000 linhas do PostgREST de todo o
+  // painel: ~17 eventos/dia já estouram. Pior: sem `.order()` a ordem das
+  // linhas descartadas era indefinida, então o ranking seria calculado sobre
+  // uma amostra sem critério nenhum. `fetchAllRows` + ordenação estável
+  // resolvem as duas coisas de uma vez.
+  const [rows, { data: firstEventRows }] = await Promise.all([
+    fetchAllRows<{ product_id: string | null; created_at: string }>((from, to) => {
+      let query = supabase
+        .from(table)
+        .select("product_id, created_at")
+        .eq("store_id", storeId)
+        .gte("created_at", new Date(priorStartMs).toISOString())
+        .order("created_at", { ascending: true })
+        .range(from, to);
+
+      if (metric === "views") {
+        query = query.not("product_id", "is", null);
+      }
+
+      return query;
+    }),
+    // Primeiro evento REGISTRADO da loja, para distinguir "loja mais nova
+    // que a janela" (nunca houve o que comparar) de "loja parada no período
+    // anterior" (houve, e caiu a zero — isso É tendência, e precisa aparecer
+    // como -100%). Olhar só as linhas da janela não separa os dois casos.
+    supabase
       .from(table)
-      .select("product_id, created_at")
+      .select("created_at")
       .eq("store_id", storeId)
-      .gte("created_at", new Date(priorStartMs).toISOString())
       .order("created_at", { ascending: true })
-      .range(from, to);
+      .limit(1),
+  ]);
 
-    if (metric === "views") {
-      query = query.not("product_id", "is", null);
-    }
-
-    return query;
-  });
+  const firstEventMs = firstEventRows?.[0] ? new Date(firstEventRows[0].created_at).getTime() : null;
+  const comparable = firstEventMs !== null && firstEventMs < periodStartMs;
 
   const stats = new Map<string, { current: number; prior: number; daily: number[] }>();
   for (const row of rows) {
@@ -497,61 +593,101 @@ export async function queryTrendRanking(
 
     if (ts >= periodStartMs) {
       entry.current += 1;
-      const dayIndex = Math.min(days - 1, Math.floor((ts - periodStartMs) / dayMs));
-      entry.daily[dayIndex] += 1;
+      // Sem `Math.min` aqui de propósito. O clamp antigo existia porque a
+      // janela tinha `days + 1` dias e os eventos de HOJE caíam no índice
+      // `days`, fora do array — ele os empurrava para o último balde, que
+      // então somava hoje COM ontem e deixava a barra final do sparkline
+      // sempre inflada. Com a janela corrigida, hoje é naturalmente o índice
+      // `days - 1` e o clamp deixou de ter função.
+      const dayIndex = Math.floor((ts - periodStartMs) / dayMs);
+      if (dayIndex >= 0 && dayIndex < days) entry.daily[dayIndex] += 1;
     } else {
       entry.prior += 1;
     }
     stats.set(productId, entry);
   }
 
-  const candidates = Array.from(stats.entries())
-    .map(([productId, { current, prior, daily }]) => {
-      const isNew = prior === 0 && current > 0;
-      const deltaPct = isNew ? null : prior === 0 ? 0 : Math.round(((current - prior) / prior) * 100);
-      return { productId, current, prior, daily, isNew, deltaPct };
-    })
-    .filter((candidate) => candidate.current >= TREND_MIN_CURRENT);
-
-  if (candidates.length === 0) {
-    return [];
-  }
-
-  // Pondera a variação da porcentagem de tendência com volume (raiz quadrada) — sem isso, um
-  // produto de 3→6 eventos (+100%) furaria na frente de um de 50→80
-  // (+60%), mesmo o segundo sendo objetivamente mais relevante.
-  const scored = candidates
-    .map((candidate) => {
-      const pctForScore = candidate.isNew ? 150 : Math.max(candidate.deltaPct ?? 0, 0);
-      return { ...candidate, score: pctForScore * Math.sqrt(candidate.current) };
-    })
-    .sort((a, b) => b.score - a.score)
+  const ranked = Array.from(stats.entries())
+    .map(([productId, { current, prior, daily }]) => ({
+      productId,
+      current,
+      prior,
+      daily,
+      // Variação simétrica — ver o comentário longo em `TrendRankingItem.deltaPct`.
+      // `current + prior` nunca é 0 aqui: o filtro logo abaixo exige
+      // `current >= 1`, então a divisão está sempre definida.
+      isNew: comparable && prior === 0 && current > 0,
+      deltaPct:
+        comparable && prior > 0 ? Math.round(((current - prior) / (current + prior)) * 100) : null,
+    }))
+    .filter((candidate) => candidate.current >= TREND_MIN_CURRENT)
+    // Ordena pelo número que aparece na tela. Desempate pela tendência (quem
+    // está subindo mais vem antes) e, se ainda empatar, pelo id — para a
+    // ordem ser estável entre dois carregamentos da mesma página, e não
+    // dançar a cada refresh do dashboard.
+    .sort(
+      (a, b) =>
+        b.current - a.current ||
+        // Desempate por tendência. "Novo" entra como +100 (é onde ele cai na
+        // escala simétrica) só para ordenar; na tela ele continua sendo texto.
+        (b.isNew ? 100 : (b.deltaPct ?? 0)) - (a.isNew ? 100 : (a.deltaPct ?? 0)) ||
+        a.productId.localeCompare(b.productId)
+    )
     .slice(0, 5);
 
-  const productIds = scored.map((candidate) => candidate.productId);
+  if (ranked.length === 0) {
+    return { items: [], comparable };
+  }
+
+  const productIds = ranked.map((candidate) => candidate.productId);
 
   const [{ data: products }, { data: sizeRows }, { data: photoRows }] = await Promise.all([
-    supabase.from("products").select("id, name, brand, brand_other, line, price").in("id", productIds),
+    supabase
+      .from("products")
+      .select("id, name, brand, brand_other, line, price, status, created_at")
+      .in("id", productIds),
     supabase.from("product_sizes").select("product_id, available").in("product_id", productIds),
     supabase
       .from("product_photos")
-      .select("product_id, storage_path, position")
+      .select("product_id, storage_path, position, source")
       .in("product_id", productIds)
       .order("position", { ascending: true }),
   ]);
 
   const availableProductIds = new Set((sizeRows ?? []).filter((row) => row.available).map((row) => row.product_id));
   const coverPathByProductId = new Map<string, string>();
+  const coverSourceByProductId = new Map<string, string | null>();
   for (const photo of photoRows ?? []) {
     if (!coverPathByProductId.has(photo.product_id)) {
       coverPathByProductId.set(photo.product_id, photo.storage_path);
+      coverSourceByProductId.set(photo.product_id, photo.source);
     }
   }
   const productById = new Map((products ?? []).map((product) => [product.id, product]));
 
-  return scored.flatMap((candidate) => {
+  const items = ranked.flatMap((candidate) => {
     const product = productById.get(candidate.productId);
     if (!product) return [];
+    // Rascunho não está na vitrine: ninguém pode vê-lo nem pedi-lo hoje, e
+    // as visualizações que ele carrega são resíduo de quando estava
+    // publicado. Deixá-lo no ranking com o selo "Disponível" mandava o
+    // revendedor reagir a uma demanda que ele mesmo já tirou do ar.
+    if (product.status !== "published") return [];
+
+    // Um produto CADASTRADO depois do início do período anterior não tinha
+    // como receber evento algum naquela janela — o zero dele não é queda nem
+    // estreia de interesse, é ausência de existência. Marcá-lo "Novo" (ou
+    // +100%) credita a ele um movimento que a matemática não pode afirmar.
+    //
+    // Sem esta regra, o filtro de 15d da rlesportes marcava quatro das cinco
+    // linhas como "Novo" — inclusive um produto com 62 visualizações — só
+    // porque o catálogo inteiro tinha sido cadastrado dentro da janela.
+    // "Novo" fica reservado ao caso que ele realmente descreve: produto que
+    // JÁ EXISTIA e não tinha movimento nenhum antes.
+    const existedInPriorWindow = new Date(product.created_at).getTime() < priorStartMs;
+    const isNew = candidate.isNew && existedInPriorWindow;
+    const deltaPct = existedInPriorWindow ? candidate.deltaPct : null;
+
     return [
       {
         productId: candidate.productId,
@@ -560,13 +696,16 @@ export async function queryTrendRanking(
         price: product.price,
         disponivel: availableProductIds.has(candidate.productId),
         coverPath: coverPathByProductId.get(candidate.productId) ?? null,
+        coverSource: coverSourceByProductId.get(candidate.productId) ?? null,
         current: candidate.current,
-        deltaPct: candidate.deltaPct,
-        isNew: candidate.isNew,
+        deltaPct,
+        isNew,
         trend: candidate.daily,
       },
     ];
   });
+
+  return { items, comparable };
 }
 
 export type SizeDemandItem = {
@@ -586,9 +725,18 @@ export type SizeDemandItem = {
 export async function querySizeDemand(
   supabase: SupabaseClient<Database>,
   storeId: string,
-  days = 30
+  days = 30,
+  timeZone: string = DEFAULT_TIMEZONE
 ): Promise<SizeDemandItem[]> {
-  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  // MESMA janela do Ranking de tendência: `days` dias civis no fuso da loja,
+  // incluindo hoje. Antes era `Date.now() - days*24h` — uma janela ROLANTE a
+  // partir do instante da requisição, enquanto o ranking logo ao lado usava
+  // dias civis a partir da meia-noite da loja. Os dois cards liam o mesmo
+  // seletor "30d" e mediam períodos diferentes, defasados em até um dia; um
+  // clique podia aparecer no ranking e não no card de tamanhos, sem nada na
+  // tela explicando a divergência.
+  const dayMs = 24 * 60 * 60 * 1000;
+  const cutoff = new Date(startOfToday(timeZone).getTime() - (days - 1) * dayMs).toISOString();
 
   // Mesmo motivo de queryTrendRanking: contagem em memória sobre 30 dias de
   // cliques precisa ler TODAS as linhas, não as 1000 primeiras.
@@ -609,5 +757,7 @@ export async function querySizeDemand(
 
   return Array.from(counts.entries())
     .map(([size, count]) => ({ size, count }))
-    .sort((a, b) => b.count - a.count);
+    // Desempate por tamanho crescente: sem isso, dois tamanhos com a mesma
+    // contagem trocavam de posição entre carregamentos da mesma página.
+    .sort((a, b) => b.count - a.count || a.size - b.size);
 }
