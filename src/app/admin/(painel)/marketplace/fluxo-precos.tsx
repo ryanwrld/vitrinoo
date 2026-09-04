@@ -344,7 +344,7 @@ export function FluxoPrecos({
             onVerProdutos={() => {
               onConcluido?.();
               router.refresh();
-              router.push("/admin/produtos?status=draft");
+              router.push("/admin/produtos");
             }}
           />
         )}
@@ -770,19 +770,14 @@ function Resumo({
           >
             {temLancamento ? "← Voltar aos ajustes" : "← Voltar aos preços"}
           </button>
-          <div className="flex items-center gap-4">
-            <span className="hidden max-w-[17rem] text-pretty text-right text-xs text-gray-500 lg:block dark:text-gray-400">
-              Entram como rascunho. Você edita produto por produto quando quiser.
-            </span>
-            <button
-              type="button"
-              onClick={onAplicar}
-              disabled={pendente}
-              className="inline-flex min-h-11 items-center rounded-full bg-primary px-[26px] text-[14.5px] font-semibold text-white transition-opacity duration-150 hover:opacity-90 disabled:opacity-60"
-            >
-              Aplicar tudo
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onAplicar}
+            disabled={pendente}
+            className="inline-flex min-h-11 items-center rounded-full bg-primary px-[26px] text-[14.5px] font-semibold text-white transition-opacity duration-150 hover:opacity-90 disabled:opacity-60"
+          >
+            Aplicar tudo
+          </button>
         </>
       }
     >
@@ -869,10 +864,6 @@ function Resumo({
         </p>
       </div>
 
-      {/* A mesma frase do rodapé, para quando ela não cabe lá (celular e tablet). */}
-      <p className="mt-3 text-pretty text-center text-xs text-gray-500 lg:hidden dark:text-gray-400">
-        Entram como rascunho. Você edita produto por produto quando quiser.
-      </p>
     </Moldura>
   );
 }
