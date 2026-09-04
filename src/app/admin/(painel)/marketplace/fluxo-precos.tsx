@@ -908,7 +908,15 @@ function Processando({ temLancamento }: { temLancamento: boolean }) {
   }, [saindoFrase, passos]);
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-7 px-5 py-16 text-center sm:py-20">
+    /*
+      NO CELULAR ESTA TELA TEM A ALTURA DA TELA DE SUCESSO, que vem logo depois. As duas
+      são as únicas sem rodapé, e a de espera fechava ~130px mais baixa: o card encolhia
+      na entrada dela e voltava a crescer no confete, dois saltos em quatro segundos.
+      Os 392px são a altura MEDIDA do miolo da tela de sucesso em 360px de largura.
+      No desktop o piso de 472px do card já resolve isso, então o `min-h` some a partir
+      de `sm`.
+    */
+    <div className="flex min-h-[392px] flex-1 flex-col items-center justify-center gap-7 px-5 py-16 text-center sm:min-h-0 sm:py-20">
       {/* SVG e não borda CSS: aqui o comprimento do arco e a ponta arredondada ficam sob
           controle — borda só entrega um quarto de círculo de canto reto. Gira em `linear`:
           uma curva com aceleração faria o anel parecer que engasga a cada volta. */}
