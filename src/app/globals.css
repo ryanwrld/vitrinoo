@@ -1131,7 +1131,8 @@ input:autofill {
  * -------------------------------------------------------------------------- */
 
 /* Barra no topo do card. Ela mede QUANTO DO TRABALHO já foi feito, não quantas
-   telas passaram — por isso os saltos são desiguais (ver PCT_POR_ETAPA). */
+   telas passaram — por isso os saltos são desiguais (ver PCT_COM_AJUSTE e
+   PCT_SEM_AJUSTE em fluxo-precos.tsx: sem lançamento na leva a etapa 2 não existe). */
 .vt-trilho { height: 2px; background: var(--color-gray-200); }
 .vt-barra {
   height: 2px;

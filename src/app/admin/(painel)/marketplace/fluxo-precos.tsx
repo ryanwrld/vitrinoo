@@ -1102,7 +1102,8 @@ function confete() {
  * Cabeçalho + miolo rolável + rodapé colado embaixo.
  *
  * O rodapé NUNCA rola junto: é onde vive o botão que conclui a etapa, e no celular um
- * botão que exige rolar até o fim de uma lista de cinco campos é um botão que não se acha.
+ * botão que exige rolar até o fim da lista de tipos (até cinco campos) é um botão que não
+ * se acha.
  */
 function Moldura({
   rotulo,
@@ -1136,7 +1137,7 @@ function Moldura({
           `m-auto` no FILHO, e nunca `justify-center` no pai que rola. São visualmente
           equivalentes quando o conteúdo cabe, mas `justify-content: center` corta as duas
           pontas quando ele não cabe — e a ponta de cima fica INALCANÇÁVEL pela rolagem.
-          Em 320px a lista de cinco tipos passa da tela e o título sumia para sempre.
+          Em 320px a lista de tipos passa da tela e o título sumia para sempre.
           `margin: auto` resolve para 0 quando falta espaço, então o topo continua lá.
         */}
         <div className="m-auto w-full">
