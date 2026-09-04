@@ -942,10 +942,22 @@ function Processando({ temLancamento }: { temLancamento: boolean }) {
           as tomou. É o que dá sentido à espera em vez de só ocupá-la — e é honesto: não
           promete porcentagem, porque não há progresso real para medir. */}
       {/* Altura travada: as três frases têm larguras diferentes e uma quebra em duas
-          linhas. Sem piso, o bloco pularia a cada troca. */}
+          linhas. Sem piso, o bloco pularia a cada troca.
+
+          O TEXTO PRECISA FICAR CENTRADO DENTRO DESSE PISO, e é isso que o `flex` faz aqui.
+          Como bloco comum, uma frase de uma linha ficava colada no TOPO dos 48px e os 29px
+          vazios sobravam embaixo: o par anel+frase é centrado como caixa, mas o que se
+          ENXERGA terminava ~15px acima do meio do card. Com o texto centrado no próprio
+          piso, o que se vê fica no meio de verdade, e a frase de duas linhas continua
+          ocupando a mesma caixa.
+
+          O `-mb-2` tira do CÁLCULO os 8px de piso que sobram abaixo do texto. Sem isso o
+          par é centrado como caixa e o que se ENXERGA fica 4px acima do meio — medido em
+          360px. A caixa continua com os 48px que impedem o salto entre frases; só deixa de
+          empurrar o grupo para cima. */}
       <p
         key={`${passo}-${saindoFrase}`}
-        className={`min-h-[3rem] text-pretty text-sm text-gray-600 dark:text-gray-300 ${
+        className={`-mb-2 flex min-h-[3rem] items-center justify-center text-pretty text-sm text-gray-600 dark:text-gray-300 ${
           saindoFrase ? "vt-frase-sai" : "vt-frase-entra"
         }`}
         aria-live="polite"
