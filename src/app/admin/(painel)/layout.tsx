@@ -3,6 +3,7 @@ import { AdminSidebar } from "@/components/admin-sidebar";
 import { createClient } from "@/lib/supabase/server";
 import { StoreIdentityProvider } from "@/lib/store-identity/context";
 import { TimezoneSync } from "@/components/timezone-sync";
+import { PrecificacaoPendente } from "./precificacao-pendente";
 
 /**
  * Layout do grupo de rotas aninhado `(painel)` — isola a sidebar às páginas
@@ -25,16 +26,41 @@ export default async function PainelLayout({ children }: { children: ReactNode }
   let storeSlug: string | null = null;
   let storeLogoUrl: string | null = null;
   let storeTimezone: string | null = null;
+  /*
+    Pacote liberado e ainda não importado — é o que arma a abertura automática do fluxo de
+    precificação (migration 0032). São DUAS COLUNAS na consulta que o layout já fazia, e
+    não uma consulta nova: a alternativa era contar produtos importados a cada navegação do
+    painel, que custaria caro para responder uma pergunta que um booleano responde.
+  */
+  let precificacaoPendente: "amostra" | "pacote" | null = null;
   if (userData.user) {
     const { data: store } = await supabase
       .from("stores")
-      .select("name, slug, logo_url, timezone")
+      .select(
+        "name, slug, logo_url, timezone, marketplace_access, pack_imported_at, sample_pricing_started_at",
+      )
       .eq("owner_id", userData.user.id)
       .single();
     storeName = store?.name ?? null;
     storeSlug = store?.slug ?? null;
     storeLogoUrl = store?.logo_url ?? null;
     storeTimezone = store?.timezone ?? null;
+
+    /*
+      QUAL precificação está devendo. As duas condições vivem no banco, e é isso que faz o
+      fluxo ser irrecusável de verdade: ele reabre depois de recarregar, de sair da conta e
+      até em outro aparelho, porque não depende de nada guardado na aba.
+
+      O PACOTE VEM PRIMEIRO. Quem comprou depois de já ter pegado a amostra tem as duas
+      pendências abertas, e precificar 990 é a que importa — concluí-la ainda deixa a da
+      amostra na fila, que aí aparece em seguida.
+    */
+    precificacaoPendente =
+      store?.marketplace_access && !store?.pack_imported_at
+        ? "pacote"
+        : store?.sample_pricing_started_at
+          ? "amostra"
+          : null;
   }
 
   return (
@@ -44,6 +70,9 @@ export default async function PainelLayout({ children }: { children: ReactNode }
           lojas já existentes ficariam presas no default para sempre. Sem
           trava de "uma vez só" — quem viaja quer o painel acompanhando. */}
       {storeTimezone && <TimezoneSync currentTimezone={storeTimezone} />}
+      {/* Montado SEMPRE, mesmo sem pendência: quem decide é o cliente. Renderizar por
+          condição aqui desmontava o fluxo no meio da conclusão — ver a nota no componente. */}
+      <PrecificacaoPendente origem={precificacaoPendente} />
       <AdminSidebar storeName={storeName} storeSlug={storeSlug} storeLogoUrl={storeLogoUrl} />
       {/* justify-center APENAS abaixo de lg. No mobile, onde as páginas são
           uma coluna só e frequentemente curtas, centralizar evita o conteúdo

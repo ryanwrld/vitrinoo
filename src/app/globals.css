@@ -38,6 +38,11 @@
   --color-gray-600: #575E7D;
   --color-gray-700: #40445C;
   --color-gray-800: #292C3D;
+  /* Entre gray-900 (fundo de card) e gray-800 (borda). Existe para as divisórias INTERNAS
+     do fluxo de precificação: lá a borda separa linhas dentro de um card já escuro, e
+     gray-800 lê como traço desenhado por cima em vez de sulco entre as linhas. Veio do
+     protótipo aprovado, onde era `--linha2`. */
+  --color-gray-850: #1c1e2c;
   --color-gray-900: #14151F;
   /* Só pra fundo de tela cheia em dark mode — mais escuro que gray-900 (cards)
      sem chegar em preto puro (gray-950), que fica reservado como extremo de
@@ -1049,3 +1054,244 @@ input:autofill {
 
 
 
+
+/* =============================================================================
+ * FLUXO DE PRECIFICAÇÃO — tela final (check + confete)
+ *
+ * O check é TRAÇO, não ícone preenchido: só um traço pode ser desenhado por
+ * `stroke-dashoffset`. É o mesmo desenho do `circle-check-big` do lucide-react,
+ * que o resto do painel já usa — o ícone do fluxo e o do produto são o mesmo.
+ *
+ * Comprimentos medidos dos próprios paths (centro 12,12 r=10):
+ *   arco  = 10 × 311,53° em rad = 54,37  → dasharray 55 (arredondado para cima,
+ *           senão sobra uma lasca de traço sem pintar no fim)
+ *   tique = √18 + √200 = 4,24 + 14,14   = 18,39 → dasharray 19
+ *
+ * ESTADO BASE = DESENHADO (`stroke-dashoffset: 0`), com a animação partindo do
+ * escondido via `both`. O bloco de movimento reduzido lá embaixo zera a
+ * animação: se o offset cheio estivesse na regra base, quem pediu menos
+ * movimento veria um ícone em branco em vez do check.
+ *
+ * Os tempos abaixo são espelhados por `MS_CHECK` em `fluxo-precos.tsx`, que é
+ * quem conta a etapa. O confete NÃO usa esses números — ele é disparado pelo
+ * `finished` da animação do tique, então cai no mesmo quadro em que o traço
+ * fecha, sem depender de dois relógios concordarem (medido: 31ms de deriva com
+ * dois `setTimeout`, dentro do mesmo quadro pendurando no `finished`).
+ * ========================================================================== */
+@keyframes vt-tracar { from { stroke-dashoffset: var(--tam); } to { stroke-dashoffset: 0; } }
+@keyframes vt-estala {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.07); }
+  100% { transform: scale(1); }
+}
+
+.vt-check {
+  transform-origin: 50% 50%;
+  /* Começa no mesmo instante em que o tique fecha (360 + 380 = 740ms): o pop do
+     ícone e o estouro do confete leem como um evento só. */
+  animation: vt-estala 460ms cubic-bezier(.16,1,.3,1) 740ms both;
+}
+.vt-check-arco {
+  stroke-dasharray: 55;
+  stroke-dashoffset: 0;
+  --tam: 55;
+  animation: vt-tracar 560ms cubic-bezier(.16,1,.3,1) 80ms both;
+}
+.vt-check-tique {
+  stroke-dasharray: 19;
+  stroke-dashoffset: 0;
+  --tam: 19;
+  /* Fecha 100ms DEPOIS do arco (740 contra 640), de propósito: o tique precisa
+     ser a última coisa a terminar, senão o instante que casa com o confete
+     fica ambíguo. */
+  animation: vt-tracar 380ms cubic-bezier(.16,1,.3,1) 360ms both;
+}
+
+/* A camada do confete é fixa sobre a página inteira e NÃO filha do pop-up: o
+   pop-up tem `overflow-hidden` (para o conteúdo respeitar os cantos), e
+   qualquer peça dentro dele seria cortada justamente na borda que ela precisa
+   atravessar. A linha de partida vem do `getBoundingClientRect` na hora do
+   disparo. */
+.vt-confete { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 60; }
+.vt-confete i {
+  position: absolute;
+  display: block;
+  border-radius: 1px;
+  will-change: transform, opacity;
+  /* `opacity: 0` aqui e `fill: 'forwards'` na animação: durante o atraso nenhum
+     preenchimento se aplica, então vale esta regra e a peça não existe na tela.
+     Sem isso, quem ainda não largou fica parado e opaco no ponto de partida —
+     uma faixa visível colada na borda de cima. */
+  opacity: 0;
+}
+
+/* -----------------------------------------------------------------------------
+ * FLUXO DE PRECIFICAÇÃO — barra de progresso, troca de etapa e a coreografia
+ * da etapa 2. Portadas do protótipo aprovado (menu-preco5.html).
+ * -------------------------------------------------------------------------- */
+
+/* Barra no topo do card. Ela mede QUANTO DO TRABALHO já foi feito, não quantas
+   telas passaram — por isso os saltos são desiguais (ver PCT_POR_ETAPA). */
+.vt-trilho { height: 2px; background: var(--color-gray-200); }
+.vt-barra {
+  height: 2px;
+  background: var(--color-primary);
+  width: 0;
+  transition: width 600ms cubic-bezier(.16,1,.3,1);
+}
+/* gray-850 e blue-500 são os valores exatos do protótipo (`--linha2` e
+   `--primary-vivo`). blue-400 deixava a barra clara demais contra o trilho. */
+.dark .admin-scope .vt-trilho { background: var(--color-gray-850); }
+.dark .admin-scope .vt-barra  { background: var(--color-blue-500); }
+
+/* Troca de etapa: a anterior sai por cima, a próxima entra por baixo. Sem isto o
+   conteúdo trocava no mesmo quadro e o fluxo parecia cinco telas soltas em vez de
+   um caminho. Mesma curva do resto do pop-up. */
+@keyframes vt-etapa-entra {
+  from { opacity: 0; transform: translateY(12px) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes vt-etapa-sai {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translateY(-10px); }
+}
+.vt-etapa-entra { animation: vt-etapa-entra 520ms cubic-bezier(.16,1,.3,1) both; }
+.vt-etapa-sai   { animation: vt-etapa-sai   340ms cubic-bezier(.16,1,.3,1) both; }
+
+/* Frase do "processando": sai e entra, não só entra. Cada frase devolve ao lojista
+   uma das decisões que ele acabou de tomar, e trocar no corte tira a leitura. */
+@keyframes vt-frase-entra {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes vt-frase-sai {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translateY(-10px); }
+}
+.vt-frase-entra { animation: vt-frase-entra 520ms cubic-bezier(.16,1,.3,1) both; }
+.vt-frase-sai   { animation: vt-frase-sai   320ms cubic-bezier(.16,1,.3,1) both; }
+
+/*
+ * ETAPA 2 — o campo chega SOZINHO NO MEIO do card e digitar um valor revela a prévia.
+ *
+ * A geometria de duas colunas existe desde o primeiro quadro: o que muda é só
+ * transform/opacity, e é isso que faz nada saltar quando o exemplo aparece. Animar
+ * largura ou `display` daria reflow a cada quadro.
+ *
+ * Curva de MOVIMENTO (.55,0,.2,1), e não a --curva das outras transições: esta acelera
+ * no começo, que é o que faz o campo parecer empurrado para o lado em vez de escorregar.
+ *
+ * 81.6% da largura da coluna é o deslocamento que centraliza o campo na área útil —
+ * proporção, não pixel, então sai certo em qualquer largura de card.
+ */
+.vt-duas .vt-decisao {
+  /* z-index NÃO é enfeite: sem ele a coluna invisível pinta por cima (é irmã posterior
+     no DOM) e ENGOLE O CLIQUE no input — o usuário só conseguiria digitar pelo foco
+     automático. Aconteceu no protótipo. */
+  position: relative;
+  z-index: 1;
+  transform: translateX(81.6%);
+  transition: transform 820ms cubic-bezier(.55,0,.2,1);
+}
+.vt-duas.on .vt-decisao { transform: none; }
+
+.vt-duas .vt-divisa {
+  opacity: 0;
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: opacity 440ms cubic-bezier(.55,0,.2,1), transform 560ms cubic-bezier(.55,0,.2,1);
+}
+.vt-duas.on .vt-divisa { opacity: 1; transform: none; transition-delay: 220ms; }
+
+.vt-duas .vt-efeito > * {
+  opacity: 0;
+  transform: translateX(-22px);
+  transition: opacity 660ms cubic-bezier(.55,0,.2,1), transform 660ms cubic-bezier(.55,0,.2,1);
+}
+.vt-duas.on .vt-efeito > * { opacity: 1; transform: none; }
+.vt-duas.on .vt-efeito > *:nth-child(1) { transition-delay: 300ms; }
+.vt-duas.on .vt-efeito > *:nth-child(2) { transition-delay: 400ms; }
+.vt-duas.on .vt-efeito > *:nth-child(3) { transition-delay: 500ms; }
+
+/* Enquanto a prévia está invisível ela não pode receber clique nem foco de teclado. */
+.vt-duas:not(.on) .vt-efeito,
+.vt-duas:not(.on) .vt-divisa { pointer-events: none; }
+
+/*
+ * O invólucro da prévia NÃO EXISTE para o layout do desktop.
+ *
+ * Lá as duas colunas ficam lado a lado desde o primeiro quadro e a prévia invisível não
+ * atrapalha ninguém — `display: contents` faz os divs sumirem da caixa e devolve o
+ * `.vt-efeito` a filho direto do flex row, com o `flex-1`, o `pl-6` e a divisa ao lado,
+ * como sempre foi.
+ */
+.vt-colapso,
+.vt-colapso-corte { display: contents; }
+
+/*
+ * NO CELULAR AS DUAS COLUNAS VIRAM UMA — e aí a geometria fixa do desktop vira buraco.
+ *
+ * Empilhado, o bloco da prévia ficava no fluxo o tempo todo com os filhos apagados: 174px
+ * de vazio embaixo do campo, mais os 20px do gap, num card de 603px. O lojista via um
+ * espaço reservado para um conteúdo que ele ainda não tinha pedido.
+ *
+ * A grade de UMA LINHA que vai de `0fr` a `1fr` é o que anima altura sem número fixo: a
+ * linha mede o conteúdo real, então nada de `min-height`, placeholder ou altura chutada.
+ *
+ * O CORTADOR NO MEIO não é firula. O padding e a borda de cima do bloco fazem parte da
+ * caixa dele, e numa caixa `border-box` a altura não desce abaixo de padding + borda: com o
+ * `overflow` direto no `.vt-efeito`, a grade fechava em 41px em vez de zero — medido. Um
+ * div sem padding nenhum entre a grade e o bloco pode ser zero de verdade e recorta o resto
+ * por dentro. O `overflow` dele também é o que segura a margem de cima do bloco (o espaço
+ * acima da linha divisória) dentro da conta da linha da grade, em vez de deixá-la escapar.
+ *
+ * Container e conteúdo partem do MESMO quadro, com a mesma duração e a mesma curva: a
+ * prévia está entrando enquanto o card ainda cresce, e os dois terminam juntos. É isso que
+ * troca a leitura de "o card abriu e depois encheu" por "o card abriu porque isto apareceu".
+ * Deslocar o campo 81.6% para o lado, aqui, não faz sentido: ele já ocupa a largura toda.
+ */
+@media (max-width: 639px) {
+  .vt-duas .vt-decisao { transform: none; }
+
+  .vt-colapso {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 300ms ease-out;
+  }
+  .vt-duas.on .vt-colapso { grid-template-rows: 1fr; }
+  /* `min-height: 0` porque item de grade nasce com `min-height: auto`, que é o tamanho
+     mínimo do conteúdo — sem isto a linha nunca chegaria a zero. */
+  .vt-colapso-corte { display: block; min-height: 0; overflow: hidden; }
+
+  .vt-duas .vt-efeito > * {
+    transform: translateY(6px);
+    transition: opacity 300ms ease-out, transform 300ms ease-out;
+  }
+
+  /* A escadinha de 300/400/500ms é do desktop, onde a revelação leva 660ms. Em 300ms a
+     última peça entraria com o container já parado — o oposto de uma animação só.
+     `:nth-child(n)` para empatar em especificidade com as regras de fora e vencer por vir
+     depois; um seletor sem pseudo-classe perderia e o atraso continuaria valendo. */
+  .vt-duas.on .vt-efeito > *:nth-child(n) { transition-delay: 0s; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vt-check,
+  .vt-check-arco,
+  .vt-check-tique,
+  .vt-etapa-entra,
+  .vt-etapa-sai,
+  .vt-frase-entra,
+  .vt-frase-sai { animation: none; }
+
+  /* Sem movimento, o estado de repouso tem que ser o REVELADO — senão a prévia da
+     etapa 2 e a barra ficariam presas no estado inicial, invisíveis para sempre. */
+  .vt-barra { transition: none; }
+  .vt-duas .vt-decisao,
+  .vt-duas .vt-divisa,
+  .vt-duas .vt-efeito > * { transition: none; opacity: 1; transform: none; }
+
+  /* O bloco continua abrindo e fechando — o que some é o movimento. Fechado ele tem altura
+     zero e recorta o conteúdo, então não volta a existir espaço reservado por aqui. */
+  .vt-colapso { transition: none; }
+}
