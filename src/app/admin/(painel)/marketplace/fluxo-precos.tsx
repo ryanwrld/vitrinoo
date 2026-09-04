@@ -750,7 +750,16 @@ function Resumo({
   return (
     <Moldura
       rotulo={`Etapa ${etapas} de ${etapas} · Resumo final`}
-      titulo="Preços definidos para seu estoque:"
+      /*
+        TÍTULO CURTO NO CELULAR. "Preços definidos para seu estoque:" quebra em duas linhas
+        em 360px e empurra a lista para baixo numa tela que já é a mais alta das três — e o
+        complemento não conta nada que a própria lista de preços não diga.
+      */
+      titulo={
+        <>
+          Preços definidos<span className="hidden sm:inline"> para seu estoque:</span>
+        </>
+      }
       tituloMenor
       rodape={
         <>
@@ -1114,7 +1123,8 @@ function Moldura({
   rodape,
 }: {
   rotulo: string;
-  titulo: string;
+  /** ReactNode, e não string, por causa do resumo: lá o título encurta no celular. */
+  titulo: React.ReactNode;
   /** O resumo usa um título menor que as outras etapas, como no protótipo. */
   tituloMenor?: boolean;
   apoio?: string;
