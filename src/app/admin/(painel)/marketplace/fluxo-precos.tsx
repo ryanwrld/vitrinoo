@@ -915,7 +915,7 @@ function Processando({ temLancamento }: { temLancamento: boolean }) {
       <svg
         viewBox="0 0 72 72"
         fill="none"
-        className="h-[72px] w-[72px] animate-spin [animation-duration:1.6s]"
+        className="h-[58px] w-[58px] animate-spin [animation-duration:1.6s]"
         aria-hidden="true"
       >
         <circle cx="36" cy="36" r="31" strokeWidth="4.5" className="stroke-gray-200 dark:stroke-gray-800" />
@@ -937,7 +937,7 @@ function Processando({ temLancamento }: { temLancamento: boolean }) {
           linhas. Sem piso, o bloco pularia a cada troca. */}
       <p
         key={`${passo}-${saindoFrase}`}
-        className={`min-h-[3rem] text-pretty text-base text-gray-600 dark:text-gray-300 ${
+        className={`min-h-[3rem] text-pretty text-sm text-gray-600 dark:text-gray-300 ${
           saindoFrase ? "vt-frase-sai" : "vt-frase-entra"
         }`}
         aria-live="polite"
@@ -1000,13 +1000,13 @@ function Pronto({
         strokeLinecap="round"
         strokeLinejoin="round"
         aria-hidden="true"
-        className="vt-check h-[84px] w-[84px] text-success-fg"
+        className="vt-check h-[68px] w-[68px] text-success-fg"
       >
         <path className="vt-check-arco" d="M21.801 10A10 10 0 1 1 17 3.335" />
         <path ref={tique} className="vt-check-tique" d="m9 11 3 3L22 4" />
       </svg>
 
-      <h2 className="mt-4 text-balance font-display text-2xl font-extrabold text-gray-900 sm:text-[27px] dark:text-gray-50">
+      <h2 className="mt-4 text-balance font-display text-xl font-extrabold text-gray-900 sm:text-[27px] dark:text-gray-50">
         Tudo pronto, pares cadastrados!
       </h2>
       <p className="mt-2 max-w-[26rem] text-pretty text-sm text-gray-500 dark:text-gray-400">

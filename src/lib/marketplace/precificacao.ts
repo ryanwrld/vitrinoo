@@ -82,9 +82,9 @@ export function passosDoProcessamento(temLancamento: boolean): {
     ? [
         "Gravando o preço de cada tipo",
         "Aplicando o adicional nos lançamentos",
-        "Guardando tudo como rascunho",
+        "Publicando tudo na sua vitrine",
       ]
-    : ["Gravando o preço de cada tipo", "Guardando tudo como rascunho"];
+    : ["Gravando o preço de cada tipo", "Publicando tudo na sua vitrine"];
 
   const passoMs = temLancamento ? [2200, 3000, 2400] : [2600, 2600];
 
