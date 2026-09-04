@@ -6,6 +6,8 @@ import Link from "next/link";
 import { Package, ShoppingCart, Sparkles, Check, ChevronRight, Gift } from "lucide-react";
 import { SUPPORT_WHATSAPP_NUMBER } from "@/lib/support/whatsapp";
 import { SorteioAmostra, type ItemAmostra } from "./sorteio-amostra";
+import { iniciarPrecificacaoAmostra } from "@/lib/marketplace/pricing-actions";
+import { AbrirFluxoPrecos } from "./abrir-fluxo-precos";
 
 /**
  * Preço "de", riscado ao lado do valor real.
@@ -55,7 +57,23 @@ export function PackHero({
   storeId: string;
   amostra: ItemAmostra[];
 }) {
+  /*
+    DOIS POP-UPS EM SEQUÊNCIA, e não um só: o sorteio revela as 10, fecha, e a
+    precificação abre por cima. Decisão do dono. O sorteio continua dono só da encenação —
+    quem cria produto é o "Aplicar tudo" da etapa 3 do fluxo de preços.
+
+    A precificação abre AQUI para responder no clique, e a pendência é gravada no banco
+    para o painel reabri-la em qualquer outra sessão. Só o banco seria correto e lento: o
+    layout é renderizado no servidor, e esperar o `refresh` deixava ~4s de tela vazia entre
+    o sorteio sumir e o fluxo aparecer — medido.
+
+    Não há risco de dois pop-ups: o layout só monta o dele quando a página é renderizada no
+    servidor, e nada revalida durante o fluxo. Quando revalida — na conclusão — a pendência
+    já foi quitada.
+  */
   const [abrirAmostra, setAbrirAmostra] = useState(false);
+  const [abrirPrecos, setAbrirPrecos] = useState(false);
+  const [aceitando, setAceitando] = useState(false);
 
   // Mensagem montada inteira e codificada UMA vez — regra rígida do CLAUDE.md
   // para qualquer link de WhatsApp do projeto.
@@ -214,14 +232,32 @@ export function PackHero({
         </div>
       </section>
 
+      {/* Sem `onConcluido`: quem abriu aqui sai pela navegação do "Ver meus produtos". */}
+      {abrirPrecos && <AbrirFluxoPrecos origem="amostra" />}
+
       {abrirAmostra && (
         <SorteioAmostra
           itens={amostra}
           hrefComprar={hrefComprar}
           storeId={storeId}
           onFechar={() => setAbrirAmostra(false)}
+          /*
+            GRAVA A PENDÊNCIA ANTES DE ABRIR, e com `await`: se o lojista fechar a aba
+            durante a precificação, é este carimbo que traz o fluxo de volta na próxima
+            sessão. Abrir primeiro e gravar depois deixaria uma janela em que ele pode
+            perder as 10 chuteiras — o sorteio só oferece o botão uma vez.
+          */
+          aceitando={aceitando}
+          onPrecificar={async () => {
+            setAceitando(true);
+            await iniciarPrecificacaoAmostra();
+            setAbrirAmostra(false);
+            setAbrirPrecos(true);
+          }}
         />
       )}
+
+
     </>
   );
 }

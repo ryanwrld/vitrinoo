@@ -192,7 +192,6 @@ export default async function MarketplacePage({
           <MarketplaceGrid
             items={comUrl}
             ehAdmin={Boolean(ehAdmin)}
-            temAcesso={temAcesso}
             pagina={page}
             totalPaginas={totalPaginas}
           />
@@ -229,6 +228,11 @@ function descreverFiltros(params: MarketplaceSearchParams): string {
  * A última frase alterna: convidar para o sorteio quando ele ainda não pegou as
  * sorteadas, e sumir depois. Oferecer "experimente de graça" a quem já
  * experimentou é o tipo de frase que faz o lojista desconfiar da tela inteira.
+ *
+ * O texto diz TODAS ELAS DE UMA VEZ porque é assim que passou a funcionar: desde o fluxo
+ * de precificação não existe mais escolher item a item nesta grade — ou o pacote inteiro,
+ * ou as 10 sorteadas. Prometer escolha aqui mandaria o lojista procurar um botão que não
+ * existe mais.
  */
 function AvisoPacote({ jaPegouAmostra }: { jaPegouAmostra: boolean }) {
   return (
@@ -237,11 +241,11 @@ function AvisoPacote({ jaPegouAmostra }: { jaPegouAmostra: boolean }) {
         Tudo isso entra na sua loja
       </p>
       <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-        Ao liberar o pack, são essas chuteiras que você passa a ter no seu catálogo, prontas para
-        os seus clientes verem e comprarem
+        Ao liberar o pack, TODAS elas entram na sua loja de uma vez, com o preço que você definir
+        por tipo de solado — prontas para os seus clientes verem e comprarem
         {jaPegouAmostra
           ? " de você."
-          : ". (Você também pode experimentar de graça: cadastrar 10 modelos de forma sorteada.)"}
+          : ". (Você também pode experimentar de graça: 10 modelos sorteados para a sua loja.)"}
       </p>
     </div>
   );

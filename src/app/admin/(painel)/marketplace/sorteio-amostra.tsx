@@ -1,11 +1,8 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { Check, X, Sparkles } from "lucide-react";
-import { importarDoMarketplace } from "@/lib/marketplace/import-actions";
 
 const brl = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 });
@@ -127,11 +124,24 @@ export function SorteioAmostra({
   hrefComprar,
   storeId,
   onFechar,
+  onPrecificar,
+  aceitando,
 }: {
   itens: ItemAmostra[];
   hrefComprar: string;
   storeId: string;
   onFechar: () => void;
+  /**
+   * Fecha o sorteio e abre a precificação.
+   *
+   * O botão NÃO importa mais nada: desde o fluxo de preços, quem cria produto é o
+   * "Aplicar tudo" da etapa 3, com o preço que o lojista definiu. Importar aqui deixaria
+   * as 10 entrando com `suggested_price` — o preço da curadoria — e o fluxo seguinte
+   * teria que reescrever produto recém-criado, que é o desenho que decidimos não ter.
+   */
+  onPrecificar: () => void;
+  /** Enquanto a pendência é gravada no banco e o painel assume o fluxo. */
+  aceitando: boolean;
 }) {
 
   /**
@@ -158,8 +168,21 @@ export function SorteioAmostra({
     }
     return jaViu || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   });
-  const [pendente, iniciar] = useTransition();
   const [passouTempoMinimo, setPassouTempoMinimo] = useState(false);
+  /**
+   * O teto de espera pelas fotos ESTOUROU.
+   *
+   * Estado próprio, e não o mesmo `passouTempoMinimo` de antes. Os dois timers abaixo
+   * chamavam `setPassouTempoMinimo(true)` — o segundo escrevia um valor que o primeiro já
+   * tinha escrito, então o teto não fazia nada e a fase continuava exigindo
+   * `carregadas >= totalComFoto`. Bastava UMA foto não carregar para o pop-up ficar preso
+   * em "Sorteando suas chuteiras…" para sempre, com o X como única saída — exatamente o
+   * que o comentário do teto dizia estar prevenindo.
+   *
+   * Reproduzido em 2026-09-01: 6 de 10 fotos pintaram, as outras 4 nunca chegaram, e o
+   * baralho girou indefinidamente.
+   */
+  const [estourouTeto, setEstourouTeto] = useState(false);
   /**
    * Quantas fotos já pintaram. O CONTADOR VEM DO onLoad DAS IMAGENS REAIS, e
    * não de um pré-carregamento manual. A versão anterior chamava `new Image()`
@@ -170,7 +193,6 @@ export function SorteioAmostra({
    * adivinhar URL: quem carrega é o mesmo componente que vai aparecer.
    */
   const [carregadas, setCarregadas] = useState(0);
-  const router = useRouter();
 
   const restantes = itens.filter((i) => !i.jaImportado);
   const totalComFoto = itens.filter((i) => i.fotoUrl).length;
@@ -185,10 +207,12 @@ export function SorteioAmostra({
    * react-hooks/set-state-in-effect acusa). Calculando no render, a fase já sai
    * certa de primeira e não existe estado para dessincronizar.
    *
-   * O que terminar por último manda: o tempo mínimo do baralho ou as fotos.
+   * O que terminar por último manda: o tempo mínimo do baralho ou as fotos — mas o teto
+   * de espera vence os dois. Uma foto que nunca chega não pode prender ninguém: revelar com
+   * o quadro cinza no lugar dela é ruim, ficar embaralhando para sempre é pior.
    */
   const fase: "sorteando" | "revelando" =
-    entrarDireto || (passouTempoMinimo && carregadas >= totalComFoto)
+    entrarDireto || estourouTeto || (passouTempoMinimo && carregadas >= totalComFoto)
       ? "revelando"
       : "sorteando";
 
@@ -200,10 +224,7 @@ export function SorteioAmostra({
     const t = setTimeout(() => setPassouTempoMinimo(true), MS_SORTEIO);
     // Teto: numa conexão ruim, prender o usuário embaralhando para sempre seria
     // pior que revelar com as fotos ainda chegando.
-    const limite = setTimeout(
-      () => setPassouTempoMinimo(true),
-      MS_SORTEIO + MS_ESPERA_MAXIMA_FOTOS,
-    );
+    const limite = setTimeout(() => setEstourouTeto(true), MS_SORTEIO + MS_ESPERA_MAXIMA_FOTOS);
     return () => {
       clearTimeout(t);
       clearTimeout(limite);
@@ -227,32 +248,6 @@ export function SorteioAmostra({
     window.addEventListener("keydown", aoTeclar);
     return () => window.removeEventListener("keydown", aoTeclar);
   }, [onFechar]);
-
-  function adicionar() {
-    iniciar(async () => {
-      const r = await importarDoMarketplace(restantes.map((i) => i.id));
-      if (!r.ok) {
-        toast.error(r.erro ?? "Não foi possível adicionar.");
-        return;
-      }
-      if (r.importados > 0) {
-        toast.success(
-          `${r.importados} ${r.importados === 1 ? "chuteira adicionada" : "chuteiras adicionadas"} como rascunho.`,
-          {
-            description: "Ajuste o preço e publique, a partir daí já estão prontas para vender.",
-            action: {
-              label: "Revisar",
-              onClick: () => router.push("/admin/produtos?status=draft"),
-            },
-          },
-        );
-        onFechar();
-        router.refresh();
-      } else {
-        toast.info("Essas chuteiras já estão na sua loja.");
-      }
-    });
-  }
 
   return (
     <div
@@ -391,11 +386,11 @@ export function SorteioAmostra({
             ) : (
               <button
                 type="button"
-                onClick={adicionar}
-                disabled={pendente}
-                className="inline-flex min-h-10 items-center gap-2 rounded-full bg-primary px-5 text-[13px] font-semibold text-white transition-opacity duration-150 hover:opacity-90 disabled:opacity-60"
+                onClick={onPrecificar}
+                disabled={aceitando}
+                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary px-5 text-[13px] font-semibold text-white transition-opacity duration-150 hover:opacity-90 disabled:opacity-60"
               >
-                {pendente ? "Adicionando…" : "Adicionar ao meu estoque"}
+                {aceitando ? "Preparando…" : "Adicionar ao meu estoque"}
               </button>
             )}
           </div>

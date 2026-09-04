@@ -3,9 +3,9 @@
 import { useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useSearchParams, usePathname, useRouter } from "next/navigation";
+import { useSearchParams, usePathname } from "next/navigation";
 import { toast } from "sonner";
-import { Eye, EyeOff, Star, Archive, ChevronLeft, ChevronRight, Pencil, Check, Plus, Lock } from "lucide-react";
+import { Eye, EyeOff, Star, Archive, ChevronLeft, ChevronRight, Pencil, Check, Lock } from "lucide-react";
 import { SOLE_LABELS, type SOLES } from "@/lib/products/constants";
 import {
   setMarketplaceStatus,
@@ -13,7 +13,6 @@ import {
   updateMarketplaceProduct,
   setMarketplaceStatusEmLote,
 } from "@/lib/marketplace/actions";
-import { importarDoMarketplace } from "@/lib/marketplace/import-actions";
 
 type Item = {
   id: string;
@@ -52,23 +51,30 @@ const brl = (v: number) =>
 export function MarketplaceGrid({
   items,
   ehAdmin,
-  temAcesso,
   pagina,
   totalPaginas,
 }: {
   items: Item[];
   ehAdmin: boolean;
-  temAcesso: boolean;
   pagina: number;
   totalPaginas: number;
 }) {
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [pendente, iniciar] = useTransition();
-  const router = useRouter();
 
-  // Admin cura; quem comprou o pacote escolhe o que levar. Quem está na amostra
-  // não faz nem um nem outro — ele sorteia, em /admin/marketplace.
-  const podeEscolher = ehAdmin || temAcesso;
+  // Só o admin. Ver a nota em `podeEscolher` acima: escolher a dedo deixou de existir
+  // para o revendedor — ou o pacote inteiro, ou as 10 sorteadas.
+  /*
+    SÓ O ADMIN ESCOLHE A DEDO. O revendedor não seleciona mais nada aqui: ou ele compra o
+    pacote (e as 990 entram pelo fluxo de precificação), ou ele sorteia as 10 da amostra.
+    Deixar a grade importar item a item devolvia justamente o que a amostra sorteada
+    (migration 0029) existe para impedir — garimpar o acervo escolhendo os melhores de
+    graça. Decisão do dono, 2026-09-01.
+
+    Para o admin a seleção continua igual: aqui ela é CURADORIA (publicar, despublicar,
+    arquivar), não compra.
+  */
+  const podeEscolher = ehAdmin;
 
   function alternar(id: string) {
     if (!podeEscolher) return;
@@ -77,39 +83,6 @@ export function MarketplaceGrid({
       if (novo.has(id)) novo.delete(id);
       else novo.add(id);
       return novo;
-    });
-  }
-
-  function importar(ids: string[]) {
-    iniciar(async () => {
-      const r = await importarDoMarketplace(ids);
-      if (!r.ok) {
-        toast.error(r.erro ?? "Não foi possível importar.");
-        return;
-      }
-      const partes: string[] = [];
-      if (r.importados) {
-        partes.push(
-          `${r.importados} ${r.importados === 1 ? "chuteira adicionada" : "chuteiras adicionadas"} como rascunho`,
-        );
-      }
-      if (r.jaTinha) partes.push(`${r.jaTinha} já estava na sua loja`);
-      if (r.bloqueadosPorLimite) {
-        partes.push(`${r.bloqueadosPorLimite} fora do limite da amostra`);
-      }
-      if (r.foraDaAmostra) {
-        partes.push(`${r.foraDaAmostra} fora da sua amostra sorteada`);
-      }
-      if (r.importados) {
-        toast.success(partes.join(" · "), {
-          description: "Revise os preços em Produtos antes de publicar.",
-          action: { label: "Revisar", onClick: () => router.push("/admin/produtos?status=draft") },
-        });
-      } else {
-        toast.info(partes.join(" · ") || "Nada a importar.");
-      }
-      setSelecionados(new Set());
-      router.refresh();
     });
   }
 
@@ -135,8 +108,6 @@ export function MarketplaceGrid({
             item={item}
             ehAdmin={ehAdmin}
             podeEscolher={podeEscolher}
-            pendenteGlobal={pendente}
-            onImportar={() => importar([item.id])}
             selecionado={selecionados.has(item.id)}
             onSelecionar={() => alternar(item.id)}
           />
@@ -155,15 +126,6 @@ export function MarketplaceGrid({
               {selecionados.size} {selecionados.size === 1 ? "selecionada" : "selecionadas"}
             </span>
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                disabled={pendente}
-                onClick={() => importar([...selecionados])}
-                className="min-h-10 rounded-full bg-primary px-4 text-sm font-semibold text-white transition-opacity duration-150 hover:opacity-90 disabled:opacity-60"
-              >
-                {pendente ? "Importando…" : "Adicionar à minha loja"}
-              </button>
-              {ehAdmin && (
               <>
               <button
                 type="button"
@@ -190,7 +152,6 @@ export function MarketplaceGrid({
                 Arquivar
               </button>
               </>
-              )}
               <button
                 type="button"
                 onClick={() => setSelecionados(new Set())}
@@ -210,16 +171,12 @@ function Card({
   item,
   ehAdmin,
   podeEscolher,
-  pendenteGlobal,
-  onImportar,
   selecionado,
   onSelecionar,
 }: {
   item: Item;
   ehAdmin: boolean;
   podeEscolher: boolean;
-  pendenteGlobal: boolean;
-  onImportar: () => void;
   selecionado: boolean;
   onSelecionar: () => void;
 }) {
@@ -371,29 +328,17 @@ function Card({
                 <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" />
                 Na sua loja
               </span>
-            ) : podeEscolher ? (
-              <button
-                type="button"
-                disabled={pendenteGlobal}
-                onClick={onImportar}
-                title="Adicionar à minha loja"
-                className="flex min-h-9 w-full items-center justify-center gap-1.5 rounded-full bg-primary px-3 text-xs font-semibold text-white transition-opacity duration-150 hover:opacity-90 disabled:opacity-50"
-              >
-                <Plus className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />
-                Adicionar
-              </button>
             ) : (
-              /* ESTADO, NÃO AÇÃO — `span`, nunca `button`. Antes isto era um botão
-                 desabilitado com `onClick` de importar, e a palavra mentia: dizia
-                 "acabaram suas 10 vagas" quando o certo é "essa não é sua". Com a
-                 amostra sorteada (migration 0029) o rótulo virou verdade, e o
-                 formato precisa deixar claro que não há nada para clicar.
+              /* ESTADO, NÃO AÇÃO — `span`, nunca `button`. Não existe mais nada para
+                 clicar aqui: a chuteira entra na loja pelo pacote (as 990 de uma vez) ou
+                 pela amostra sorteada, nunca escolhida uma a uma nesta grade. O rótulo
+                 diz o que é verdade — "essa não é sua ainda" —, não "acabaram suas vagas".
 
-                 Some do card quando não há nada aqui? Não: o rodapé de altura
-                 fixa é o que mantém as linhas da grade alinhadas. */
+                 Some do card quando não há nada aqui? Não: o rodapé de altura fixa é o
+                 que mantém as linhas da grade alinhadas. */
               <span className="flex min-h-9 items-center justify-center gap-1.5 rounded-full bg-gray-100 px-3 text-xs font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-400">
                 <Lock className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />
-                Bloqueado
+                No pacote
               </span>
             )}
           </div>
