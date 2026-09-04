@@ -115,6 +115,14 @@ const linhas = recorte.map((p) => ({
   source_album_id: p.origem.albumId,
   source_category: p.origem.nomeChines,
   source_rank: Number(p.origem.albumId),
+  // Lançamento resolvido no ingest contra data real de mercado (migration 0031).
+  // `?? null` porque catálogos gerados antes desta mudança não têm os campos, e mandar
+  // `undefined` no JSON some com a chave — o produto ficaria com o valor antigo no banco
+  // em vez de ser limpo.
+  model_line: p.model_line ?? null,
+  model_gen: p.model_gen ?? null,
+  launch_date: p.launch_date ?? null,
+  is_lancamento: p.is_lancamento ?? false,
 }));
 
 const noPreview = escolherPreview(linhas, 100);

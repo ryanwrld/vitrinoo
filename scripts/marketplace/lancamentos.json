@@ -1,0 +1,333 @@
+{
+  "_comentario": [
+    "Datas REAIS de lançamento das linhas que o fornecedor vende. Substitui a heurística",
+    "que existia em ingest.mjs ('recente = terço superior por album_id'), vetada pelo dono:",
+    "a posição de um álbum no Yupoo diz quando o FORNECEDOR subiu a foto, não quando a",
+    "marca lançou o par. Um retrô fotografado ontem subia como lançamento.",
+    "",
+    "REGRA: é lançamento quem for a geração de MAIOR `data` dentro da sua `linha`.",
+    "Por isso a tabela lista também gerações que o acervo NÃO tem — sem a Tiempo Maestro",
+    "aqui dentro, a Legend 10 (2023) seria a mais nova das Tiempo conhecidas e viraria",
+    "lançamento sozinha. A geração que o mercado já aposentou tem que estar listada para",
+    "aposentar a anterior.",
+    "",
+    "CAMPOS:",
+    "  padrao      regex contra o nome em português já gravado (products.name)",
+    "  modelo      o produto real de mercado a que aquele nome corresponde",
+    "  data        AAAA-MM do lançamento oficial",
+    "  fonte       de onde a data saiu",
+    "  confirmar   true = não consegui identificar o par real com segurança.",
+    "              NUNCA é lançamento enquanto estiver assim. Ver `_pendencias` no fim.",
+    "  semCiclo    linha sem geração numerada (Copa, King, futsal de quadra)",
+    "  descontinuada  linha que a marca encerrou",
+    "",
+    "Pesquisado em 2026-09-01. Revisar quando entrar catálogo novo."
+  ],
+
+  "linhas": [
+    {
+      "linha": "Mercurial",
+      "ger": "17",
+      "padrao": "^Mercurial\\s*(Vapor\\s*17|Superfly\\s*11|17)\\b",
+      "modelo": "Nike Mercurial Vapor 17 / Superfly 11",
+      "data": "2026-06",
+      "fonte": "https://www.nike.com/a/mercurial-release-date"
+    },
+    {
+      "linha": "Mercurial",
+      "ger": "16",
+      "padrao": "^Mercurial\\s*(Vapor\\s*16|Superfly\\s*(16|10))\\b",
+      "modelo": "Nike Mercurial Vapor 16 / Superfly 10",
+      "data": "2024-08",
+      "fonte": "footyheadlines.com/nike-boot-calendar"
+    },
+    {
+      "linha": "Mercurial",
+      "ger": "15",
+      "padrao": "^Mercurial\\s*(Vapor\\s*15|Superfly\\s*(15|9))\\b",
+      "modelo": "Nike Mercurial Vapor 15 / Superfly 9",
+      "data": "2022-08",
+      "fonte": "footyheadlines.com/nike-boot-calendar"
+    },
+    {
+      "linha": "Mercurial",
+      "ger": "14",
+      "padrao": "^Mercurial\\s*Vapor\\s*14\\b",
+      "modelo": "Nike Mercurial Vapor 14",
+      "data": "2021-02",
+      "fonte": "footyheadlines.com/nike-boot-calendar"
+    },
+    {
+      "linha": "Mercurial",
+      "ger": "retro",
+      "padrao": "^Mercurial\\s*(Vapor\\s*)?1\\b",
+      "modelo": "Nike Mercurial Vapor 1 (relançamento do original de 1998)",
+      "descontinuada": true,
+      "fonte": "linha retrô — não compete com a geração corrente"
+    },
+
+    {
+      "linha": "Phantom",
+      "ger": "6",
+      "padrao": "^Phantom\\s*(6|GX\\s*(III|3))\\b",
+      "modelo": "Nike Phantom 6",
+      "data": "2025-12",
+      "fonte": "https://www.footyheadlines.com/2025/09/first-nike-phantom-2026-main-pack-boots.html",
+      "nota": "'Phantom GX III' é como o fornecedor chama a Phantom 6 — a Nike nunca fabricou uma GX III (a linha foi GX 2023 -> GX II 2024 -> Phantom 6). Confirmado pelo dono do produto em 2026-09-01, olhando o par. São 101 dos 990."
+    },
+    {
+      "linha": "Phantom",
+      "ger": "GX II",
+      "padrao": "^Phantom\\s*GX\\s*(II|2)\\b",
+      "modelo": "Nike Phantom GX II",
+      "data": "2024-05",
+      "fonte": "footyheadlines.com/nike-boot-calendar"
+    },
+    {
+      "linha": "Phantom",
+      "ger": "GX",
+      "padrao": "^Phantom\\s*GX(?!\\s*(I|II|III|1|2|3))\\b",
+      "modelo": "Nike Phantom GX",
+      "data": "2023-05",
+      "fonte": "footyheadlines.com/nike-boot-calendar"
+    },
+    {
+      "linha": "Phantom",
+      "ger": "GT",
+      "padrao": "^Phantom\\s*GT\\b",
+      "modelo": "Nike Phantom GT",
+      "descontinuada": true,
+      "fonte": "já listada em FORA_DE_LINHA no ingest.mjs (de 2022)"
+    },
+
+    {
+      "linha": "Tiempo",
+      "ger": "Maestro",
+      "padrao": "^Tiempo\\s*Maestro\\b",
+      "modelo": "Nike Tiempo Maestro",
+      "data": "2026-01",
+      "fonte": "https://www.nike.com/a/nike-tiempo-maestro-release-info"
+    },
+    {
+      "linha": "Tiempo",
+      "ger": "Legend 10",
+      "padrao": "^Tiempo\\s*Legend\\s*10\\b",
+      "modelo": "Nike Tiempo Legend 10",
+      "data": "2023-08",
+      "fonte": "https://www.nike.com/a/nike-tiempo-legend-10"
+    },
+
+    {
+      "linha": "Predator",
+      "ger": "26",
+      "padrao": "^Predator\\s*26([.+]\\d?)?\\b",
+      "modelo": "adidas Predator 26",
+      "data": "2026-01",
+      "fonte": "https://www.footyheadlines.com/2025/04/adidas-predator-2026-first-main.html"
+    },
+    {
+      "linha": "Predator",
+      "ger": "25",
+      "padrao": "^Predator\\s*25([.+]\\d?)?\\b",
+      "modelo": "adidas Predator 25",
+      "data": "2025-01",
+      "fonte": "footyheadlines.com/adidas-boot-calendar"
+    },
+    {
+      "linha": "Predator",
+      "ger": "24",
+      "padrao": "^Predator\\s*24([.+]\\d?)?\\b",
+      "modelo": "adidas Predator 24",
+      "data": "2024-01",
+      "fonte": "footyheadlines.com/adidas-boot-calendar"
+    },
+
+    {
+      "linha": "F50",
+      "ger": "Hyperfast",
+      "padrao": "^F50\\s*Hyperfast\\b",
+      "modelo": "adidas F50 Hyperfast (next-gen, Copa 2026)",
+      "data": "2026-05",
+      "fonte": "https://www.footyheadlines.com/2026/04/adidas-f50-hyperfast-teaser.html"
+    },
+    {
+      "linha": "F50",
+      "ger": "2024",
+      "padrao": "^F50\\b(?!\\s*Hyperfast)",
+      "modelo": "adidas F50 (relançamento de 2024)",
+      "data": "2024-08",
+      "fonte": "footyheadlines.com/adidas-boot-calendar"
+    },
+
+    {
+      "linha": "X Speedportal",
+      "ger": "23",
+      "padrao": "^X\\s*(Speedportal\\s*)?23([.+]\\d?)?\\b",
+      "modelo": "adidas X Speedportal / X Crazyfast 23",
+      "descontinuada": true,
+      "fonte": "linha encerrada — a adidas substituiu a X pelo relançamento da F50 em 2024"
+    },
+
+    {
+      "linha": "Puma Future",
+      "ger": "9",
+      "padrao": "^Puma\\s*Future\\s*9\\b",
+      "modelo": "Puma Future 9",
+      "data": "2026-07",
+      "fonte": "https://www.soccerbible.com/performance/football-boots/2026/07/puma-kicks-off-the-new-season-with-the-arrival-pack/"
+    },
+    {
+      "linha": "Puma Future",
+      "ger": "8",
+      "padrao": "^Puma\\s*Future\\s*8\\b",
+      "modelo": "Puma Future 8",
+      "data": "2025-09",
+      "fonte": "https://about.puma.com/en/newsroom/product-and-brand-news/2025/09-01-2025-unleash-unlimited-next-gen-future-8"
+    },
+    {
+      "linha": "Puma Future",
+      "ger": "7",
+      "padrao": "^Puma\\s*Future\\s*7\\b",
+      "modelo": "Puma Future 7",
+      "data": "2023-12",
+      "fonte": "footyheadlines.com/puma-boot-calendar"
+    },
+
+    {
+      "linha": "Puma Ultra",
+      "ger": "Nitro 7",
+      "padrao": "^Puma\\s*Ultra\\s*(Nitro\\s*)?7\\b",
+      "modelo": "Puma Ultra Nitro 7",
+      "data": "2026-07",
+      "fonte": "https://www.soccerbible.com/performance/football-boots/2026/07/puma-kicks-off-the-new-season-with-the-arrival-pack/"
+    },
+    {
+      "linha": "Puma Ultra",
+      "ger": "6",
+      "padrao": "^Puma\\s*Ultra\\s*6\\b",
+      "modelo": "Puma Ultra 6",
+      "data": "2025-10",
+      "fonte": "https://www.soccerbible.com/performance/football-boots/2025/10/puma-turn-up-the-heat-with-the-hot-pursuit-pack/"
+    },
+    {
+      "linha": "Puma Ultra",
+      "ger": "5",
+      "padrao": "^Puma\\s*Ultra\\s*5\\b",
+      "modelo": "Puma Ultra 5",
+      "data": "2025-03",
+      "fonte": "footyheadlines.com/puma-boot-calendar"
+    },
+
+    {
+      "linha": "Total 90",
+      "padrao": "^(T90|Total\\s*90)\\b",
+      "modelo": "Nike Total 90",
+      "descontinuada": true,
+      "fonte": "já listada em FORA_DE_LINHA no ingest.mjs"
+    },
+    {
+      "linha": "Hypervenom",
+      "padrao": "^Hypervenom\\b",
+      "modelo": "Nike Hypervenom",
+      "descontinuada": true,
+      "fonte": "já listada em FORA_DE_LINHA no ingest.mjs"
+    },
+    {
+      "linha": "Magista",
+      "padrao": "^Magista\\b",
+      "modelo": "Nike Magista",
+      "descontinuada": true,
+      "fonte": "já listada em FORA_DE_LINHA no ingest.mjs"
+    },
+
+    {
+      "linha": "Copa",
+      "padrao": "^(\\d{4}\\s*)?Copa\\b",
+      "modelo": "adidas Copa (Mundial / Gloro / Pure)",
+      "semCiclo": true,
+      "fonte": "linha de couro contínua, sem geração numerada anual"
+    },
+    {
+      "linha": "Puma King",
+      "padrao": "^Puma\\s*King\\b",
+      "modelo": "Puma King",
+      "semCiclo": true,
+      "fonte": "linha de couro contínua, sem geração numerada anual"
+    },
+    {
+      "linha": "Mizuno",
+      "padrao": "^Mizuno\\b",
+      "modelo": "Mizuno Morelia / Alpha",
+      "semCiclo": true,
+      "fonte": "Morelia é linha contínua desde 1985; o acervo não distingue geração"
+    },
+    {
+      "linha": "Sala",
+      "padrao": "^(adidas|Adidas)\\s*(Top\\s*)?Sala\\b",
+      "modelo": "adidas Top Sala",
+      "semCiclo": true,
+      "fonte": "futsal de quadra, sem ciclo de geração anual"
+    },
+    {
+      "linha": "Adidas Clássica",
+      "padrao": "^Adidas\\s*Cl[áa]ssica\\b",
+      "modelo": "adidas retrô (Copa Mundial, adipure, Predator Mania)",
+      "descontinuada": true,
+      "fonte": "linha retrô por definição"
+    },
+    {
+      "linha": "Nike Gato",
+      "padrao": "^Nike\\s*(Lunar\\s*Gato|Streetgato|SB\\s*Gato|Premier)\\b",
+      "modelo": "Nike Gato / Streetgato / Premier",
+      "semCiclo": true,
+      "fonte": "quadra e lifestyle, sem ciclo de geração anual"
+    },
+    {
+      "linha": "Joma",
+      "padrao": "^Joma\\b",
+      "modelo": "Joma Top Flex / Regate",
+      "semCiclo": true,
+      "fonte": "o acervo não distingue geração; todas de quadra (IC)"
+    },
+    {
+      "linha": "New Balance",
+      "padrao": "^New\\s*Balance\\b",
+      "modelo": "New Balance Furon / Tekela",
+      "semCiclo": true,
+      "fonte": "o acervo não registra a geração (v13, v14…)"
+    },
+    {
+      "linha": "Asics",
+      "padrao": "^Asics\\b",
+      "modelo": "Asics",
+      "semCiclo": true,
+      "fonte": "o acervo não distingue modelo nem geração"
+    }
+  ],
+
+  "_pendencias": [
+    "Nomes do fornecedor que NÃO correspondem a produto real que eu tenha conseguido",
+    "identificar. Ficam fora do lançamento até você confirmar a qual par cada um equivale.",
+    "Este é exatamente o risco que 02-RESPOSTAS.md já apontava: 'a linha/geração é a parte",
+    "difícil... o ponto de maior risco do pipeline e precisa de revisão sua'.",
+    "",
+    "  RESOLVIDO 2026-09-01 — 'Phantom GX III' (101 pares) É a Phantom 6, confirmado pelo",
+    "                   dono olhando o par. Passou para a entrada da Phantom 6 acima.",
+    "  Tiempo Legend 11 (25)  — a Nike encerrou o nome 'Legend' e foi para Tiempo Maestro",
+    "                   em 2026-01. Provável que seja a Maestro, mas não confirmei.",
+    "  Tiempo Legend 30 (5)   — não existe nenhuma geração 30 da Tiempo.",
+    "  Predator 27 (3), Predator 30 (4) — a adidas está na 26 (2026-01). 27 e 30 não",
+    "                   existiam em 2026-09.",
+    "  Phantom 2 (6)    — pode ser Phantom GX II ou Phantom Luna II. Ambíguo.",
+    "  Puma Future Ultimate / Ultra Ultimate — 'Ultimate' é o nível de acabamento, não a",
+    "                   geração. Sem o número não dá para saber qual geração é."
+  ],
+
+  "confirmar": [
+    { "padrao": "^Tiempo\\s*Legend\\s*11\\b", "motivo": "Nike substituiu Legend por Tiempo Maestro em 2026-01" },
+    { "padrao": "^Tiempo\\s*Legend\\s*30\\b", "motivo": "geração inexistente" },
+    { "padrao": "^Predator\\s*(27|30)([.+]\\d?)?\\b", "motivo": "adidas estava na 26 em 2026-09" },
+    { "padrao": "^Phantom\\s*2\\b", "motivo": "ambíguo entre Phantom GX II e Phantom Luna II" },
+    { "padrao": "^Puma\\s*(Future|Ultra)\\s*Ultimate\\b", "motivo": "'Ultimate' é acabamento, não geração" }
+  ]
+}

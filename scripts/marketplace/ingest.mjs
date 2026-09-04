@@ -14,6 +14,7 @@ import { traduz } from './lib-traduz.mjs';
 import { aplicarOverride, comSufixo, semSufixo } from './lib-overrides.mjs';
 import { sugerirPreco } from './lib-preco.mjs';
 import { marcaDe } from './lib-marca.mjs';
+import { classificarLancamento, geracoesAtuais } from './lib-lancamento.mjs';
 
 const AQUI = path.dirname(fileURLToPath(import.meta.url));
 const SAIDA = path.join(AQUI, 'saida');
@@ -262,16 +263,24 @@ function montar() {
   escolhidos.push(...podados);
   if (cortadosAG) log(`   AG podados para ficarem abaixo de FG: ${cortadosAG}`);
 
-  // "Recente" = terço superior por album_id entre os escolhidos.
-  const ids = escolhidos.map((c) => Number(c.albumId)).sort((a, b) => b - a);
-  const corte = ids[Math.floor(ids.length / 3)] ?? 0;
+  // LANÇAMENTO vem de data real de mercado (lancamentos.json), nunca mais do album_id.
+  //
+  // A régua antiga era "terço superior por album_id entre os escolhidos", e ela respondia a
+  // pergunta errada: album_id diz quando o FORNECEDOR subiu a foto. Um retrô fotografado
+  // ontem entrava como lançamento e levava +R$40 no preço sugerido. Vetada pelo dono em
+  // 2026-09-01: sem hipótese, só data de lançamento oficial com fonte anotada.
+  //
+  // Depende do NOME FINAL (já traduzido, já com override aplicado), então a classificação
+  // acontece dentro do map, depois de `nomeFinal` existir — e não antes, num passo próprio.
+  log(`   lançamento: geração atual de cada linha -> ${geracoesAtuais().join(', ')}`);
 
   const produtos = escolhidos.map((c) => {
-    const recente = Number(c.albumId) >= corte;
     // Override manual antes do preço: o solado corrigido precisa valer na regra de preço.
     const aj = aplicarOverride(c.albumId, c.nome, c.solado);
     const nomeFinal = comSufixo(aj.nome, aj.sole);
     const m = marcaDe(nomeFinal);
+    const lanc = classificarLancamento(nomeFinal);
+    const recente = lanc.lancamento;
     return {
       origem: { vendedor: VENDEDOR, albumId: c.albumId, catId: c.catId, nomeChines: c.nomeChines },
       nome: nomeFinal,
@@ -281,6 +290,12 @@ function montar() {
       fulfillment: 'importado', // vitrine: "Importado direto da fábrica (Prazo: 7-25 dias)"
       preco_sugerido: sugerirPreco({ solado: aj.sole, recente }),
       recente,
+      // Vai para as colunas homônimas de marketplace_products (migration 0031). O motivo
+      // não sobe para o banco: serve ao relatório de curadoria, não à aplicação.
+      model_line: lanc.linha,
+      model_gen: lanc.ger,
+      launch_date: lanc.data,
+      is_lancamento: lanc.lancamento,
       tamanhos: { min: c.tamanhoMin, max: c.tamanhoMax },
       qtd_fotos_origem: c.qtdFotos,
       // Sem descrição, por decisão do dono do produto.
