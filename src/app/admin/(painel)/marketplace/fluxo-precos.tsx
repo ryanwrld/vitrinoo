@@ -444,10 +444,14 @@ function Intro({
       <button
         type="button"
         onClick={onComecar}
-        // Largura total no celular (alvo de toque generoso) e só o padding do protótipo no
-        // desktop, onde um botão de 320px para uma palavra pesa mais que a decisão que ele
-        // representa.
-        className="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-primary px-16 text-[14.5px] font-semibold text-white transition-opacity duration-150 hover:opacity-90 sm:w-auto"
+        /*
+          LARGURA PELO CONTEÚDO, em qualquer tela. Era `w-full` no celular, com a justificativa
+          de dar um alvo de toque generoso — mas quem garante o toque é a altura mínima de
+          44px, que fica; esticado, um botão de uma palavra virava barra e pesava mais que a
+          decisão que ele representa. Com o padding do protótipo ele fecha em ~198px, o mesmo
+          do "Ver meus produtos" da tela final, então as duas pontas do fluxo combinam.
+        */
+        className="mt-6 inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-16 text-[14.5px] font-semibold text-white transition-opacity duration-150 hover:opacity-90"
       >
         {ROTULO_COMECAR}
       </button>
