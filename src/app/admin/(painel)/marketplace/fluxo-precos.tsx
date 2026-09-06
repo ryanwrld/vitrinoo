@@ -1038,7 +1038,14 @@ function Pronto({
       <button
         type="button"
         onClick={onVerProdutos}
-        className="mt-6 inline-flex min-h-11 w-full max-w-xs items-center justify-center rounded-full bg-primary px-8 text-[14.5px] font-semibold text-white transition-opacity duration-150 hover:opacity-90"
+        /*
+          LARGURA PELO CONTEÚDO, como os botões principais das outras etapas ("Continuar",
+          "Concluir valores", "Aplicar tudo"), que usam a mesma altura e o mesmo raio. Antes
+          era `w-full max-w-xs`: no celular ele esticava até os 320px do miolo e virava uma
+          barra, destoando de todas as telas anteriores. Como a largura passa a sair do
+          rótulo, ela é a MESMA nos dois fluxos — a frase é a mesma.
+        */
+        className="mt-6 inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-8 text-[14.5px] font-semibold text-white transition-opacity duration-150 hover:opacity-90"
       >
         Ver meus produtos
       </button>
