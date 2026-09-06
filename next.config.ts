@@ -57,6 +57,46 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "10mb",
     },
   },
+  /*
+   * EM DEV, O NAVEGADOR NÃO PODE GUARDAR OS CHUNKS ESTÁTICOS.
+   *
+   * O nome do arquivo de CSS/JS que o `next dev` gera vem do caminho do
+   * módulo, não do conteúdo: editar `globals.css` mantém a MESMA URL. O
+   * servidor já responde `no-cache, must-revalidate`, mas navegador que não
+   * revalida (o do portal de QA usado aqui, e webviews em geral) segue servindo
+   * a cópia velha — a página fica com o CSS de uma versão atrás, sem nenhum
+   * erro à vista. Perdemos horas nisso: classes de tamanho novas simplesmente
+   * não existiam na folha carregada, e os SVGs, sem altura, esticavam.
+   *
+   * `no-store` corta a revalidação da conversa: nada é guardado, então nunca há
+   * cópia velha para servir. Só vale em `next dev` — em produção os nomes
+   * carregam hash de conteúdo e o cache longo é justamente o que se quer.
+   */
+  async headers() {
+    if (process.env.NODE_ENV !== "development") return [];
+    return [
+      {
+        source: "/_next/static/:path*",
+        headers: [{ key: "Cache-Control", value: "no-store, must-revalidate" }],
+      },
+      /*
+       * E, para o navegador que ignora até o `no-store`, a ordem explícita.
+       *
+       * O do portal de QA usado aqui guarda a folha assim mesmo e serve a cópia velha no
+       * reload seguinte — a tela fica uma versão atrás do código, sem erro nenhum à vista,
+       * e quem está revisando um ajuste visual vê o estado anterior. `Clear-Site-Data` na
+       * navegação do painel manda descartar o que já está guardado, então cada carga de
+       * página começa limpa.
+       *
+       * Só o escopo "cache": sessão e cookies não são tocados. E só em `next dev` — em
+       * produção os nomes de arquivo carregam hash de conteúdo e o cache longo é desejado.
+       */
+      {
+        source: "/admin/:path*",
+        headers: [{ key: "Clear-Site-Data", value: '"cache"' }],
+      },
+    ];
+  },
   images: {
     remotePatterns: supabaseHostname
       ? [
