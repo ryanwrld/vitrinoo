@@ -398,12 +398,17 @@ function Intro({
     <div className="flex flex-col items-center px-5 py-8 text-center sm:px-10 sm:py-10">
       {/* O palco encolhe no celular mantendo a proporção do desenho (300:176): sem
           `aspect-ratio` ele viraria uma faixa achatada e as ilustrações ganhariam tarja
-          nas laterais. */}
+          nas laterais.
+
+          O TETO MENOR ABAIXO DE `sm` é o que reduz o banner no celular: em 360px ele ia a
+          320px de largura por 188px de altura e dominava a tela acima do título. O desenho
+          é um SVG `h-full w-full` sobre um viewBox 300×176, então encolher o palco encolhe
+          tudo junto, sem distorcer — e os pontos de navegação ficam fora dele, intocados. */}
       {/* `#171927` literal: é o fundo de palco do protótipo, e fica entre gray-900 e
           gray-850. Um uso só no produto inteiro — virar token seria criar uma entrada na
           paleta que ninguém mais chama. `gray-950` (preto puro) estava aqui e lia como
           buraco ao lado do card. */}
-      <div className="relative aspect-[300/176] w-full max-w-[375px] overflow-hidden rounded-[18px] border border-gray-200 bg-gray-50 dark:border-gray-850 dark:bg-[#171927]">
+      <div className="relative aspect-[300/176] w-full max-w-[264px] overflow-hidden rounded-[18px] border border-gray-200 bg-gray-50 sm:max-w-[375px] dark:border-gray-850 dark:bg-[#171927]">
         {ilustras.map((il, k) => (
           <div
             key={k}
