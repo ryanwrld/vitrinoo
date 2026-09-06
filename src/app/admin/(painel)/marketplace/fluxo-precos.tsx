@@ -1064,13 +1064,18 @@ function Pronto({
         type="button"
         onClick={onVerProdutos}
         /*
-          LARGURA PELO CONTEÚDO, como os botões principais das outras etapas ("Continuar",
-          "Concluir valores", "Aplicar tudo"), que usam a mesma altura e o mesmo raio. Antes
-          era `w-full max-w-xs`: no celular ele esticava até os 320px do miolo e virava uma
-          barra, destoando de todas as telas anteriores. Como a largura passa a sair do
-          rótulo, ela é a MESMA nos dois fluxos — a frase é a mesma.
+          LARGURA PELO CONTEÚDO NO CELULAR, como os botões principais das outras etapas
+          ("Continuar", "Concluir valores", "Aplicar tudo"), que usam a mesma altura e o
+          mesmo raio. Antes era `w-full max-w-xs` em toda largura: no celular ele esticava
+          até os 320px do miolo e virava uma barra, destoando de todas as telas anteriores.
+          Como a largura passa a sair do rótulo, ela é a MESMA nos dois fluxos — a frase é a
+          mesma.
+
+          NO DESKTOP OS 320px CONTINUAM, por decisão do dono: lá o card tem 748px e o botão
+          largo ancora a tela de sucesso. É o `sm:` que separa os dois casos — sem ele, a
+          mudança do celular teria encolhido o desktop junto.
         */
-        className="mt-6 inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-8 text-[14.5px] font-semibold text-white transition-opacity duration-150 hover:opacity-90"
+        className="mt-6 inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-8 text-[14.5px] font-semibold text-white transition-opacity duration-150 hover:opacity-90 sm:w-full sm:max-w-xs"
       >
         Ver meus produtos
       </button>
