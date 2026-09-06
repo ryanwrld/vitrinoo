@@ -68,9 +68,15 @@ function brl(valor: number): string {
  * Renderizando a mesma frase, invisível, a altura bate por construção em qualquer tela.
  */
 export function tituloDaIntro(origem: Origem, total: number): string {
+  /*
+    O ramo da amostra é CURTO de propósito. "Parabéns, 10 chuteiras resgatadas!" quebrava em
+    TRÊS linhas num aparelho de 360px: aos 30px do título ele precisa de 325px de largura e
+    só existem 318. O número fica — é ele que diz o que o lojista acabou de ganhar; o
+    "Parabéns" é que sai, porque a tela inteira já é a comemoração.
+  */
   return origem === "pacote"
     ? "Parabéns, pacote resgatado!"
-    : `Parabéns, ${total} chuteiras resgatadas!`;
+    : `${total} chuteiras resgatadas!`;
 }
 export const APOIO_DA_INTRO = "Vamos fazer uma rápida precificação dos seus modelos.";
 export const ROTULO_COMECAR = "Começar";
