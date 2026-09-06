@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -473,6 +481,19 @@ function Precos({
   onFocado: () => void;
   onContinuar: () => void;
 }) {
+  /*
+    QUAL CAMPO RECEBE O FOCO É DECIDIDO UMA VEZ, na montagem desta etapa.
+
+    Antes o alvo era recalculado a cada render — e a própria conclusão do foco zera o
+    `focar` no pai, o que fazia o primeiro campo virar alvo logo depois. Quem vinha do
+    resumo pelo atalho "corrigir preço" via o campo certo receber o cursor e, 420ms depois,
+    perdê-lo para o primeiro da lista.
+
+    A etapa é remontada a cada troca de tela (`key={etapa}` no invólucro), então "uma vez"
+    aqui é uma vez por visita: voltar do resumo recalcula o alvo normalmente.
+  */
+  const [alvoDoFoco] = useState(() => focar ?? tipos[0]?.id ?? null);
+
   return (
     <Moldura
       rotulo={`Etapa 1 de ${temLancamento ? 3 : 2} · Preços`}
@@ -532,7 +553,7 @@ function Precos({
                 id={tipo.id}
                 valor={precos[tipo.id] ?? ""}
                 onMudar={(v) => onMudar(tipo.id, v)}
-                autoFoco={focar === tipo.id || (focar === null && i === 0)}
+                autoFoco={tipo.id === alvoDoFoco}
                 onFocado={onFocado}
                 rotulo={`Preço de ${tipo.rotulo}`}
               />
@@ -1240,16 +1261,31 @@ function CampoReal({
 }) {
   const campo = useRef<HTMLInputElement>(null);
 
+  /*
+    O AVISO DE "JÁ FOQUEI" É EVENTO DE EFEITO, e não dependência.
+
+    Quem chama passa uma função nova a cada render (`onFocado={() => setFocar(null)}`), e com
+    ela na lista de dependências o efeito rodava OUTRA VEZ a cada tecla digitada em QUALQUER
+    campo — o pai re-renderiza, a identidade muda, o efeito reinicia. Como o primeiro campo
+    é alvo de foco o tempo todo, 420ms depois da última tecla ele chamava `focus()` e roubava
+    o cursor de onde o lojista estava digitando.
+
+    `useEffectEvent` (React 19.2) existe exatamente para isto: sempre enxerga o valor mais
+    novo da prop e não é reativo, então o efeito passa a depender só de o campo ser ou não o
+    alvo — que é o que ele de fato significa.
+  */
+  const avisarFocado = useEffectEvent(() => onFocado?.());
+
   useEffect(() => {
     if (!autoFoco) return;
     // Espera a animação de entrada do pop-up: focar durante o `scale-in` faz o teclado do
     // celular subir com o card ainda se movendo, e a tela treme.
     const t = setTimeout(() => {
       campo.current?.focus();
-      onFocado?.();
+      avisarFocado();
     }, 420);
     return () => clearTimeout(t);
-  }, [autoFoco, onFocado]);
+  }, [autoFoco]);
 
   const mascarar = useCallback((cru: string) => {
     let v = cru.replace(/[^\d,]/g, "");
