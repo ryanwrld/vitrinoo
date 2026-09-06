@@ -937,7 +937,7 @@ function Processando({ temLancamento }: { temLancamento: boolean }) {
       No desktop o piso de 472px do card já resolve isso, então o `min-h` some a partir
       de `sm`.
     */
-    <div className="flex min-h-[392px] flex-1 flex-col items-center justify-center gap-4 px-5 py-16 text-center sm:min-h-0 sm:py-20">
+    <div className="flex min-h-[392px] flex-1 flex-col items-center justify-center gap-2 px-5 py-16 text-center sm:min-h-0 sm:py-20">
       {/* SVG e não borda CSS: aqui o comprimento do arco e a ponta arredondada ficam sob
           controle — borda só entrega um quarto de círculo de canto reto. Gira em `linear`:
           uma curva com aceleração faria o anel parecer que engasga a cada volta. */}
