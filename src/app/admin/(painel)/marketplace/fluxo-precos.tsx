@@ -350,7 +350,6 @@ export function FluxoPrecos({
 
         {etapa === "pronto" && (
           <Pronto
-            origem={origem}
             total={contexto.total}
             // `refresh` antes de navegar: é ele que faz o layout reler a pendência (agora
             // quitada) e parar de montar o fluxo. Sem isso o pop-up seguiria na tela de
@@ -1010,11 +1009,9 @@ function Processando({ temLancamento }: { temLancamento: boolean }) {
 /* ========================================================================== */
 
 function Pronto({
-  origem,
   total,
   onVerProdutos,
 }: {
-  origem: Origem;
   total: number;
   onVerProdutos: () => void;
 }) {
@@ -1066,10 +1063,19 @@ function Pronto({
       <h2 className="mt-4 text-balance font-display text-xl font-extrabold text-gray-900 sm:text-[27px] dark:text-gray-50">
         Tudo pronto, pares cadastrados!
       </h2>
+      {/*
+        UMA FRASE SÓ para as duas origens, mudando apenas o número.
+
+        A do pacote era "Mais de 990 modelos foram adicionados…" e quebrava em TRÊS linhas
+        no celular: 104 caracteres numa caixa de 318px. Tirar só o "Mais de" não resolvia —
+        medido, continuava em três. Com a frase do sorteio e o número na frente, fecha em
+        duas linhas em 360px e também em 320px.
+
+        E o "Mais de" ainda era impreciso: o número vem do conjunto que entrou, então são
+        990 exatos — quando não são MENOS, porque a importação pula o que a loja já tinha.
+      */}
       <p className="mt-2 max-w-[26rem] text-pretty text-sm text-gray-500 dark:text-gray-400">
-        {origem === "pacote"
-          ? `Mais de ${total} modelos foram adicionados na sua lista de produtos, comece a compartilhar e vendê-los agora.`
-          : `Seus ${total} modelos entraram na lista de produtos, comece a compartilhar e vendê-los agora.`}
+        {`${total} modelos entraram na lista de produtos, comece a compartilhar e vendê-los agora.`}
       </p>
 
       <button
