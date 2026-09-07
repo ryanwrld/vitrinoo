@@ -476,7 +476,7 @@ function Intro({
           gray-850. Um uso só no produto inteiro — virar token seria criar uma entrada na
           paleta que ninguém mais chama. `gray-950` (preto puro) estava aqui e lia como
           buraco ao lado do card. */}
-      <div className="relative aspect-[300/176] w-full max-w-[292px] overflow-hidden rounded-[18px] border border-gray-200 bg-gray-50 sm:max-w-[375px] dark:border-gray-850 dark:bg-[#171927]">
+      <div className="vt-ilustra relative aspect-[300/176] w-full max-w-[292px] overflow-hidden rounded-[18px] border border-gray-200 bg-gray-50 sm:max-w-[375px] dark:border-gray-850 dark:bg-[#171927]">
         {ilustras.map((il, k) => (
           <div
             key={k}

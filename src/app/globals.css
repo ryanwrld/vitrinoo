@@ -1130,6 +1130,37 @@ input:autofill {
  * da etapa 2. Portadas do protótipo aprovado (menu-preco5.html).
  * -------------------------------------------------------------------------- */
 
+/*
+ * Cores das ILUSTRAÇÕES do carrossel de abertura.
+ *
+ * Elas eram hex fixo do tema escuro, e no tema claro o carrossel virava um tablet preto
+ * sobre um palco branco. Aqui ficam as quatro que mudam com o tema, declaradas UMA vez e
+ * herdadas pelos três desenhos: valor claro por padrão, escuro sob `.dark .admin-scope`,
+ * como a barra de progresso logo abaixo.
+ *
+ * Variáveis de ESCOPO, e não entradas na paleta: são cores que só este desenho usa, e
+ * espalhá-las como token global era exatamente a objeção registrada no arquivo das
+ * ilustrações.
+ *
+ * O azul da marca e o branco sobre ele não estão aqui — funcionam nos dois temas.
+ */
+.vt-ilustra {
+  --il-corpo: var(--color-gray-100); /* corpo do tablet e da ficha */
+  --il-traco: var(--color-gray-200); /* traços, barras e contornos */
+  --il-tela: #ffffff;                /* a tela interna dos aparelhos */
+  --il-ficha: var(--color-gray-50);  /* a ficha do meio, na pilha do pacote */
+  --il-txt2: var(--color-gray-500);  /* chuteira apagada e preço riscado */
+  --il-num: var(--color-gray-500);   /* o número do preço no desenho 1 */
+}
+.dark .admin-scope .vt-ilustra {
+  --il-corpo: #1c1e2c;
+  --il-traco: #292c3d;
+  --il-tela: #191b28;
+  --il-ficha: #171927;
+  --il-txt2: var(--color-gray-400);
+  --il-num: #575e7d;
+}
+
 /* Barra no topo do card. Ela mede QUANTO DO TRABALHO já foi feito, não quantas
    telas passaram — por isso os saltos são desiguais (ver PCT_COM_AJUSTE e
    PCT_SEM_AJUSTE em fluxo-precos.tsx: sem lançamento na leva a etapa 2 não existe). */

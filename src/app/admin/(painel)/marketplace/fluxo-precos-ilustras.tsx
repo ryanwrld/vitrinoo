@@ -9,18 +9,29 @@
  * acompanha por CSS. No protótipo os atributos existiam e o palco não podia crescer sem a
  * ilustração ficar boiando pequena dentro dele.
  *
- * As cores são as do painel escuro — este fluxo só existe dentro do pop-up, que herda o
- * fundo do card. Escrevê-las por token seria mais bonito e mais frágil: `currentColor` não
- * alcança oito preenchimentos diferentes num desenho, e um `var()` por retângulo geraria
- * oito tokens que só esta tela usa.
+ * AS CORES SEGUEM O TEMA DO PAINEL. Elas eram fixas, do tema escuro, com a justificativa de
+ * que o pop-up herdava o fundo do card — e a premissa estava errada: o painel tem tema
+ * claro, e no claro este carrossel mostrava um tablet preto sobre um palco branco.
+ *
+ * As quatro que mudam vêm de variáveis declaradas UMA vez, em `.vt-ilustra` no globals.css,
+ * com valor claro por padrão e escuro sob `.dark .admin-scope` — o mesmo padrão que a barra
+ * de progresso do fluxo já usa. São variáveis de escopo, não entradas novas na paleta: a
+ * objeção que este comentário fazia (criar oito tokens globais para uma tela só) continua
+ * valendo, e é justamente o que elas evitam.
+ *
+ * O azul da marca e o branco sobre ele não trocam: funcionam nos dois temas.
  */
 
-const A = "#3140C4"; // primário vivo
-const A2 = "#5C6BDA";
-const B = "#1c1e2c"; // linha2
-const C = "#292C3D"; // linha
-const E = "#9CA3BE"; // txt2
-const F = "#F7F8FB"; // txt
+const A = "#3140C4"; // primário vivo — o mesmo azul nos dois temas
+const A2 = "#5C6BDA"; // idem: azul claro da marca
+const F = "#F7F8FB"; // txt — só aparece SOBRE o círculo azul, então não troca com o tema
+
+// As quatro que mudam com o tema. `var()` e não hex porque o desenho vive dentro do painel,
+// que tem tema claro — ver a regra `.vt-ilustra` em globals.css.
+const B = "var(--il-corpo)"; // corpo do tablet e da ficha
+const C = "var(--il-traco)"; // traços, barras e contornos
+const D = "var(--il-tela)"; // a tela interna dos aparelhos
+const E = "var(--il-txt2)"; // a chuteira apagada e o preço riscado
 
 /** Chuteira em traço, reaproveitada nas três ilustrações. */
 function Bota({ x, y, s, cor }: { x: number; y: number; s: number; cor: string }) {
@@ -45,14 +56,14 @@ function Precificar() {
   return (
     <svg viewBox="0 0 300 176" className={CAIXA} aria-hidden="true">
       <rect x="30" y="18" width="240" height="140" rx="16" fill={B} />
-      <rect x="46" y="34" width="208" height="108" rx="13" fill="#191b28" stroke={C} />
+      <rect x="46" y="34" width="208" height="108" rx="13" fill={D} stroke={C} />
       <g opacity=".9">
         <Bota x={64} y={58} s={1.05} cor={E} />
       </g>
       <rect x="64" y="86" width="72" height="7" rx="3.5" fill={C} />
       <rect x="64" y="99" width="46" height="6" rx="3" fill={B} stroke={C} />
       <rect x="158" y="60" width="82" height="34" rx="9" fill="none" stroke={A} strokeWidth="2" />
-      <text x="169" y="82" fontFamily="Inter" fontSize="12" fontWeight="600" fill="#575E7D">
+      <text x="169" y="82" fontFamily="Inter" fontSize="12" fontWeight="600" fill="var(--il-num)">
         R$
       </text>
       <rect x="190" y="68" width="30" height="18" rx="3" fill={A2} opacity=".85" />
@@ -94,7 +105,7 @@ function Vitrine() {
   return (
     <svg viewBox="0 0 300 176" className={CAIXA} aria-hidden="true">
       <rect x="30" y="18" width="240" height="140" rx="18" fill={B} />
-      <rect x="44" y="32" width="212" height="112" rx="13" fill="#191b28" stroke={C} />
+      <rect x="44" y="32" width="212" height="112" rx="13" fill={D} stroke={C} />
       <rect x="58" y="44" width="56" height="7" rx="3.5" fill={C} />
       <rect x="58" y="57" width="184" height="9" rx="4.5" fill={B} stroke={C} />
       {[0, 1, 2].map((k) => {
@@ -137,11 +148,11 @@ function Pacote({ total }: { total: number }) {
         width="156"
         height="96"
         rx="15"
-        fill="#171927"
+        fill="var(--il-ficha)"
         transform="rotate(-3.5 150 86)"
         stroke={C}
       />
-      <rect x="72" y="34" width="156" height="98" rx="15" fill="#191b28" stroke={A} strokeOpacity=".55" />
+      <rect x="72" y="34" width="156" height="98" rx="15" fill={D} stroke={A} strokeOpacity=".55" />
       <Bota x={94} y={58} s={1.5} cor={A2} />
       <rect x="94" y="98" width="66" height="7" rx="3.5" fill={C} />
       <rect x="94" y="111" width="40" height="6" rx="3" fill={B} stroke={C} />
