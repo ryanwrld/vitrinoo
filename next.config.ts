@@ -98,6 +98,19 @@ const nextConfig: NextConfig = {
     ];
   },
   images: {
+    /*
+     * QUANTO TEMPO A IMAGEM OTIMIZADA VALE.
+     *
+     * O Next deriva isso do `Cache-Control` da origem, e o Supabase Storage devolve
+     * `no-cache` nas fotos do acervo — resultado: a resposta saía com
+     * `max-age=0, must-revalidate` e o navegador refazia o pedido a cada visita, mesmo para
+     * uma miniatura de 1KB que nunca muda.
+     *
+     * O piso resolve sem reenviar nada: são fotos de acervo, o nome do arquivo carrega hash
+     * e uma troca de foto gera caminho novo. 30 dias é conservador o bastante para não
+     * prender um erro de curadoria por muito tempo.
+     */
+    minimumCacheTTL: 2592000,
     remotePatterns: supabaseHostname
       ? [
           {

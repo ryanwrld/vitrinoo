@@ -7,6 +7,7 @@
 //   --limite=N     sobe só os N primeiros produtos (útil para um teste rápido)
 //   --status=draft entra como rascunho em vez de publicado
 //   --so-fotos     pula os produtos e só reenvia fotos que faltam
+//   --forcar       reenvia também as fotos que já estão no bucket (ver nota em `forcar`)
 //
 // É IDEMPOTENTE de ponta a ponta: produto casa por `source_album_id` (upsert),
 // e foto já presente no bucket é pulada. Rodar de novo depois de uma interrupção
@@ -31,6 +32,15 @@ const projeto = arg('projeto', 'teste');
 const limite = Number(arg('limite', 0));
 const status = arg('status', 'published');
 const soFotos = temFlag('so-fotos');
+/*
+ * Reenvia foto que JÁ ESTÁ no bucket.
+ *
+ * Existe por um motivo só: o cabeçalho `cache-control`. Ele é gravado no momento do envio e
+ * o Supabase não expõe jeito de trocá-lo depois — testado, `object/copy` ignora o cabeçalho
+ * e a cópia herda o `no-cache` da origem. Então corrigir foto antiga significa reenviar os
+ * bytes. Sem esta opção o script pula o que já existe, que é o certo no dia a dia.
+ */
+const forcar = temFlag('forcar');
 
 // --- credenciais -------------------------------------------------------------
 // Lidas de .env.local. O projeto mantém DOIS Supabase (produção e teste) e a
@@ -220,7 +230,7 @@ async function subirFotos(mapa) {
         storage_path: t.arquivo,
         position: t.pos,
       });
-      if (existentes.has(t.arquivo)) {
+      if (existentes.has(t.arquivo) && !forcar) {
         puladas++;
         continue;
       }
