@@ -78,28 +78,41 @@ function Precificar() {
   );
 }
 
-/** 2. CATÁLOGO — a vitrine em grade. */
+/**
+ * 2. CATÁLOGO — a vitrine em grade.
+ *
+ * MESMA MOLDURA DO SLIDE 1 (240x140 a partir de 30,18), de propósito. Antes ela era
+ * 196x152: proporção 1,29 num palco de 1,70, o que fazia o desenho ler como um bloco
+ * estreito e quadrado boiando no meio, enquanto o slide anterior preenchia 80% da largura.
+ * A diferença entre os dois é que saltava aos olhos, não o tamanho em si.
+ *
+ * Com a moldura em paisagem, a grade 2x2 não cabia sem achatar os cartões — a altura útil
+ * caiu de 124 para 112. Virou UMA LINHA DE TRÊS, que é o formato que uma vitrine tem numa
+ * tela larga de verdade.
+ */
 function Vitrine() {
   return (
     <svg viewBox="0 0 300 176" className={CAIXA} aria-hidden="true">
-      <rect x="52" y="12" width="196" height="152" rx="18" fill={B} />
-      <rect x="66" y="26" width="168" height="124" rx="13" fill="#191b28" stroke={C} />
-      <rect x="80" y="38" width="46" height="7" rx="3.5" fill={C} />
-      <rect x="80" y="52" width="140" height="9" rx="4.5" fill={B} stroke={C} />
-      {[0, 1, 2, 3].map((k) => {
-        const cx = 80 + (k % 2) * 72;
-        const cy = 72 + Math.floor(k / 2) * 38;
+      <rect x="30" y="18" width="240" height="140" rx="18" fill={B} />
+      <rect x="44" y="32" width="212" height="112" rx="13" fill="#191b28" stroke={C} />
+      <rect x="58" y="44" width="56" height="7" rx="3.5" fill={C} />
+      <rect x="58" y="57" width="184" height="9" rx="4.5" fill={B} stroke={C} />
+      {[0, 1, 2].map((k) => {
+        // 184 de largura útil, três cartões de 54 e dois vãos de 11.
+        const cx = 58 + k * 65;
+        const cy = 78;
         return (
           <g key={k}>
-            <rect x={cx} y={cy} width="60" height="30" rx="8" fill={B} stroke={C} />
+            <rect x={cx} y={cy} width="54" height="48" rx="8" fill={B} stroke={C} />
             <g opacity=".75">
-              <Bota x={cx + 8} y={cy + 8} s={0.62} cor={k === 0 ? A2 : E} />
+              {/* O primeiro em azul: sugere "um selecionado" sem precisar de rótulo. */}
+              <Bota x={cx + 11} y={cy + 10} s={0.62} cor={k === 0 ? A2 : E} />
             </g>
-            <rect x={cx + 8} y={cy + 22} width="24" height="4" rx="2" fill={C} />
+            <rect x={cx + 11} y={cy + 34} width="24" height="4" rx="2" fill={C} />
           </g>
         );
       })}
-      <circle cx="150" cy="158" r="3" fill={C} />
+      <circle cx="150" cy="152" r="3" fill={C} />
     </svg>
   );
 }
