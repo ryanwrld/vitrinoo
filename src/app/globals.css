@@ -1156,8 +1156,21 @@ input:autofill {
   from { opacity: 1; transform: none; }
   to   { opacity: 0; transform: translateY(-10px); }
 }
-.vt-etapa-entra { animation: vt-etapa-entra 520ms cubic-bezier(.16,1,.3,1) both; }
-.vt-etapa-sai   { animation: vt-etapa-sai   340ms cubic-bezier(.16,1,.3,1) both; }
+/* Saída CURTA e entrada generosa: a saída é espera pura — a altura nova só pode ser medida
+   depois de o conteúdo novo montar, então cada milissegundo aqui é a interface parada
+   depois do clique. Medido: com 340ms a caixa só começava a se mexer 365ms após o toque. */
+.vt-etapa-entra { animation: vt-etapa-entra 420ms cubic-bezier(.16,1,.3,1) both; }
+.vt-etapa-sai   { animation: vt-etapa-sai   170ms cubic-bezier(.16,1,.3,1) both; }
+
+/*
+ * A CAIXA acompanha a troca em vez de saltar.
+ *
+ * A altura em pixels é escrita pelo componente só durante a troca de etapa (ver o
+ * `useLayoutEffect` em fluxo-precos.tsx) e removida no fim; no resto do tempo o valor é
+ * `auto`, que não anima e portanto deixa esta regra inerte. Mesma curva das animações de
+ * conteúdo acima: a caixa e o que está dentro dela precisam ler como UM movimento.
+ */
+.vt-caixa { transition: height 360ms cubic-bezier(.16,1,.3,1); }
 
 /* Frase do "processando": sai e entra, não só entra. Cada frase devolve ao lojista
    uma das decisões que ele acabou de tomar, e trocar no corte tira a leitura. */
@@ -1284,6 +1297,9 @@ input:autofill {
   .vt-etapa-sai,
   .vt-frase-entra,
   .vt-frase-sai { animation: none; }
+
+  /* A caixa troca de tamanho seco, junto com o conteúdo. */
+  .vt-caixa { transition: none; }
 
   /* Sem movimento, o estado de repouso tem que ser o REVELADO — senão a prévia da
      etapa 2 e a barra ficariam presas no estado inicial, invisíveis para sempre. */

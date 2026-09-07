@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useEffectEvent,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -112,8 +113,15 @@ const PCT_SEM_AJUSTE: Record<Etapa, number> = {
   pronto: 100,
 };
 
-/** Duração da saída de uma etapa. Espelha `.vt-etapa-sai` em globals.css. */
-const MS_SAIDA = 340;
+/**
+ * Duração da saída de uma etapa. Espelha `.vt-etapa-sai` em globals.css.
+ *
+ * ERA 340ms, e era ESPERA MORTA: medido do clique até a caixa começar a se mexer, dava
+ * 365ms parado. Como a altura nova só pode ser medida depois de o conteúdo novo montar, é
+ * este número que atrasa tudo. Saída curta e entrada generosa é a proporção que a interface
+ * responde no ato sem ficar abrupta.
+ */
+const MS_SAIDA = 170;
 
 export function FluxoPrecos({
   origem,
@@ -161,17 +169,63 @@ export function FluxoPrecos({
     return () => clearTimeout(t);
   }, [etapa, pctPorEtapa]);
 
+  /*
+    A CAIXA MUDA DE ALTURA COM ANIMAÇÃO, e não de um quadro para o outro.
+
+    O conteúdo já entrava e saía com movimento, mas o card pulava: intro ~456px, etapa 1
+    ~600px, etapa 2 fechada 392px — saltos de até 200px no meio de um gesto que devia ser
+    contínuo. `height: auto` não é animável, então a altura é medida e aplicada em pixels,
+    mas SÓ DURANTE A TROCA: assim que a transição termina o `style.height` é removido e o
+    layout volta a ser o de sempre. É isso que preserva a rolagem interna da etapa 1 em
+    tela baixa e a prévia da etapa 2, que tem a própria animação de altura por dentro.
+  */
+  const caixa = useRef<HTMLDivElement>(null);
+  const alturaAntes = useRef<number | null>(null);
+
   /** Sai da etapa atual e entra na próxima. Devolve quando a nova já está na tela. */
   const irPara = useCallback((proxima: Etapa) => {
     setSaindo(true);
     return new Promise<void>((pronto) => {
       setTimeout(() => {
+        // A altura de PARTIDA é lida aqui, com o conteúdo antigo ainda montado — depois do
+        // `setEtapa` ele já não existe para ser medido.
+        alturaAntes.current = caixa.current?.offsetHeight ?? null;
         setEtapa(proxima);
         setSaindo(false);
         pronto();
       }, MS_SAIDA);
     });
   }, []);
+
+  useLayoutEffect(() => {
+    const el = caixa.current;
+    const de = alturaAntes.current;
+    alturaAntes.current = null;
+    // Sem altura de partida é a primeira montagem: nada a animar, e animar aqui brigaria
+    // com o `animate-scale-in` do card, que já está abrindo.
+    if (!el || de === null) return;
+
+    const para = el.offsetHeight; // já limitada pelo `max-h-[92dvh]` do card
+    if (de === para) return;
+
+    el.style.height = `${de}px`;
+    void el.offsetHeight; // fixa o ponto de partida antes de mudar o alvo
+    const quadro = requestAnimationFrame(() => {
+      el.style.height = `${para}px`;
+    });
+
+    // Solta a altura no fim: com `auto` de volta, mudanças de dentro da etapa (a prévia da
+    // etapa 2, uma frase que quebra em duas linhas) voltam a mandar na caixa.
+    const soltar = () => {
+      el.style.height = "";
+    };
+    el.addEventListener("transitionend", soltar, { once: true });
+    return () => {
+      cancelAnimationFrame(quadro);
+      el.removeEventListener("transitionend", soltar);
+      el.style.height = "";
+    };
+  }, [etapa]);
 
   /*
     Pré-preenchido com a regra que a loja já salvou. Quem pegou as 10 sorteadas e depois
@@ -282,6 +336,19 @@ export function FluxoPrecos({
         </div>
 
         {/*
+          Invólucro ESTÁVEL: é ele que tem a altura animada. Precisa ficar fora do `key`,
+          senão seria destruído junto com a etapa e não haveria de onde animar.
+        */}
+        {/*
+          SEM `flex-1` AQUI, e isso não é detalhe: `flex-1` é `flex: 1 1 0%`, e a base zero
+          faz o navegador ignorar a altura em pixels que o efeito escreve — medido, o
+          invólucro colapsava para 0 e o card virava um risco de 4px. Sem ele a base é
+          `auto` (a altura manda), o `flex-shrink` continua valendo 1 e, com `min-h-0`, a
+          caixa ainda encolhe quando o card bate no teto de 92dvh — que é o que mantém a
+          rolagem interna da etapa 1 em tela baixa.
+        */}
+        <div ref={caixa} className="vt-caixa flex min-h-0 flex-col overflow-hidden">
+        {/*
           Uma chave por etapa: sem `key` o React reaproveita a árvore anterior e a animação
           de entrada não reinicia — a segunda troca em diante ficaria sem movimento.
         */}
@@ -361,6 +428,7 @@ export function FluxoPrecos({
             }}
           />
         )}
+        </div>
         </div>
       </div>
     </div>
