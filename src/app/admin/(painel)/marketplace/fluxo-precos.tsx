@@ -336,6 +336,28 @@ export function FluxoPrecos({
         </div>
 
         {/*
+          A FOTO DO DESTAQUE É BUSCADA JÁ NA ABERTURA, e não quando a etapa 2 monta.
+
+          Medido: o arquivo otimizado tem 1KB e a otimização leva ~300ms na primeira vez —
+          o problema nunca foi peso, foi QUANDO o pedido parte. Nascendo junto com a etapa
+          2, ele começa no instante em que o lojista chega lá, e sobra um quadrado cinza na
+          tela. Aqui fora, o navegador busca enquanto ele lê a intro e digita os preços.
+
+          Precisa ser o MESMO `sizes` da foto de verdade: é ele que decide a variante que o
+          otimizador gera, e uma variante diferente seria outro arquivo — o aquecimento não
+          serviria para nada. Fora do fluxo visual: sem tamanho, sem clique, sem leitor de
+          tela.
+        */}
+        {urlDaFoto && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute h-[54px] w-[54px] opacity-0"
+          >
+            <Image src={urlDaFoto} alt="" fill sizes="54px" priority />
+          </div>
+        )}
+
+        {/*
           Invólucro ESTÁVEL: é ele que tem a altura animada. Precisa ficar fora do `key`,
           senão seria destruído junto com a etapa e não haveria de onde animar.
         */}
@@ -682,9 +704,20 @@ function Ajuste({
     <Moldura
       rotulo="Etapa 2 de 3 · Ajustes"
       titulo="Lançamento vale quanto a mais?"
-      apoio={`Defina o adicional aplicado aos ${contexto.totalLancamentos} ${
-        contexto.totalLancamentos === 1 ? "par lançamento" : "pares lançamento"
-      } da sua loja.`}
+      /*
+        O NÚMERO EM NEGRITO porque ele é o dado da frase — é ele que diz o tamanho da
+        decisão que o lojista está tomando. O resto é instrução e fica no peso normal.
+      */
+      apoio={
+        <>
+          Defina o adicional aplicado aos{" "}
+          <strong className="font-semibold text-gray-700 dark:text-gray-300">
+            {contexto.totalLancamentos}
+          </strong>{" "}
+          {contexto.totalLancamentos === 1 ? "par lançamento" : "pares lançamento"} da sua
+          loja.
+        </>
+      }
       rodape={
         <>
           <button
@@ -1262,7 +1295,8 @@ function Moldura({
   titulo: React.ReactNode;
   /** O resumo usa um título menor que as outras etapas, como no protótipo. */
   tituloMenor?: boolean;
-  apoio?: string;
+  /** ReactNode, como o `titulo`: a etapa 2 destaca o número de lançamentos na frase. */
+  apoio?: React.ReactNode;
   children: React.ReactNode;
   rodape: React.ReactNode;
 }) {

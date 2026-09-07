@@ -232,6 +232,12 @@ async function subirFotos(mapa) {
             apikey: CHAVE,
             Authorization: `Bearer ${CHAVE}`,
             'Content-Type': 'image/webp',
+            // Sem este cabeçalho o Supabase grava `no-cache`, e aí NADA fica guardado: o
+            // otimizador do Next repassa `must-revalidate` e o navegador refaz o pedido a
+            // cada visita. Foto de acervo não muda e o nome do arquivo já carrega hash, então
+            // cachear para sempre é o correto. Vale para o que for enviado daqui em diante —
+            // as que já estão lá só pegam o cabeçalho novo se este script rodar de novo.
+            'cache-control': 'public, max-age=31536000, immutable',
             'x-upsert': 'true',
           },
           body: corpo,
