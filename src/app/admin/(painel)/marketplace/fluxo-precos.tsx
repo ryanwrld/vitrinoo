@@ -1083,11 +1083,12 @@ function Pronto({
           Como a largura passa a sair do rótulo, ela é a MESMA nos dois fluxos — a frase é a
           mesma.
 
-          NO DESKTOP OS 320px CONTINUAM, por decisão do dono: lá o card tem 748px e o botão
-          largo ancora a tela de sucesso. É o `sm:` que separa os dois casos — sem ele, a
-          mudança do celular teria encolhido o desktop junto.
+          NO DESKTOP TAMBÉM, por decisão do dono revista: os 320px que ele tinha aqui
+          destoavam do "Começar" da intro, que fecha em 192px. Sem teto de largura, este
+          botão fica em 197px — cinco pixels do outro, o que a vista lê como o mesmo botão
+          nas duas pontas do fluxo.
         */
-        className="mt-6 inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-8 text-[14.5px] font-semibold text-white transition-opacity duration-150 hover:opacity-90 sm:w-full sm:max-w-xs"
+        className="mt-6 inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-8 text-[14.5px] font-semibold text-white transition-opacity duration-150 hover:opacity-90"
       >
         Ver meus produtos
       </button>
