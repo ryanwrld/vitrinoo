@@ -435,7 +435,7 @@ function Intro({
             }}
             aria-label={il.titulo}
             aria-current={k === slide}
-            className={`h-[7px] rounded-full transition-all duration-300 ${
+            className={`h-[7px] rounded-full transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 ${
               k === slide
                 ? "w-5 bg-primary dark:bg-blue-400"
                 : "w-[7px] bg-gray-300 dark:bg-gray-700"
@@ -463,7 +463,7 @@ function Intro({
           decisão que ele representa. Com o padding do protótipo ele fecha em ~198px, o mesmo
           do "Ver meus produtos" da tela final, então as duas pontas do fluxo combinam.
         */
-        className="mt-6 inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-16 text-[14.5px] font-semibold text-white transition-opacity duration-150 hover:opacity-90"
+        className="mt-6 inline-flex min-h-11 w-[192px] items-center justify-center rounded-full bg-primary text-[14.5px] font-semibold text-white transition-opacity duration-150 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
       >
         {ROTULO_COMECAR}
       </button>
@@ -525,7 +525,7 @@ function Precos({
             type="button"
             onClick={onContinuar}
             disabled={faltam > 0}
-            className="inline-flex min-h-11 items-center rounded-full bg-primary px-[26px] text-[14.5px] font-semibold text-white transition-opacity duration-150 hover:opacity-90 disabled:cursor-default disabled:bg-gray-200 disabled:text-gray-400 dark:disabled:bg-gray-850 dark:disabled:text-[#454b66]"
+            className="inline-flex min-h-11 items-center rounded-full bg-primary px-[26px] text-[14.5px] font-semibold text-white transition-opacity duration-150 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:cursor-default disabled:bg-gray-200 disabled:text-gray-400 dark:disabled:bg-gray-850 dark:disabled:text-[#454b66]"
           >
             Continuar
           </button>
@@ -623,7 +623,7 @@ function Ajuste({
           <button
             type="button"
             onClick={onVoltar}
-            className="min-h-11 text-[14.5px] font-semibold text-gray-500 transition-colors duration-150 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
+            className="min-h-11 rounded-full px-1 text-[14.5px] font-semibold text-gray-500 transition-colors duration-150 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 dark:text-gray-400 dark:hover:text-gray-50"
           >
             {/*
               SÓ "VOLTAR" NO CELULAR. Em 360px o rótulo inteiro (142px) mais o "Concluir
@@ -637,7 +637,7 @@ function Ajuste({
           <button
             type="button"
             onClick={onContinuar}
-            className="inline-flex min-h-11 items-center rounded-full bg-primary px-[26px] text-[14.5px] font-semibold text-white transition-opacity duration-150 hover:opacity-90"
+            className="inline-flex min-h-11 items-center rounded-full bg-primary px-[26px] text-[14.5px] font-semibold text-white transition-opacity duration-150 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
           >
             Concluir valores
           </button>
@@ -803,7 +803,7 @@ function Resumo({
           <button
             type="button"
             onClick={onVoltar}
-            className="min-h-11 text-[14.5px] font-semibold text-gray-500 transition-colors duration-150 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
+            className="min-h-11 rounded-full px-1 text-[14.5px] font-semibold text-gray-500 transition-colors duration-150 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 dark:text-gray-400 dark:hover:text-gray-50"
           >
             {temLancamento ? "← Voltar aos ajustes" : "← Voltar aos preços"}
           </button>
@@ -811,7 +811,7 @@ function Resumo({
             type="button"
             onClick={onAplicar}
             disabled={pendente}
-            className="inline-flex min-h-11 items-center rounded-full bg-primary px-[26px] text-[14.5px] font-semibold text-white transition-opacity duration-150 hover:opacity-90 disabled:opacity-60"
+            className="inline-flex min-h-11 items-center rounded-full bg-primary px-[26px] text-[14.5px] font-semibold text-white transition-opacity duration-150 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60"
           >
             Aplicar tudo
           </button>
@@ -1088,7 +1088,7 @@ function Pronto({
           botão fica em 197px — cinco pixels do outro, o que a vista lê como o mesmo botão
           nas duas pontas do fluxo.
         */
-        className="mt-6 inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-8 text-[14.5px] font-semibold text-white transition-opacity duration-150 hover:opacity-90"
+        className="mt-6 inline-flex min-h-11 w-[192px] items-center justify-center rounded-full bg-primary text-[14.5px] font-semibold text-white transition-opacity duration-150 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
       >
         Ver meus produtos
       </button>
