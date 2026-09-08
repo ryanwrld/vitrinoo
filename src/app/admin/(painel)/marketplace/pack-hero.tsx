@@ -170,13 +170,15 @@ export function PackHero({
               </div>
             )}
 
-            <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
-              {/*
+            {/*
+              Fica ACIMA da linha dos botões, como irmão dela na coluna do cartão — dentro
+              do container de ações ela dividia a linha com o "Comprar" no desktop.
               Só para quem pegou a amostra e ainda não comprou: sem esta linha, abrir o
-              Marketplace de novo dá a impressão de que nada aconteceu, e o cartão vira uma
+              Marketplace de novo dá a impressão de que nada aconteceu e o cartão vira uma
               oferta repetida. Com ela, a leitura é "as 10 já são suas, o pacote continua
               disponível" — que é exatamente a decisão que resta.
             */}
+            <div className="mt-auto flex flex-col gap-2 pt-1">
             {!temAcesso && jaResgatouTudo && (
               <span className="inline-flex items-center gap-1 text-sm font-medium text-success-fg">
                 <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" />
@@ -184,7 +186,8 @@ export function PackHero({
               </span>
             )}
 
-            {/*
+            <div className="flex flex-wrap items-center gap-2">
+              {/*
                 Esta área NUNCA fica vazia: ou diz que o pacote está liberado, ou oferece a
                 compra. O que some depois de resgatar as 10 é só o "Teste grátis", porque
                 esse já foi usado — a compra continua de pé, que é o caminho de quem gostou
@@ -229,6 +232,7 @@ export function PackHero({
                 Ver chuteiras
                 <ChevronRight className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
               </Link>
+            </div>
             </div>
           </div>
         </div>
