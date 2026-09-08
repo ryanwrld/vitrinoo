@@ -5,9 +5,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ImageOff, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { Check, ImageOff, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { formatBRLPriceInput, parseBRLPrice } from "@/lib/currency/brl";
-import { deleteProduct, updateProductPrice, updateProductPromotionalPrice } from "@/lib/products/actions";
+import {
+  deleteProduct,
+  deleteProductsEmLote,
+  setProductStatusEmLote,
+  updateProductPrice,
+  updateProductPromotionalPrice,
+} from "@/lib/products/actions";
 import { buildProductUrl } from "@/lib/slug/store-url";
 import { ShareVitrineButton } from "@/components/share-vitrine-button";
 
@@ -318,14 +324,153 @@ function ProductMobileActionsMenu({
  * produto vs. filtro sem resultado) são decididos e renderizados por
  * `page.tsx`, não por este componente.
  */
+/**
+ * A marca de seleção, usada tanto na linha quanto no controle geral da guia.
+ *
+ * `<input type="checkbox">` de verdade, com a aparência custom por cima: teclado, leitor de
+ * tela e o estado `indeterminate` (parcial) vêm de graça, e nenhum deles sairia igual com um
+ * `<button aria-pressed>`. O `indeterminate` só existe via propriedade do DOM — não há
+ * atributo — por isso o ref.
+ */
+function Marca({
+  marcado,
+  parcial = false,
+  onMudar,
+  rotulo,
+  className = "",
+}: {
+  marcado: boolean;
+  parcial?: boolean;
+  onMudar: () => void;
+  rotulo: string;
+  className?: string;
+}) {
+  const campo = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (campo.current) campo.current.indeterminate = parcial;
+  }, [parcial]);
+
+  return (
+    <span className={`relative inline-flex h-5 w-5 shrink-0 ${className}`}>
+      <input
+        ref={campo}
+        type="checkbox"
+        checked={marcado}
+        onChange={onMudar}
+        aria-label={rotulo}
+        className="peer absolute inset-0 z-10 m-0 cursor-pointer opacity-0"
+      />
+      <span
+        aria-hidden="true"
+        className={`pointer-events-none flex h-5 w-5 items-center justify-center rounded-[7px] border transition-colors duration-150 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-400 peer-focus-visible:ring-offset-2 ${
+          marcado || parcial
+            ? "border-primary bg-primary text-white"
+            : "border-gray-300 bg-white/90 text-transparent dark:border-gray-600 dark:bg-gray-900/80"
+        }`}
+      >
+        {parcial && !marcado ? (
+          <span className="h-0.5 w-2.5 rounded-full bg-current" />
+        ) : (
+          <Check className="h-3.5 w-3.5" strokeWidth={3} />
+        )}
+      </span>
+    </span>
+  );
+}
+
 export function ProductList({ products, storeSlug, storeName }: ProductListProps) {
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [deleteTarget, setDeleteTarget] = useState<ProductListItem | null>(null);
   const [isDeleting, startDeleteTransition] = useTransition();
 
+  /*
+    SELEÇÃO POR ID, nunca por posição: a lista é re-renderizada pelo servidor a cada
+    `router.refresh()`, e um índice apontaria para outro produto depois de qualquer mudança
+    de filtro, ordenação ou exclusão.
+  */
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [emAndamento, iniciarLote] = useTransition();
+  const [excluirLote, setExcluirLote] = useState(false);
+  // Qual ação está rodando: o "aguarde" precisa aparecer no botão que o lojista clicou.
+  // Sem isso, clicar em "Rascunhar" acendia o rótulo de espera em "Publicar".
+  const [acaoEmCurso, setAcaoEmCurso] = useState<"published" | "draft" | null>(null);
+
+  const idsVisiveis = products.map((p) => p.id);
+  // A seleção pode conter id que saiu da tela (o lojista marcou e trocou o filtro). A conta
+  // que a barra mostra e as ações usam é sempre a INTERSEÇÃO com o que está visível — agir
+  // sobre o que ele não está mais vendo seria surpresa.
+  const marcados = idsVisiveis.filter((id) => selecionados.has(id));
+  const todosMarcados = marcados.length > 0 && marcados.length === idsVisiveis.length;
+  const parcial = marcados.length > 0 && !todosMarcados;
+
+  function alternar(id: string) {
+    setSelecionados((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(id)) novo.delete(id);
+      else novo.add(id);
+      return novo;
+    });
+  }
+
+  /** Marca ou desmarca TUDO O QUE ESTÁ VISÍVEL — o resultado do filtro atual, nada além. */
+  function alternarTodos() {
+    setSelecionados(todosMarcados ? new Set() : new Set(idsVisiveis));
+  }
+
+  function limpar() {
+    setSelecionados(new Set());
+  }
+
+  function mudarStatusEmLote(status: "published" | "draft") {
+    const ids = marcados;
+    setAcaoEmCurso(status);
+    iniciarLote(async () => {
+      const r = await setProductStatusEmLote(ids, status);
+      if ("error" in r) {
+        // A seleção FICA: erro aqui é para tentar de novo, não para remarcar tudo na mão.
+        toast.error(r.error);
+        setAcaoEmCurso(null);
+        return;
+      }
+      const n = r.afetados;
+      toast.success(
+        `${n} ${n === 1 ? "produto" : "produtos"} ${status === "published" ? "publicado" : "movido"}${
+          n === 1 ? "" : "s"
+        }${status === "published" ? "" : " para rascunho"}.`,
+      );
+      limpar();
+      setAcaoEmCurso(null);
+      router.refresh();
+    });
+  }
+
+  function confirmarExclusaoEmLote() {
+    const ids = marcados;
+    iniciarLote(async () => {
+      const r = await deleteProductsEmLote(ids);
+      if ("error" in r) {
+        toast.error(r.error);
+      } else {
+        toast.success(`${r.afetados} ${r.afetados === 1 ? "produto excluído" : "produtos excluídos"}.`);
+        limpar();
+        router.refresh();
+      }
+      dialogRef.current?.close();
+      setExcluirLote(false);
+    });
+  }
+
   function openDeleteDialog(product: ProductListItem) {
     setDeleteTarget(product);
+    setExcluirLote(false);
+    dialogRef.current?.showModal();
+  }
+
+  function abrirExclusaoEmLote() {
+    setDeleteTarget(null);
+    setExcluirLote(true);
     dialogRef.current?.showModal();
   }
 
@@ -370,7 +515,16 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
             layout empilhado próprio (ver bloco `sm:hidden` em cada `<li>`),
             sem colunas fixas fazendo sentido nenhum numa tela de 375px. */}
         <div className="relative hidden items-center gap-3 rounded-t-[2rem] border border-b-0 border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-800 dark:bg-gray-900/40 sm:flex">
-          <div className="h-0 w-16 shrink-0" aria-hidden="true" />
+          {/* O controle geral mora no espaçador que já existia aqui, em cima da coluna da
+              foto — nenhuma coluna nova, nenhuma largura mudou. */}
+          <div className="flex w-16 shrink-0 justify-center">
+            <Marca
+              marcado={todosMarcados}
+              parcial={parcial}
+              onMudar={alternarTodos}
+              rotulo={todosMarcados ? "Desmarcar todos os produtos" : "Selecionar todos os produtos"}
+            />
+          </div>
           <span className="flex-1 text-xs font-semibold text-gray-700 dark:text-gray-300">Produto</span>
           <div className="flex flex-1 items-center">
             {/* Mesma técnica de `absolute left-1/2 -translate-x-1/2` do par
@@ -408,9 +562,13 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
           return (
             <li
               key={product.id}
-              className={`relative flex flex-wrap items-center gap-3 border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-800 dark:bg-gray-900 ${
+              className={`relative flex flex-wrap items-center gap-3 border bg-white p-3 shadow-sm transition-[border-color,opacity] duration-150 dark:bg-gray-900 ${
                 index === 0 ? "rounded-[2rem] sm:rounded-b-[2rem] sm:rounded-t-none sm:border-t-0" : "rounded-[2rem]"
-              }`}
+              } ${
+                selecionados.has(product.id)
+                  ? "border-primary/60 dark:border-primary/60"
+                  : "border-gray-200 dark:border-gray-800"
+              } ${emAndamento && selecionados.has(product.id) ? "opacity-50" : ""}`}
             >
               {/* Estrutura FLAT (sem wrapper `contents` — `sm:contents` não
                   estava gerando regra CSS neste dev server, mesmo bug de
@@ -421,7 +579,16 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
                   seguintes (status/ações) são empurrados pro flex-wrap
                   automaticamente, sem precisar de `basis-full` neles
                   também. */}
+              {/* A marca fica SOBRE a miniatura, como na grade do acervo: com nada
+                  selecionado a lista continua exatamente como era, porque nenhum elemento
+                  novo ocupa espaço na linha. */}
               <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[1.25rem] bg-gray-100 dark:bg-gray-800">
+                <Marca
+                  marcado={selecionados.has(product.id)}
+                  onMudar={() => alternar(product.id)}
+                  rotulo={`Selecionar ${product.name}`}
+                  className="absolute left-1 top-1 z-10"
+                />
                 {product.coverUrl ? (
                   <Image
                     src={product.coverUrl}
@@ -557,7 +724,78 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
           );
         })}
         </ul>
+
+        {/* Espaço reservado embaixo do último card ENQUANTO a barra está no ar: ela é
+            `fixed`, então sai do fluxo e cobriria o último produto justamente quando o
+            lojista está marcando o fim da lista. Some junto com a barra. */}
+        {marcados.length > 0 && <div aria-hidden className="h-24 sm:h-20" />}
       </div>
+
+      {/*
+        BARRA DE AÇÕES — só existe com algo selecionado, e some quando a seleção esvazia.
+
+        Mesma barra da grade do acervo, inclusive o `md:left-64` que a impede de passar por
+        baixo da sidebar. Fica fixa embaixo porque a lista é longa: uma barra no topo sairia
+        da tela justamente quando o lojista está marcando o que está no fim dela.
+      */}
+      {marcados.length > 0 && (
+        <div className="animate-slide-up fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur md:left-64 dark:border-gray-800 dark:bg-gray-900/95">
+          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 2xl:max-w-[96rem]">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-semibold text-gray-900 dark:text-gray-50">
+                {marcados.length} {marcados.length === 1 ? "selecionado" : "selecionados"}
+              </span>
+              {/* No celular a guia de colunas não existe, então é aqui que mora o
+                  "selecionar todos" — sem ele, marcar 990 seria impossível fora do desktop. */}
+              {!todosMarcados && (
+                <button
+                  type="button"
+                  onClick={alternarTodos}
+                  className="rounded-full px-1 text-sm font-medium text-primary transition-colors duration-150 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 dark:text-blue-400"
+                >
+                  Selecionar todos ({idsVisiveis.length})
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={limpar}
+                className="rounded-full px-1 text-sm font-medium text-gray-500 transition-colors duration-150 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 dark:text-gray-400 dark:hover:text-gray-50"
+              >
+                Limpar
+              </button>
+            </div>
+
+            {/* `disabled` durante a ação nos três: é o que impede clique repetido e ação
+                conflitante (publicar e apagar ao mesmo tempo). */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={emAndamento}
+                onClick={() => mudarStatusEmLote("published")}
+                className="min-h-10 rounded-full bg-primary px-4 text-sm font-semibold text-white transition-opacity duration-150 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60"
+              >
+                {acaoEmCurso === "published" ? "Publicando…" : "Publicar"}
+              </button>
+              <button
+                type="button"
+                disabled={emAndamento}
+                onClick={() => mudarStatusEmLote("draft")}
+                className="min-h-10 rounded-full border border-gray-300 px-4 text-sm font-medium text-gray-700 transition-colors duration-150 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+              >
+                {acaoEmCurso === "draft" ? "Rascunhando…" : "Rascunhar"}
+              </button>
+              <button
+                type="button"
+                disabled={emAndamento}
+                onClick={abrirExclusaoEmLote}
+                className="min-h-10 rounded-full border border-error-solid/40 px-4 text-sm font-medium text-error-fg transition-colors duration-150 hover:bg-error-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error-bg focus-visible:ring-offset-2 disabled:opacity-60 dark:hover:bg-error-solid/15"
+              >
+                Apagar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* `m-auto`: o navegador centraliza um <dialog> modal via `margin: auto`
           do user-agent stylesheet, e o preflight do Tailwind zera `margin` em
@@ -566,10 +804,20 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
           `dialog-modal` (globals.css) anima entrada e saída do diálogo e do
           fundo escurecido. */}
       <dialog ref={dialogRef} className="dialog-modal m-auto rounded-[2rem] bg-white p-6 text-gray-900 shadow-lg backdrop:bg-black/45 backdrop:backdrop-blur-[2px] dark:bg-gray-900 dark:text-gray-50">
+        {/* UM diálogo para os dois casos. O texto muda; o aviso sobre métricas e o padrão de
+            confirmação são os mesmos, porque a consequência é a mesma. */}
         <div>
-          <h2 className="font-display text-xl font-medium text-gray-900 dark:text-gray-50">Excluir {deleteTarget?.name}?</h2>
+          <h2 className="font-display text-xl font-medium text-gray-900 dark:text-gray-50">
+            {excluirLote
+              ? `Excluir ${marcados.length} ${marcados.length === 1 ? "produto" : "produtos"}?`
+              : `Excluir ${deleteTarget?.name}?`}
+          </h2>
           <p className="mt-2 max-w-sm text-sm text-gray-500 dark:text-gray-400">
-            Isso vai remover o produto e todas as fotos da sua vitrine. Essa ação não pode ser desfeita.
+            {excluirLote
+              ? marcados.length === 1
+                ? "Isso vai remover o produto selecionado e todas as fotos dele da sua vitrine. Essa ação não pode ser desfeita."
+                : `Isso vai remover os ${marcados.length} produtos selecionados e todas as fotos deles da sua vitrine. Essa ação não pode ser desfeita.`
+              : "Isso vai remover o produto e todas as fotos da sua vitrine. Essa ação não pode ser desfeita."}
           </p>
           {/* Tranquiliza sem prometer demais: desde a migration 0021 o
               histórico de cliques/visualizações deste produto SOBREVIVE à
@@ -587,18 +835,21 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
           <form method="dialog" className="mt-4 flex gap-3">
             <button
               type="submit"
-              onClick={() => setDeleteTarget(null)}
+              onClick={() => {
+                setDeleteTarget(null);
+                setExcluirLote(false);
+              }}
               className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
             >
               Cancelar
             </button>
             <button
               type="button"
-              disabled={isDeleting}
-              onClick={handleConfirmDelete}
+              disabled={isDeleting || emAndamento}
+              onClick={excluirLote ? confirmarExclusaoEmLote : handleConfirmDelete}
               className="rounded-full bg-error-solid px-4 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-error-solid-hover active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error-bg focus-visible:ring-offset-2 disabled:opacity-60"
             >
-              {isDeleting ? "Excluindo…" : "Sim, excluir"}
+              {isDeleting || emAndamento ? "Excluindo…" : "Sim, excluir"}
             </button>
           </form>
         </div>

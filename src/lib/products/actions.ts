@@ -17,6 +17,14 @@ export type ProductActionResult =
   | { error: string }
   | { success: true; id: string; warning?: string };
 
+/**
+ * Retorno das ações em LOTE. O erro tem a mesma forma do individual — quem chama já sabe
+ * checar `"error" in resultado` —, mas o sucesso carrega quantos foram afetados em vez de um
+ * id: é esse número que a interface mostra no toast, e ele nem sempre é o tamanho da lista
+ * enviada (id de outra loja não entra na conta).
+ */
+export type ProductBulkResult = { error: string } | { success: true; afetados: number };
+
 function revalidateProdutos(productId?: string) {
   revalidatePath("/admin/produtos");
   if (productId) {
@@ -39,6 +47,23 @@ const PHOTO_MAGIC_BYTES: Record<string, number[]> = {
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const MAX_PHOTOS_PER_PRODUCT = 5;
+
+/**
+ * Tamanho do bloco de ids por consulta.
+ *
+ * POR QUE EXISTE: o PostgREST recebe os ids de um `.in()` na QUERY STRING. Com os 990
+ * produtos de um pacote importado inteiro a URL passa de 35KB, e o gateway responde 400
+ * antes de a consulta chegar ao banco — a ação em lote falhava justamente no tamanho para
+ * o qual ela foi feita. 150 ids deixam a URL na casa dos 6KB e, no caso das fotos
+ * (5 por produto, no máximo), mantêm a resposta abaixo do teto de 1000 linhas do PostgREST.
+ */
+const IDS_POR_BLOCO = 150;
+
+function emBlocos<T>(itens: T[], tamanho = IDS_POR_BLOCO): T[][] {
+  const blocos: T[][] = [];
+  for (let i = 0; i < itens.length; i += tamanho) blocos.push(itens.slice(i, i + tamanho));
+  return blocos;
+}
 
 function photoExtension(contentType: string): string {
   switch (contentType) {
@@ -530,6 +555,101 @@ export async function unpublishProduct(productId: string): Promise<ProductAction
 }
 
 /**
+ * Publica ou rascunha VÁRIOS produtos de uma vez.
+ *
+ * Espelha `setMarketplaceStatusEmLote` do acervo, e não duplica regra nenhuma: publicar já
+ * era um `update` de uma coluna só em `publishProduct`. O que muda é o alcance.
+ *
+ * `store_id` explícito além do `in(ids)`: a RLS de `products` já barra produto de outra
+ * loja, mas aqui chega uma LISTA vinda do cliente, e o filtro explícito é a mesma disciplina
+ * de defesa em profundidade que `queryProducts` aplica (T-03-13). Ids de outra loja
+ * simplesmente não entram na conta — nada de erro, nada de efeito.
+ */
+export async function setProductStatusEmLote(
+  productIds: string[],
+  status: "published" | "draft",
+): Promise<ProductBulkResult> {
+  if (productIds.length === 0) return { success: true, afetados: 0 };
+  if (status !== "published" && status !== "draft") {
+    return { error: "Status inválido." };
+  }
+
+  const owned = await getOwnedStore();
+  if ("error" in owned) {
+    return { error: owned.error };
+  }
+
+  let afetados = 0;
+  for (const bloco of emBlocos(productIds)) {
+    const { data, error } = await owned.supabase
+      .from("products")
+      .update({ status })
+      .in("id", bloco)
+      .eq("store_id", owned.storeId)
+      .select("id");
+
+    if (error) {
+      // Revalida o que já mudou antes de sair: parar no meio e não revalidar deixaria a
+      // tela mostrando o estado antigo de produtos que JÁ mudaram no banco.
+      if (afetados > 0) revalidateProdutos();
+      return { error: status === "published" ? "Não foi possível publicar." : "Não foi possível mover para rascunho." };
+    }
+    afetados += data?.length ?? 0;
+  }
+
+  revalidateProdutos();
+  return { success: true, afetados };
+}
+
+/**
+ * Exclui VÁRIOS produtos de uma vez.
+ *
+ * Mesma sequência do `deleteProduct` — limpar o storage das fotos próprias e só então apagar
+ * as linhas —, mas em duas consultas para o lote inteiro em vez de duas por produto. A
+ * ordem importa: apagar a linha primeiro deixaria o arquivo órfão no bucket, sem ninguém
+ * para apontar o caminho dele.
+ */
+export async function deleteProductsEmLote(
+  productIds: string[],
+): Promise<ProductBulkResult> {
+  if (productIds.length === 0) return { success: true, afetados: 0 };
+
+  const owned = await getOwnedStore();
+  if ("error" in owned) {
+    return { error: owned.error };
+  }
+
+  // Restringe à própria loja ANTES de tocar no storage: sem isto, um id de outra loja faria
+  // a limpeza de fotos rodar sobre um produto que o delete seguinte nem alcançaria.
+  const ids: string[] = [];
+  for (const bloco of emBlocos(productIds)) {
+    const { data: proprios } = await owned.supabase
+      .from("products")
+      .select("id")
+      .in("id", bloco)
+      .eq("store_id", owned.storeId);
+    for (const p of proprios ?? []) ids.push(p.id);
+  }
+
+  if (ids.length === 0) return { success: true, afetados: 0 };
+
+  await deleteProductPhotosStorage(owned.supabase, ids);
+
+  let afetados = 0;
+  for (const bloco of emBlocos(ids)) {
+    const { data, error } = await owned.supabase.from("products").delete().in("id", bloco).select("id");
+    if (error) {
+      if (afetados > 0) revalidateProdutos();
+      return { error: "Não foi possível excluir os produtos." };
+    }
+    afetados += data?.length ?? 0;
+  }
+
+  revalidateProdutos();
+  return { success: true, afetados };
+}
+
+/**
  * Adiciona fotos a um produto já existente (modo edição, Plan 03-05; também
  * reutilizável por qualquer fluxo que precise anexar fotos fora do momento
  * de criação). Compartilha a mesma validação/recontagem de `saveProduct`
@@ -688,20 +808,33 @@ export async function removePhoto(photoId: string): Promise<ProductActionResult>
  */
 export async function deleteProductPhotosStorage(
   supabase: SupabaseClient<Database>,
-  productId: string
+  productIds: string | string[]
 ): Promise<void> {
-  const { data: photos } = await supabase
-    .from("product_photos")
-    .select("storage_path, source")
-    .eq("product_id", productId);
+  // Aceita um ou muitos: o lote precisa da MESMA regra de "foto do marketplace é
+  // compartilhada", e duplicá-la numa segunda função seria a forma clássica de as duas
+  // divergirem depois. Com a lista, é uma consulta só para N produtos em vez de N consultas.
+  const ids = Array.isArray(productIds) ? productIds : [productIds];
+  if (ids.length === 0) return;
 
-  // Só os arquivos PRÓPRIOS. Fotos herdadas do marketplace vivem no bucket
-  // global e são compartilhadas entre todas as lojas que importaram o modelo —
-  // excluir o produto de uma loja não pode arrastar a imagem das outras.
-  const proprias = (photos ?? []).filter((photo) => photo.source !== "marketplace");
+  const caminhos: string[] = [];
+  for (const bloco of emBlocos(ids)) {
+    const { data: photos } = await supabase
+      .from("product_photos")
+      .select("storage_path, source")
+      .in("product_id", bloco);
 
-  if (proprias.length > 0) {
-    await supabase.storage.from("product-images").remove(proprias.map((photo) => photo.storage_path));
+    // Só os arquivos PRÓPRIOS. Fotos herdadas do marketplace vivem no bucket
+    // global e são compartilhadas entre todas as lojas que importaram o modelo —
+    // excluir o produto de uma loja não pode arrastar a imagem das outras.
+    for (const photo of photos ?? []) {
+      if (photo.source !== "marketplace") caminhos.push(photo.storage_path);
+    }
+  }
+
+  // Remoção também em blocos: a lista vai no corpo, não na URL, mas um único pedido com
+  // milhares de caminhos é lento e falha inteiro se falhar.
+  for (const bloco of emBlocos(caminhos, 200)) {
+    await supabase.storage.from("product-images").remove(bloco);
   }
 }
 
