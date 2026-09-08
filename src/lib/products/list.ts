@@ -155,24 +155,30 @@ export async function queryProducts(
     return blocos;
   };
 
-  const sizeRows: { product_id: string; available: boolean }[] = [];
-  for (const bloco of emBlocos(productIds, 80)) {
-    const { data } = await supabase
-      .from("product_sizes")
-      .select("product_id, available")
-      .in("product_id", bloco);
-    if (data) sizeRows.push(...data);
-  }
+  /*
+    Os blocos de tamanhos e os de fotos vão TODOS de uma vez, em paralelo: são consultas
+    independentes entre si, e enfileirá-las fazia a rota somar uma ida ao banco atrás da
+    outra — com a página de 48 isso é a diferença entre uma espera e duas.
+  */
+  const [porTamanho, porFoto] = await Promise.all([
+    Promise.all(
+      emBlocos(productIds, 80).map((bloco) =>
+        supabase.from("product_sizes").select("product_id, available").in("product_id", bloco),
+      ),
+    ),
+    Promise.all(
+      emBlocos(productIds, 150).map((bloco) =>
+        supabase
+          .from("product_photos")
+          .select("product_id, storage_path, position, source")
+          .in("product_id", bloco)
+          .order("position", { ascending: true }),
+      ),
+    ),
+  ]);
 
-  const photoRows: { product_id: string; storage_path: string; position: number; source: string | null }[] = [];
-  for (const bloco of emBlocos(productIds, 150)) {
-    const { data } = await supabase
-      .from("product_photos")
-      .select("product_id, storage_path, position, source")
-      .in("product_id", bloco)
-      .order("position", { ascending: true });
-    if (data) photoRows.push(...data);
-  }
+  const sizeRows = porTamanho.flatMap((r) => r.data ?? []);
+  const photoRows = porFoto.flatMap((r) => r.data ?? []);
 
   const availableProductIds = new Set(
     sizeRows.filter((row) => row.available).map((row) => row.product_id)

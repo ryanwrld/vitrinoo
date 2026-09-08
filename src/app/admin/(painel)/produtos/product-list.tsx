@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useOptimistic, useRef, useState, useTransition } from "react";
+import { memo, useCallback, useEffect, useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -405,11 +405,6 @@ function Marca({
  * estável (`useCallback` sem dependências, no pai) — senão a comparação de props falha
  * em todas as linhas e voltamos ao ponto de partida.
  */
-/** O que uma ação em lote muda na tela antes de o servidor responder. */
-type MudancaOtimista =
-  | { tipo: "status"; ids: Set<string>; status: string }
-  | { tipo: "remover"; ids: Set<string> };
-
 const LinhaProduto = memo(function LinhaProduto({
   product,
   index,
@@ -636,27 +631,15 @@ export function ProductList({ products, storeSlug, storeName, pagina, totalPagin
   const [acaoEmCurso, setAcaoEmCurso] = useState<"published" | "draft" | null>(null);
 
   /*
-    O QUE A TELA MOSTRA ENQUANTO A AÇÃO VIAJA.
+    NADA DE ATUALIZAÇÃO ADIANTADA AQUI.
 
-    Publicar ou rascunhar em lote muda o selo de status de dezenas de linhas. Esperar a
-    resposta do servidor para pintar isso é o que fazia o lojista clicar, olhar, e só depois
-    ver o resultado. `useOptimistic` aplica a mudança no mesmo quadro do clique e, quando a
-    ação termina, descarta o valor otimista em favor do que o servidor devolveu — se falhar,
-    reverte sozinho. É por isso que não há estado paralelo aqui para manter em dia.
-
-    O redutor devolve O MESMO objeto para as linhas não afetadas. Não é detalhe: `LinhaProduto`
-    é memoizada, e recriar todos os objetos faria as 48 redesenharem, desfazendo o ganho que
-    tirou o clique de 676ms para 31ms.
+    A tentação é pintar o novo status no clique. Mas aí o selo já diz "Rascunho" enquanto o
+    botão ainda diz "Rascunhando…" — a tela afirma uma coisa que o banco ainda não confirmou.
+    O status muda quando a ação RESPONDE, no mesmo instante em que o botão volta ao normal.
+    Isso não custa um recarregamento: as actions chamam `revalidatePath`, e a resposta da
+    própria Server Action já traz a lista nova.
   */
-  const [produtosNaTela, aplicarOtimista] = useOptimistic(
-    products,
-    (atual: ProductListItem[], mudanca: MudancaOtimista) =>
-      mudanca.tipo === "remover"
-        ? atual.filter((p) => !mudanca.ids.has(p.id))
-        : atual.map((p) => (mudanca.ids.has(p.id) ? { ...p, status: mudanca.status } : p)),
-  );
-
-  const idsVisiveis = produtosNaTela.map((p) => p.id);
+  const idsVisiveis = products.map((p) => p.id);
   // A seleção pode conter id que saiu da tela (o lojista marcou e trocou o filtro). A conta
   // que a barra mostra e as ações usam é sempre a INTERSEÇÃO com o que está visível — agir
   // sobre o que ele não está mais vendo seria surpresa.
@@ -686,6 +669,17 @@ export function ProductList({ products, storeSlug, storeName, pagina, totalPagin
 
   const temSelecao = marcados.length > 0;
   const quantidadeAlvo = modoFiltro ? totalFiltrado : marcados.length;
+
+  /*
+    Publicar o que já está publicado não faz nada. Oferecer o botão assim mesmo é prometer
+    uma ação que não existe — então cada um só aparece quando há pelo menos um produto
+    marcado em que ele muda alguma coisa.
+    No modo "todo o filtro" os dois ficam: o conjunto passa das páginas que estão na tela, e
+    esconder um por causa dos 48 visíveis esconderia a ação dos outros 942.
+  */
+  const marcadosNaPagina = products.filter((p) => selecionados.has(p.id));
+  const podePublicar = modoFiltro || marcadosNaPagina.some((p) => p.status !== "published");
+  const podeRascunhar = modoFiltro || marcadosNaPagina.some((p) => p.status !== "draft");
   // O convite só aparece quando a página inteira está marcada E existe mais coisa fora dela.
   const podeEstender = !modoFiltro && todosMarcados && totalFiltrado > idsVisiveis.length;
 
@@ -701,14 +695,24 @@ export function ProductList({ products, storeSlug, storeName, pagina, totalPagin
     Ajuste de estado durante o render (padrão do React para "estado derivado de props"),
     não um efeito: o valor certo precisa estar pronto no MESMO quadro em que a barra sobe.
   */
-  const [rotulo, setRotulo] = useState({ n: 0, total: 0, todos: false, estender: false, totalFiltro: 0 });
+  const [rotulo, setRotulo] = useState({
+    n: 0,
+    total: 0,
+    todos: false,
+    estender: false,
+    totalFiltro: 0,
+    publicar: true,
+    rascunhar: true,
+  });
   if (
     temSelecao &&
     (rotulo.n !== quantidadeAlvo ||
       rotulo.total !== idsVisiveis.length ||
       rotulo.todos !== todosMarcados ||
       rotulo.estender !== podeEstender ||
-      rotulo.totalFiltro !== totalFiltrado)
+      rotulo.totalFiltro !== totalFiltrado ||
+      rotulo.publicar !== podePublicar ||
+      rotulo.rascunhar !== podeRascunhar)
   ) {
     setRotulo({
       n: quantidadeAlvo,
@@ -716,6 +720,8 @@ export function ProductList({ products, storeSlug, storeName, pagina, totalPagin
       todos: todosMarcados,
       estender: podeEstender,
       totalFiltro: totalFiltrado,
+      publicar: podePublicar,
+      rascunhar: podeRascunhar,
     });
   }
 
@@ -748,8 +754,6 @@ export function ProductList({ products, storeSlug, storeName, pagina, totalPagin
     const ids = marcados;
     setAcaoEmCurso(status);
     iniciarLote(async () => {
-      // Pinta ANTES de esperar a resposta. Dentro da transição, como o React exige.
-      aplicarOtimista({ tipo: "status", ids: new Set(ids), status });
       const r = modoFiltro
         ? await setProductStatusPorFiltro(filtro, status)
         : await setProductStatusEmLote(ids, status);
@@ -765,24 +769,41 @@ export function ProductList({ products, storeSlug, storeName, pagina, totalPagin
           n === 1 ? "" : "s"
         }${status === "published" ? "" : " para rascunho"}.`,
       );
-      limpar();
-      setAcaoEmCurso(null);
-      // Sem `router.refresh()`: as actions já chamam `revalidatePath("/admin/produtos")`, e a
-      // resposta da própria Server Action traz a árvore atualizada. O refresh seria uma
-      // SEGUNDA ida ao servidor, que é justamente a espera que o otimista veio remover.
+      /*
+        SINCRONIA — por que uma transição DENTRO da outra.
+
+        `router.refresh()` solto depois de um `await` já saiu do escopo síncrono da
+        transição: o React não tem como esperar por ele, o botão voltava ao normal e o selo
+        só mudava segundos depois (medido: 1,7s contra 5,2s). Reabrindo a transição aqui,
+        de forma síncrona, o React segura o "em andamento" até a lista nova estar pintada —
+        e as mudanças de estado feitas aqui dentro (limpar a seleção, apagar o rótulo de
+        espera) também só valem nesse momento.
+
+        Resultado: o selo muda, o botão para de dizer "Rascunhando…" e a barra sai de cena
+        no MESMO quadro. Nada de status adiantado afirmando o que o banco ainda não confirmou.
+        E não é recarregar a página: é rebuscar os dados desta rota.
+      */
+      iniciarLote(() => {
+        router.refresh();
+        limpar();
+        setAcaoEmCurso(null);
+      });
     });
   }
 
   function confirmarExclusaoEmLote() {
     const ids = marcados;
     iniciarLote(async () => {
-      aplicarOtimista({ tipo: "remover", ids: new Set(ids) });
       const r = modoFiltro ? await deleteProductsPorFiltro(filtro) : await deleteProductsEmLote(ids);
       if ("error" in r) {
         toast.error(r.error);
       } else {
         toast.success(`${r.afetados} ${r.afetados === 1 ? "produto excluído" : "produtos excluídos"}.`);
-        limpar();
+        // Mesma amarração da mudança de status: as linhas somem quando a lista nova chega.
+        iniciarLote(() => {
+          router.refresh();
+          limpar();
+        });
       }
       dialogRef.current?.close();
       setExcluirLote(false);
@@ -885,7 +906,7 @@ export function ProductList({ products, storeSlug, storeName, pagina, totalPagin
         </div>
 
         <ul className="flex flex-col gap-3">
-        {produtosNaTela.map((product, index) => (
+        {products.map((product, index) => (
           <LinhaProduto
             key={product.id}
             product={product}
@@ -971,22 +992,26 @@ export function ProductList({ products, storeSlug, storeName, pagina, totalPagin
           {/* `disabled` durante a ação nos três: é o que impede clique repetido e ação
               conflitante (publicar e apagar ao mesmo tempo). */}
           <div className="vt-lote-item flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              disabled={emAndamento}
-              onClick={() => mudarStatusEmLote("published")}
-              className="min-h-10 rounded-full bg-primary px-4 text-sm font-semibold text-white transition-opacity duration-150 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60"
-            >
-              {acaoEmCurso === "published" ? "Publicando…" : "Publicar"}
-            </button>
-            <button
-              type="button"
-              disabled={emAndamento}
-              onClick={() => mudarStatusEmLote("draft")}
-              className="min-h-10 rounded-full border border-gray-300 px-4 text-sm font-medium text-gray-700 transition-colors duration-150 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-            >
-              {acaoEmCurso === "draft" ? "Rascunhando…" : "Rascunhar"}
-            </button>
+            {rotulo.publicar && (
+              <button
+                type="button"
+                disabled={emAndamento}
+                onClick={() => mudarStatusEmLote("published")}
+                className="min-h-10 rounded-full bg-primary px-4 text-sm font-semibold text-white transition-opacity duration-150 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60"
+              >
+                {acaoEmCurso === "published" ? "Publicando…" : "Publicar"}
+              </button>
+            )}
+            {rotulo.rascunhar && (
+              <button
+                type="button"
+                disabled={emAndamento}
+                onClick={() => mudarStatusEmLote("draft")}
+                className="min-h-10 rounded-full border border-gray-300 px-4 text-sm font-medium text-gray-700 transition-colors duration-150 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+              >
+                {acaoEmCurso === "draft" ? "Rascunhando…" : "Rascunhar"}
+              </button>
+            )}
             <button
               type="button"
               disabled={emAndamento}

@@ -76,7 +76,15 @@ export default async function ProdutosPage({
     uma página fora do intervalo (URL digitada à mão, ou filtro que encolheu o resultado)
     precisa cair na última em vez de mostrar lista vazia.
   */
-  const totalFiltrado = await contarProdutos(supabase, store.id, filtro);
+  // As três consultas que não dependem da página vão juntas: o feed do sino, a contagem
+  // filtrada (que define quantas páginas existem) e a contagem total (que decide qual dos
+  // dois estados vazios mostrar). Em fila, cada uma somava uma ida ao banco à espera.
+  const [totalFiltrado, headerFeed, { count: totalCount }] = await Promise.all([
+    contarProdutos(supabase, store.id, filtro),
+    queryRecentActivity(supabase, store.id, HEADER_FEED_LIMIT),
+    supabase.from("products").select("id", { count: "exact", head: true }).eq("store_id", store.id),
+  ]);
+
   const totalPaginas = Math.max(1, Math.ceil(totalFiltrado / PRODUTOS_POR_PAGINA));
   const paginaPedida = Number.parseInt(params.page ?? "1", 10);
   const pagina = Math.min(Math.max(Number.isFinite(paginaPedida) ? paginaPedida : 1, 1), totalPaginas);
@@ -90,15 +98,8 @@ export default async function ProdutosPage({
   // O feed alimenta o pop-up do sino no cabeçalho — ele agora abre em toda
   // rota do painel, não só no Dashboard, então cada rota precisa buscar os
   // próprios itens. Em paralelo com a listagem: são consultas independentes.
-  const [products, headerFeed] = await Promise.all([
-    queryProducts(supabase, store.id, queryParams),
-    queryRecentActivity(supabase, store.id, HEADER_FEED_LIMIT),
-  ]);
-
-  const { count: totalCount } = await supabase
-    .from("products")
-    .select("id", { count: "exact", head: true })
-    .eq("store_id", store.id);
+  // Depende da página já resolvida acima, então é a única que fica sozinha.
+  const products = await queryProducts(supabase, store.id, queryParams);
 
   const hasAnyProduct = (totalCount ?? 0) > 0;
   const hasFilteredResults = products.length > 0;
