@@ -359,7 +359,12 @@ function Marca({
         checked={marcado}
         onChange={onMudar}
         aria-label={rotulo}
-        className="peer absolute inset-0 z-10 m-0 cursor-pointer opacity-0"
+        /* Tamanho EXPLÍCITO, centrado sobre o quadrado desenhado: um
+           <input type="checkbox"> é elemento substituído, então tem largura própria do
+           navegador (12px) e nem `inset-0` nem `-inset-2` a esticam — o alvo real ficava
+           menor que o quadrado de 20px que se vê. Com 36px o toque no celular passa a
+           acertar, sem mudar nada da aparência. */
+        className="peer absolute left-1/2 top-1/2 z-10 m-0 h-9 w-9 -translate-x-1/2 -translate-y-1/2 cursor-pointer opacity-0"
       />
       <span
         aria-hidden="true"
@@ -515,16 +520,15 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
             layout empilhado próprio (ver bloco `sm:hidden` em cada `<li>`),
             sem colunas fixas fazendo sentido nenhum numa tela de 375px. */}
         <div className="relative hidden items-center gap-3 rounded-t-[2rem] border border-b-0 border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-800 dark:bg-gray-900/40 sm:flex">
-          {/* O controle geral mora no espaçador que já existia aqui, em cima da coluna da
-              foto — nenhuma coluna nova, nenhuma largura mudou. */}
-          <div className="flex w-16 shrink-0 justify-center">
-            <Marca
-              marcado={todosMarcados}
-              parcial={parcial}
-              onMudar={alternarTodos}
-              rotulo={todosMarcados ? "Desmarcar todos os produtos" : "Selecionar todos os produtos"}
-            />
-          </div>
+          {/* Controle geral exatamente acima das marcas das linhas — mesma coluna, mesmo
+              `gap-3`. Depois dele, o espaçador de 64px que reserva a coluna da foto. */}
+          <Marca
+            marcado={todosMarcados}
+            parcial={parcial}
+            onMudar={alternarTodos}
+            rotulo={todosMarcados ? "Desmarcar todos os produtos" : "Selecionar todos os produtos"}
+          />
+          <div className="h-0 w-16 shrink-0" />
           <span className="flex-1 text-xs font-semibold text-gray-700 dark:text-gray-300">Produto</span>
           <div className="flex flex-1 items-center">
             {/* Mesma técnica de `absolute left-1/2 -translate-x-1/2` do par
@@ -579,16 +583,17 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
                   seguintes (status/ações) são empurrados pro flex-wrap
                   automaticamente, sem precisar de `basis-full` neles
                   também. */}
-              {/* A marca fica SOBRE a miniatura, como na grade do acervo: com nada
-                  selecionado a lista continua exatamente como era, porque nenhum elemento
-                  novo ocupa espaço na linha. */}
+              {/* A marca fica ANTES da foto, em coluna própria: sobreposta à miniatura ela
+                  tapava justamente o par de chuteiras que o lojista precisa reconhecer para
+                  saber o que está marcando. Ocupa espaço fixo na linha (marcado ou não),
+                  então nada pula de lugar ao selecionar. */}
+              <Marca
+                marcado={selecionados.has(product.id)}
+                onMudar={() => alternar(product.id)}
+                rotulo={`Selecionar ${product.name}`}
+              />
+
               <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[1.25rem] bg-gray-100 dark:bg-gray-800">
-                <Marca
-                  marcado={selecionados.has(product.id)}
-                  onMudar={() => alternar(product.id)}
-                  rotulo={`Selecionar ${product.name}`}
-                  className="absolute left-1 top-1 z-10"
-                />
                 {product.coverUrl ? (
                   <Image
                     src={product.coverUrl}
