@@ -79,7 +79,7 @@ export function ChangePasswordPanel() {
         // `m-auto` + `dialog-modal`: ver delete-account-panel.tsx — o
         // preflight do Tailwind zera a `margin: auto` que centraliza modais,
         // e a classe anima entrada/saída do diálogo e do fundo.
-        className="dialog-modal m-auto w-full max-w-sm rounded-[2rem] bg-white p-6 text-gray-900 shadow-lg backdrop:bg-black/45 backdrop:backdrop-blur-[2px] dark:bg-gray-900 dark:text-gray-50"
+        className="dialog-modal m-auto w-[calc(100%-2rem)] max-w-sm rounded-[2rem] bg-white p-6 text-gray-900 shadow-lg backdrop:bg-black/45 backdrop:backdrop-blur-[2px] dark:bg-gray-900 dark:text-gray-50"
       >
         <div className="flex flex-col gap-4">
           <div>

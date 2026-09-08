@@ -1031,21 +1031,26 @@ export function ProductList({ products, storeSlug, storeName, pagina, totalPagin
           esquerdo da tela.
           `dialog-modal` (globals.css) anima entrada e saída do diálogo e do
           fundo escurecido. */}
-      <dialog ref={dialogRef} className="dialog-modal m-auto rounded-[2rem] bg-white p-6 text-gray-900 shadow-lg backdrop:bg-black/45 backdrop:backdrop-blur-[2px] dark:bg-gray-900 dark:text-gray-50">
+      <dialog ref={dialogRef} className="dialog-modal m-auto w-[calc(100%-2rem)] max-w-sm rounded-[2rem] bg-white p-6 text-gray-900 shadow-lg backdrop:bg-black/45 backdrop:backdrop-blur-[2px] dark:bg-gray-900 dark:text-gray-50">
         {/* UM diálogo para os dois casos. O texto muda; o aviso sobre métricas e o padrão de
             confirmação são os mesmos, porque a consequência é a mesma. */}
         <div>
+          {/* O NOME DO PRODUTO FICA NO CORPO, não no título: no título ele esticava a caixa
+              (nenhuma largura declarada) e, com a largura resolvida, viraria três linhas de
+              texto grande. No corpo, o mesmo nome ocupa três linhas leves e a caixa tem
+              sempre o mesmo tamanho, seja o produto "F50" ou "Mercurial Vapor 15 cano baixo
+              em malha Campo (FG)". */}
           <h2 className="text-center font-display text-xl font-medium text-gray-900 dark:text-gray-50">
             {excluirLote
               ? `Excluir ${quantidadeAlvo} ${quantidadeAlvo === 1 ? "produto" : "produtos"}?`
-              : `Excluir ${deleteTarget?.name}?`}
+              : "Excluir este produto?"}
           </h2>
           <p className="mx-auto mt-2 max-w-sm text-center text-sm text-gray-500 dark:text-gray-400">
             {excluirLote
               ? quantidadeAlvo === 1
                 ? "Isso vai remover o produto selecionado e todas as fotos dele da sua vitrine. Essa ação não pode ser desfeita."
                 : `Isso vai remover os ${quantidadeAlvo} produtos selecionados e todas as fotos deles da sua vitrine. Essa ação não pode ser desfeita.`
-              : "Isso vai remover o produto e todas as fotos da sua vitrine. Essa ação não pode ser desfeita."}
+              : `${deleteTarget?.name ?? "Este produto"} e todas as fotos dele saem da sua vitrine. Não dá para desfazer.`}
           </p>
           <form method="dialog" className="mt-4 flex justify-center gap-3">
             {/* Sem `onClick`: o `<form method="dialog">` já fecha o aviso. Zerar o alvo aqui

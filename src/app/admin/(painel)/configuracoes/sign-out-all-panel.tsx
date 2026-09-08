@@ -54,7 +54,7 @@ export function SignOutAllPanel() {
 
       <dialog
         ref={dialogRef}
-        className="dialog-modal m-auto rounded-[2rem] bg-white p-6 text-gray-900 shadow-lg backdrop:bg-black/45 backdrop:backdrop-blur-[2px] dark:bg-gray-900 dark:text-gray-50"
+        className="dialog-modal m-auto w-[calc(100%-2rem)] max-w-sm rounded-[2rem] bg-white p-6 text-gray-900 shadow-lg backdrop:bg-black/45 backdrop:backdrop-blur-[2px] dark:bg-gray-900 dark:text-gray-50"
       >
         <div>
           <h2 className="text-center font-display text-xl font-medium text-gray-900 dark:text-gray-50">
