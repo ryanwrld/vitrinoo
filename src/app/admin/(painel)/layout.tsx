@@ -74,10 +74,12 @@ export default async function PainelLayout({ children }: { children: ReactNode }
           condição aqui desmontava o fluxo no meio da conclusão — ver a nota no componente. */}
       <PrecificacaoPendente origem={precificacaoPendente} />
       <AdminSidebar storeName={storeName} storeSlug={storeSlug} storeLogoUrl={storeLogoUrl} />
-      {/* justify-center APENAS abaixo de lg. No mobile, onde as páginas são
-          uma coluna só e frequentemente curtas, centralizar evita o conteúdo
-          grudado no topo com um vazio grande embaixo.
-          No desktop (`lg:justify-start`) isso é um problema, não uma melhoria:
+      {/* Conteúdo SEMPRE ancorado no topo, em qualquer largura.
+          O `justify-center` que existia abaixo de `lg` tinha a intenção de evitar o vazio
+          embaixo numa página curta, mas cobrava caro: o Marketplace, a única rota curta o
+          bastante para ser centralizada, nascia com o título 37px mais baixo que o de
+          Produtos, Dashboard e Configurações (medido no celular: 117px contra 80px). O
+          mesmo argumento já tinha tirado o `justify-center` do desktop:
           a altura do conteúdo varia por rota E por estado dentro da mesma rota
           (ex.: as abas "Conta"/"Loja" de /configuracoes, ou o Dashboard com
           mais/menos dados), então o cabeçalho — título + abas — mudava de
@@ -85,7 +87,7 @@ export default async function PainelLayout({ children }: { children: ReactNode }
           fica idêntico em todas as telas e a sobra vai toda para o rodapé.
           Páginas mais altas que a viewport nunca foram afetadas por nenhum
           dos dois casos: `justify-center` não altera o fluxo com scroll. */}
-      <main className="flex min-h-dvh flex-1 flex-col justify-center bg-gray-50 lg:justify-start dark:bg-gray-925">
+      <main className="flex min-h-dvh flex-1 flex-col justify-start bg-gray-50 dark:bg-gray-925">
         <StoreIdentityProvider storeName={storeName} storeLogoUrl={storeLogoUrl}>
           {children}
         </StoreIdentityProvider>

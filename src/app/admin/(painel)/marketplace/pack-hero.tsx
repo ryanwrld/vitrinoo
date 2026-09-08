@@ -177,7 +177,7 @@ export function PackHero({
                 navegação para o acervo, não oferta.
               */}
               {temAcesso ? (
-                <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-success-solid px-5 text-sm font-semibold text-white">
+                <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-success-solid px-4 text-sm font-semibold text-white sm:px-5">
                   <Check className="h-4 w-4" strokeWidth={3} aria-hidden="true" />
                   Pacote liberado
                 </span>
