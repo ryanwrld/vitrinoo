@@ -805,8 +805,9 @@ export function ProductList({ products, storeSlug, storeName, pagina, totalPagin
           limpar();
         });
       }
+      // Idem: manter `excluirLote` até a próxima abertura evita o título trocar de texto
+      // no meio da saída.
       dialogRef.current?.close();
-      setExcluirLote(false);
     });
   }
 
@@ -817,7 +818,6 @@ export function ProductList({ products, storeSlug, storeName, pagina, totalPagin
   }, []);
 
   function abrirExclusaoEmLote() {
-    setDeleteTarget(null);
     setExcluirLote(true);
     dialogRef.current?.showModal();
   }
@@ -834,8 +834,9 @@ export function ProductList({ products, storeSlug, storeName, pagina, totalPagin
         toast.success("Produto excluído.");
         router.refresh();
       }
+      // O alvo NÃO é zerado aqui: o aviso ainda está desaparecendo e mostraria o título
+      // quebrado. Quem abre define o alvo, então não sobra estado velho para atrapalhar.
       dialogRef.current?.close();
-      setDeleteTarget(null);
     });
   }
 
@@ -1047,12 +1048,12 @@ export function ProductList({ products, storeSlug, storeName, pagina, totalPagin
               : "Isso vai remover o produto e todas as fotos da sua vitrine. Essa ação não pode ser desfeita."}
           </p>
           <form method="dialog" className="mt-4 flex justify-center gap-3">
+            {/* Sem `onClick`: o `<form method="dialog">` já fecha o aviso. Zerar o alvo aqui
+                era o que fazia o título virar "Excluir undefined?" — o aviso continua
+                visível por ~150ms depois do clique (a saída é animada por CSS), então
+                apagar o que ele está mostrando aparece na tela. */}
             <button
               type="submit"
-              onClick={() => {
-                setDeleteTarget(null);
-                setExcluirLote(false);
-              }}
               className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
             >
               Cancelar
