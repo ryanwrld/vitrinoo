@@ -737,6 +737,19 @@ input:autofill {
  * popovers (menu da conta, sino, busca) — aqueles não são top layer.
  */
 .dialog-modal {
+  /*
+    POSIÇÃO NOSSA, não do navegador.
+
+    `position: fixed` e `inset: 0` que centralizam um <dialog> modal vêm do seletor
+    `dialog:modal` da folha de estilo do navegador. No instante do `close()` o elemento
+    deixa de casar `:modal`, essas regras somem, e o aviso caía para `position: absolute`
+    no alto da página — medido: saltava de `top: 362px` para `top: 117px` no PRIMEIRO
+    quadro da saída, ainda com 150ms de animação pela frente. Declarando aqui, a caixa fica
+    parada no lugar e o que se vê é só a animação.
+  */
+  position: fixed;
+  inset: 0;
+  margin: auto;
   opacity: 0;
   transform: scale(0.97) translateY(8px);
   transition:
@@ -744,6 +757,28 @@ input:autofill {
     transform 150ms cubic-bezier(0.4, 0, 1, 1),
     overlay 150ms allow-discrete,
     display 150ms allow-discrete;
+}
+
+/*
+  FUNDO ESCURECIDO pelo PRÓPRIO aviso, em vez do `::backdrop`.
+
+  O `::backdrop` também só existe enquanto o elemento está na camada de topo, então ele
+  zerava no primeiro quadro do fechamento — medido: fundo em 0.00 com o card ainda em 1.00,
+  o que fazia o escurecimento piscar para fora e deixar o card flutuando. Uma sombra de
+  espalhamento gigante pinta a tela inteira e pertence ao aviso: aparece e some junto com
+  ele, na mesma curva, sem depender de camada nenhuma.
+
+  Custo assumido: sombra não desfoca o que está atrás, então o desfoque de 2px se perde.
+  Fica o escurecimento, que é o que separa o aviso do resto — e um fundo que pisca é pior
+  que um fundo sem desfoque.
+*/
+.vt-aviso {
+  /* Teto de altura só nos AVISOS: a prévia da vitrine e o editor de capa declaram o deles,
+     e impor um aqui sobrescrevia esses (a prévia ia de 828px para 868px). */
+  max-height: calc(100dvh - 2rem);
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.45);
+  /* Sem isto a sombra é recortada nos cantos arredondados em alguns navegadores. */
+  clip-path: none;
 }
 
 .dialog-modal[open] {

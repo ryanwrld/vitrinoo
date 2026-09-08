@@ -1031,7 +1031,7 @@ export function ProductList({ products, storeSlug, storeName, pagina, totalPagin
           esquerdo da tela.
           `dialog-modal` (globals.css) anima entrada e saída do diálogo e do
           fundo escurecido. */}
-      <dialog ref={dialogRef} className="dialog-modal m-auto w-[calc(100%-2rem)] max-w-sm rounded-[2rem] bg-white p-6 text-gray-900 shadow-lg backdrop:bg-black/45 backdrop:backdrop-blur-[2px] dark:bg-gray-900 dark:text-gray-50">
+      <dialog ref={dialogRef} className="dialog-modal vt-aviso m-auto w-[calc(100%-2rem)] max-w-sm rounded-[2rem] bg-white p-6 text-gray-900 shadow-lg dark:bg-gray-900 dark:text-gray-50">
         {/* UM diálogo para os dois casos. O texto muda; o aviso sobre métricas e o padrão de
             confirmação são os mesmos, porque a consequência é a mesma. */}
         <div>
