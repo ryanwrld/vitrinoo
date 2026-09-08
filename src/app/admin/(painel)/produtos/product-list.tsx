@@ -11,11 +11,15 @@ import {
   deleteProduct,
   deleteProductsEmLote,
   setProductStatusEmLote,
+  setProductStatusPorFiltro,
+  deleteProductsPorFiltro,
+  type FiltroDeProdutos,
   updateProductPrice,
   updateProductPromotionalPrice,
 } from "@/lib/products/actions";
 import { buildProductUrl } from "@/lib/slug/store-url";
 import { ShareVitrineButton } from "@/components/share-vitrine-button";
+import { Paginacao } from "./paginacao";
 
 export type ProductListItem = {
   id: string;
@@ -41,6 +45,11 @@ export type ProductListProps = {
   products: ProductListItem[];
   storeSlug: string;
   storeName: string | null;
+  pagina: number;
+  totalPaginas: number;
+  /** Quantos produtos casam com o filtro atual, somando TODAS as páginas. */
+  totalFiltrado: number;
+  filtro: FiltroDeProdutos;
 };
 
 /**
@@ -603,7 +612,7 @@ const LinhaProduto = memo(function LinhaProduto({
       );
 });
 
-export function ProductList({ products, storeSlug, storeName }: ProductListProps) {
+export function ProductList({ products, storeSlug, storeName, pagina, totalPaginas, totalFiltrado, filtro }: ProductListProps) {
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [deleteTarget, setDeleteTarget] = useState<ProductListItem | null>(null);
@@ -629,7 +638,30 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
   const todosMarcados = marcados.length > 0 && marcados.length === idsVisiveis.length;
   const parcial = marcados.length > 0 && !todosMarcados;
 
+  /*
+    MODO "TODO O FILTRO".
+
+    Com a lista paginada, marcar tudo alcança só os 48 da página. Arrumar um catálogo de 990
+    exigiria repetir a ação em 21 páginas — o trabalho que a seleção em lote existe para
+    eliminar. Então, com a página inteira marcada, a barra oferece estender para o resultado
+    do filtro, e nesse modo as ações vão pelo FILTRO, não por uma lista de ids.
+
+    Cai sozinho quando o filtro muda (`filtro` vira outro objeto a cada navegação, e o
+    conjunto que o lojista aceitou deixou de ser aquele) — por isso a chave do `useState`
+    não guarda ids, só um sim/não que o efeito abaixo derruba.
+  */
+  const [modoFiltro, setModoFiltro] = useState(false);
+  const assinaturaFiltro = JSON.stringify(filtro);
+  const [filtroAnterior, setFiltroAnterior] = useState(assinaturaFiltro);
+  if (filtroAnterior !== assinaturaFiltro) {
+    setFiltroAnterior(assinaturaFiltro);
+    setModoFiltro(false);
+  }
+
   const temSelecao = marcados.length > 0;
+  const quantidadeAlvo = modoFiltro ? totalFiltrado : marcados.length;
+  // O convite só aparece quando a página inteira está marcada E existe mais coisa fora dela.
+  const podeEstender = !modoFiltro && todosMarcados && totalFiltrado > idsVisiveis.length;
 
   /*
     O QUE A BARRA MOSTRA enquanto DESCE.
@@ -643,12 +675,22 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
     Ajuste de estado durante o render (padrão do React para "estado derivado de props"),
     não um efeito: o valor certo precisa estar pronto no MESMO quadro em que a barra sobe.
   */
-  const [rotulo, setRotulo] = useState({ n: 0, total: 0, todos: false });
+  const [rotulo, setRotulo] = useState({ n: 0, total: 0, todos: false, estender: false, totalFiltro: 0 });
   if (
     temSelecao &&
-    (rotulo.n !== marcados.length || rotulo.total !== idsVisiveis.length || rotulo.todos !== todosMarcados)
+    (rotulo.n !== quantidadeAlvo ||
+      rotulo.total !== idsVisiveis.length ||
+      rotulo.todos !== todosMarcados ||
+      rotulo.estender !== podeEstender ||
+      rotulo.totalFiltro !== totalFiltrado)
   ) {
-    setRotulo({ n: marcados.length, total: idsVisiveis.length, todos: todosMarcados });
+    setRotulo({
+      n: quantidadeAlvo,
+      total: idsVisiveis.length,
+      todos: todosMarcados,
+      estender: podeEstender,
+      totalFiltro: totalFiltrado,
+    });
   }
 
   /* `useCallback` sem dependências nos dois callbacks que descem para a linha: é o que
@@ -673,13 +715,16 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
 
   function limpar() {
     setSelecionados(new Set());
+    setModoFiltro(false);
   }
 
   function mudarStatusEmLote(status: "published" | "draft") {
     const ids = marcados;
     setAcaoEmCurso(status);
     iniciarLote(async () => {
-      const r = await setProductStatusEmLote(ids, status);
+      const r = modoFiltro
+        ? await setProductStatusPorFiltro(filtro, status)
+        : await setProductStatusEmLote(ids, status);
       if ("error" in r) {
         // A seleção FICA: erro aqui é para tentar de novo, não para remarcar tudo na mão.
         toast.error(r.error);
@@ -701,7 +746,7 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
   function confirmarExclusaoEmLote() {
     const ids = marcados;
     iniciarLote(async () => {
-      const r = await deleteProductsEmLote(ids);
+      const r = modoFiltro ? await deleteProductsPorFiltro(filtro) : await deleteProductsEmLote(ids);
       if ("error" in r) {
         toast.error(r.error);
       } else {
@@ -825,6 +870,11 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
         ))}
         </ul>
 
+        {/* Depois da lista e ANTES do espaço reservado da barra: sem isso a barra de ações
+            cobriria justamente os números, e trocar de página com algo marcado viraria uma
+            caçada ao controle escondido. */}
+        <Paginacao pagina={pagina} totalPaginas={totalPaginas} />
+
         {/* Espaço reservado embaixo do último card ENQUANTO a barra está no ar: ela é
             `fixed`, então sai do fluxo e cobriria o último produto justamente quando o
             lojista está marcando o fim da lista.
@@ -866,6 +916,17 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
                 className="rounded-full px-1 text-sm font-medium text-primary transition-colors duration-150 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 dark:text-blue-400"
               >
                 Selecionar todos ({rotulo.total})
+              </button>
+            )}
+            {/* Só aparece com a página inteira marcada: é o passo que alcança o que está
+                nas outras páginas sem precisar visitá-las uma a uma. */}
+            {rotulo.estender && (
+              <button
+                type="button"
+                onClick={() => setModoFiltro(true)}
+                className="rounded-full px-1 text-sm font-medium text-primary transition-colors duration-150 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 dark:text-blue-400"
+              >
+                Selecionar todos os {rotulo.totalFiltro}
               </button>
             )}
             <button
@@ -920,14 +981,14 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
         <div>
           <h2 className="font-display text-xl font-medium text-gray-900 dark:text-gray-50">
             {excluirLote
-              ? `Excluir ${marcados.length} ${marcados.length === 1 ? "produto" : "produtos"}?`
+              ? `Excluir ${quantidadeAlvo} ${quantidadeAlvo === 1 ? "produto" : "produtos"}?`
               : `Excluir ${deleteTarget?.name}?`}
           </h2>
           <p className="mt-2 max-w-sm text-sm text-gray-500 dark:text-gray-400">
             {excluirLote
-              ? marcados.length === 1
+              ? quantidadeAlvo === 1
                 ? "Isso vai remover o produto selecionado e todas as fotos dele da sua vitrine. Essa ação não pode ser desfeita."
-                : `Isso vai remover os ${marcados.length} produtos selecionados e todas as fotos deles da sua vitrine. Essa ação não pode ser desfeita.`
+                : `Isso vai remover os ${quantidadeAlvo} produtos selecionados e todas as fotos deles da sua vitrine. Essa ação não pode ser desfeita.`
               : "Isso vai remover o produto e todas as fotos da sua vitrine. Essa ação não pode ser desfeita."}
           </p>
           {/* Tranquiliza sem prometer demais: desde a migration 0021 o

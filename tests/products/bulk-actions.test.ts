@@ -3,7 +3,13 @@ import { createAnonClient, makeFakeLogoFile } from "../setup/supabase-test";
 import { signUpAction } from "@/lib/auth/actions";
 import { saveOnboarding } from "@/lib/onboarding/actions";
 import { DEFAULT_MESSAGE_TEMPLATE } from "@/lib/validation/onboarding";
-import { saveProduct, setProductStatusEmLote, deleteProductsEmLote } from "@/lib/products/actions";
+import {
+  saveProduct,
+  setProductStatusEmLote,
+  deleteProductsEmLote,
+  setProductStatusPorFiltro,
+  deleteProductsPorFiltro,
+} from "@/lib/products/actions";
 
 /**
  * Ações em LOTE da listagem de produtos.
@@ -169,6 +175,103 @@ describe("deleteProductsEmLote", () => {
 
     const { data: deA } = await clientA.from("products").select("id").in("id", idsA);
     expect(deA).toHaveLength(2);
+
+    const { client: clientB, storeId: storeIdB } = await signInAndFindStore(lojaB.email, lojaB.password);
+    await clientA.from("stores").delete().eq("id", storeIdA);
+    await clientB.from("stores").delete().eq("id", storeIdB);
+  }, 60000);
+});
+
+/**
+ * Ações POR FILTRO — o alvo é descrito pelo filtro da tela, não por uma lista de ids.
+ * É o que permite arrumar um catálogo de 990 sem visitar as 21 páginas.
+ */
+describe("ações por filtro", () => {
+  it("publica tudo que casa com o filtro e não toca no resto", async () => {
+    const { email, password } = await signUpAndCompleteOnboarding("filtro");
+    const ids = await criarRascunhos("filtro", 3);
+
+    const r = await setProductStatusPorFiltro({}, "published");
+    expect(r).toEqual({ success: true, afetados: 3 });
+
+    const { client, storeId } = await signInAndFindStore(email, password);
+    const { data: depois } = await client.from("products").select("status").in("id", ids);
+    expect(depois?.every((p) => p.status === "published")).toBe(true);
+
+    // Agora com filtro de status: só os rascunhos (nenhum) devem ser afetados.
+    const nenhum = await setProductStatusPorFiltro({ status: "draft" }, "published");
+    expect(nenhum).toEqual({ success: true, afetados: 0 });
+
+    await client.from("stores").delete().eq("id", storeId);
+  }, 60000);
+
+  it("cross-tenant: o filtro de uma loja não alcança produto de outra", async () => {
+    const lojaA = await signUpAndCompleteOnboarding("filtro-cross-a");
+    const idsA = await criarRascunhos("filtro-cross-a", 2);
+    const { client: clientA, storeId: storeIdA } = await signInAndFindStore(lojaA.email, lojaA.password);
+
+    const lojaB = await signUpAndCompleteOnboarding("filtro-cross-b");
+    await criarRascunhos("filtro-cross-b", 1);
+
+    // Sem filtro nenhum: mesmo assim só a loja B pode ser atingida.
+    const r = await setProductStatusPorFiltro({}, "published");
+    expect(r).toEqual({ success: true, afetados: 1 });
+
+    const { data: deA } = await clientA.from("products").select("status").in("id", idsA);
+    expect(deA?.every((p) => p.status === "draft")).toBe(true);
+
+    const excluidos = await deleteProductsPorFiltro({});
+    expect(excluidos).toEqual({ success: true, afetados: 1 });
+    const { data: aindaEmA } = await clientA.from("products").select("id").in("id", idsA);
+    expect(aindaEmA).toHaveLength(2);
+
+    const { client: clientB, storeId: storeIdB } = await signInAndFindStore(lojaB.email, lojaB.password);
+    await clientA.from("stores").delete().eq("id", storeIdA);
+    await clientB.from("stores").delete().eq("id", storeIdB);
+  }, 60000);
+});
+
+/**
+ * Ações POR FILTRO — o alvo é descrito pelo filtro da tela, não por uma lista de ids.
+ * É o que permite arrumar um catálogo de 990 sem visitar as 21 páginas uma a uma.
+ */
+describe("ações por filtro", () => {
+  it("publica tudo que casa com o filtro, e nada quando o filtro não casa", async () => {
+    const { email, password } = await signUpAndCompleteOnboarding("filtro");
+    const ids = await criarRascunhos("filtro", 3);
+
+    const r = await setProductStatusPorFiltro({}, "published");
+    expect(r).toEqual({ success: true, afetados: 3 });
+
+    const { client, storeId } = await signInAndFindStore(email, password);
+    const { data: depois } = await client.from("products").select("status").in("id", ids);
+    expect(depois?.every((p) => p.status === "published")).toBe(true);
+
+    // Com filtro de status: já não há rascunho nenhum, então ninguém é afetado.
+    expect(await setProductStatusPorFiltro({ status: "draft" }, "published")).toEqual({
+      success: true,
+      afetados: 0,
+    });
+
+    await client.from("stores").delete().eq("id", storeId);
+  }, 60000);
+
+  it("cross-tenant: o filtro de uma loja não alcança produto de outra", async () => {
+    const lojaA = await signUpAndCompleteOnboarding("filtro-cross-a");
+    const idsA = await criarRascunhos("filtro-cross-a", 2);
+    const { client: clientA, storeId: storeIdA } = await signInAndFindStore(lojaA.email, lojaA.password);
+
+    const lojaB = await signUpAndCompleteOnboarding("filtro-cross-b");
+    await criarRascunhos("filtro-cross-b", 1);
+
+    // Filtro VAZIO é o caso mais perigoso: "tudo" só pode significar "tudo da minha loja".
+    expect(await setProductStatusPorFiltro({}, "published")).toEqual({ success: true, afetados: 1 });
+    const { data: deA } = await clientA.from("products").select("status").in("id", idsA);
+    expect(deA?.every((p) => p.status === "draft")).toBe(true);
+
+    expect(await deleteProductsPorFiltro({})).toEqual({ success: true, afetados: 1 });
+    const { data: aindaEmA } = await clientA.from("products").select("id").in("id", idsA);
+    expect(aindaEmA).toHaveLength(2);
 
     const { client: clientB, storeId: storeIdB } = await signInAndFindStore(lojaB.email, lojaB.password);
     await clientA.from("stores").delete().eq("id", storeIdA);

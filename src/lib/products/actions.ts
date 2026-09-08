@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { aplicarFiltrosDeProduto, type QueryProductsParams } from "@/lib/products/list";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeRichTextForStorage } from "@/lib/rich-text/document";
 import { productSchema } from "@/lib/validation/product";
@@ -609,6 +610,90 @@ export async function setProductStatusEmLote(
  * ordem importa: apagar a linha primeiro deixaria o arquivo órfão no bucket, sem ninguém
  * para apontar o caminho dele.
  */
+/** Os filtros da tela, do jeito que a listagem os entende. */
+export type FiltroDeProdutos = Pick<QueryProductsParams, "q" | "status" | "brand" | "sole">;
+
+/**
+ * Ações sobre TODO o resultado do filtro, não sobre uma lista de ids.
+ *
+ * POR QUE EXISTEM: com a lista paginada, "selecionar todos" só alcança os 48 da página.
+ * Arrumar um catálogo de 990 exigiria repetir a ação em 21 páginas — que é exatamente o
+ * trabalho que a seleção em lote existe para eliminar. Aqui o alvo é descrito pelo FILTRO:
+ * uma consulta só, sem trafegar 990 identificadores do navegador até o servidor.
+ *
+ * O filtro é reaplicado no SERVIDOR com `aplicarFiltrosDeProduto`, a mesma função que monta
+ * a listagem — o que o lojista viu na tela e o que a ação alcança não podem divergir.
+ * `store_id` entra sempre, então nenhum filtro vindo do cliente alcança outra loja.
+ */
+export async function setProductStatusPorFiltro(
+  filtro: FiltroDeProdutos,
+  status: "published" | "draft",
+): Promise<ProductBulkResult> {
+  if (status !== "published" && status !== "draft") {
+    return { error: "Status inválido." };
+  }
+
+  const owned = await getOwnedStore();
+  if ("error" in owned) {
+    return { error: owned.error };
+  }
+
+  // `count: "exact"` e não `data.length`: o PostgREST devolve no máximo 1000 LINHAS por
+  // resposta, então num catálogo maior que isso o update afetaria tudo mas relataria 1000.
+  const { count, error } = await aplicarFiltrosDeProduto(
+    owned.supabase.from("products").update({ status }, { count: "exact" }).eq("store_id", owned.storeId),
+    filtro,
+  );
+
+  if (error) {
+    return { error: status === "published" ? "Não foi possível publicar." : "Não foi possível mover para rascunho." };
+  }
+
+  revalidateProdutos();
+  return { success: true, afetados: count ?? 0 };
+}
+
+export async function deleteProductsPorFiltro(filtro: FiltroDeProdutos): Promise<ProductBulkResult> {
+  const owned = await getOwnedStore();
+  if ("error" in owned) {
+    return { error: owned.error };
+  }
+
+  // Os ids ainda precisam ser lidos: a limpeza das fotos no storage acontece por produto, e
+  // é ela que carrega a regra "foto do marketplace é compartilhada, nunca apagar".
+  // Lidos EM PÁGINAS porque o PostgREST devolve no máximo 1000 linhas por resposta — sem
+  // isso, num catálogo maior, as fotos dos produtos além da milésima linha ficariam órfãs
+  // no storage depois de a linha do banco sumir.
+  const ids: string[] = [];
+  for (let pagina = 0; ; pagina++) {
+    const de = pagina * IDS_POR_BLOCO;
+    const { data: alvos } = await aplicarFiltrosDeProduto(
+      owned.supabase.from("products").select("id").eq("store_id", owned.storeId),
+      filtro,
+    ).range(de, de + IDS_POR_BLOCO - 1);
+
+    if (!alvos?.length) break;
+    for (const p of alvos) ids.push(p.id);
+    if (alvos.length < IDS_POR_BLOCO) break;
+  }
+
+  if (ids.length === 0) return { success: true, afetados: 0 };
+
+  await deleteProductPhotosStorage(owned.supabase, ids);
+
+  const { count, error } = await aplicarFiltrosDeProduto(
+    owned.supabase.from("products").delete({ count: "exact" }).eq("store_id", owned.storeId),
+    filtro,
+  );
+
+  if (error) {
+    return { error: "Não foi possível excluir os produtos." };
+  }
+
+  revalidateProdutos();
+  return { success: true, afetados: count ?? ids.length };
+}
+
 export async function deleteProductsEmLote(
   productIds: string[],
 ): Promise<ProductBulkResult> {
