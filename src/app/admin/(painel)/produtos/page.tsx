@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireCompletedOnboarding } from "@/lib/auth/onboarding-guard";
 import { createClient } from "@/lib/supabase/server";
-import { queryProducts, type QueryProductsParams } from "@/lib/products/list";
+import { queryProducts, contarProdutos, PRODUTOS_POR_PAGINA, type QueryProductsParams } from "@/lib/products/list";
 import { queryRecentActivity, HEADER_FEED_LIMIT } from "@/lib/dashboard/metrics";
 import { EmptyState } from "@/components/empty-state";
 import { HeaderActions } from "@/components/header-actions";
@@ -16,6 +16,7 @@ type ProdutosSearchParams = {
   brand?: string;
   sole?: string;
   sort?: string;
+  page?: string;
 };
 
 /**
@@ -61,12 +62,29 @@ export default async function ProdutosPage({
     redirect("/admin/onboarding");
   }
 
-  const queryParams: QueryProductsParams = {
+  const filtro = {
     q: params.q,
     status: params.status,
     brand: params.brand,
     sole: params.sole,
+  };
+
+  /*
+    PAGINAÇÃO: a lista vinha inteira, e num catálogo importado isso são 990 linhas cruas no
+    HTML — cada clique num seletor redesenhava todas elas, e "selecionar todos" levava
+    segundos. A contagem filtrada roda antes porque é ela que diz quantas páginas existem, e
+    uma página fora do intervalo (URL digitada à mão, ou filtro que encolheu o resultado)
+    precisa cair na última em vez de mostrar lista vazia.
+  */
+  const totalFiltrado = await contarProdutos(supabase, store.id, filtro);
+  const totalPaginas = Math.max(1, Math.ceil(totalFiltrado / PRODUTOS_POR_PAGINA));
+  const paginaPedida = Number.parseInt(params.page ?? "1", 10);
+  const pagina = Math.min(Math.max(Number.isFinite(paginaPedida) ? paginaPedida : 1, 1), totalPaginas);
+
+  const queryParams: QueryProductsParams = {
+    ...filtro,
     sort: params.sort,
+    page: pagina,
   };
 
   // O feed alimenta o pop-up do sino no cabeçalho — ele agora abre em toda
@@ -157,7 +175,15 @@ export default async function ProdutosPage({
       )}
 
       {hasFilteredResults ? (
-        <ProductList products={productsWithCoverUrl} storeSlug={store.slug} storeName={store.name} />
+        <ProductList
+          products={productsWithCoverUrl}
+          storeSlug={store.slug}
+          storeName={store.name}
+          pagina={pagina}
+          totalPaginas={totalPaginas}
+          totalFiltrado={totalFiltrado}
+          filtro={filtro}
+        />
       ) : hasAnyProduct ? (
         <EmptyState
           icon="search"

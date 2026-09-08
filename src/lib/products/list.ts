@@ -20,6 +20,10 @@ export type QueryProductsParams = {
   brand?: string;
   sole?: string;
   sort?: string;
+  /** Página 1-based. OPCIONAL de propósito: o Dashboard chama `queryProducts` sem página
+   *  para contar disponíveis/esgotados sobre o catálogo INTEIRO — paginar por padrão faria
+   *  ele contar só a primeira fatia e mostrar número errado. */
+  page?: number;
 };
 
 export type QueriedProduct = {
@@ -45,6 +49,53 @@ export type QueriedProduct = {
   coverSource: string | null;
 };
 
+/**
+ * Produtos por página no painel. Espelha `MARKETPLACE_PAGE_SIZE`
+ * (src/lib/marketplace/list.ts): as duas telas do painel que listam catálogo grande andam
+ * no mesmo ritmo.
+ */
+export const PRODUTOS_POR_PAGINA = 48;
+
+/**
+ * Os filtros da listagem, em UM lugar só.
+ *
+ * Três consumidores dependem de responder exatamente ao mesmo conjunto: a listagem, a
+ * contagem que alimenta a paginação e as ações em massa "por filtro" (actions.ts). Se a
+ * regra fosse reescrita em cada um, bastaria um esquecer um filtro para a barra dizer
+ * "990 selecionados" e a ação mexer em outro conjunto — o pior tipo de bug possível numa
+ * ação destrutiva.
+ */
+type ConsultaFiltravel = {
+  ilike(coluna: string, padrao: string): ConsultaFiltravel;
+  eq(coluna: string, valor: string): ConsultaFiltravel;
+};
+
+export function aplicarFiltrosDeProduto<Q extends ConsultaFiltravel>(
+  query: Q,
+  params: Pick<QueryProductsParams, "q" | "status" | "brand" | "sole">,
+): Q {
+  let q = query;
+  if (params.q) q = q.ilike("name", `%${params.q}%`) as Q;
+  if (params.status) q = q.eq("status", params.status) as Q;
+  if (params.brand) q = q.eq("brand", params.brand) as Q;
+  if (params.sole) q = q.eq("sole", params.sole) as Q;
+  return q;
+}
+
+/** Quantos produtos casam com o filtro atual — o total que a paginação divide em páginas. */
+export async function contarProdutos(
+  supabase: SupabaseClient<Database>,
+  storeId: string,
+  params: Pick<QueryProductsParams, "q" | "status" | "brand" | "sole">,
+): Promise<number> {
+  const query = aplicarFiltrosDeProduto(
+    supabase.from("products").select("id", { count: "exact", head: true }).eq("store_id", storeId),
+    params,
+  );
+  const { count } = await query;
+  return count ?? 0;
+}
+
 const SORT_COLUMNS: Record<string, { column: "created_at" | "name" | "price"; ascending: boolean }> = {
   recente: { column: "created_at", ascending: false },
   nome: { column: "name", ascending: true },
@@ -66,26 +117,21 @@ export async function queryProducts(
   storeId: string,
   params: QueryProductsParams
 ): Promise<QueriedProduct[]> {
-  let query = supabase
-    .from("products")
-    .select("id, name, brand, brand_other, line, price, promotional_price, status")
-    .eq("store_id", storeId);
-
-  if (params.q) {
-    query = query.ilike("name", `%${params.q}%`);
-  }
-  if (params.status) {
-    query = query.eq("status", params.status);
-  }
-  if (params.brand) {
-    query = query.eq("brand", params.brand);
-  }
-  if (params.sole) {
-    query = query.eq("sole", params.sole);
-  }
+  let query = aplicarFiltrosDeProduto(
+    supabase
+      .from("products")
+      .select("id, name, brand, brand_other, line, price, promotional_price, status")
+      .eq("store_id", storeId),
+    params,
+  );
 
   const sortConfig = SORT_COLUMNS[params.sort ?? "recente"] ?? SORT_COLUMNS.recente;
   query = query.order(sortConfig.column, { ascending: sortConfig.ascending });
+
+  if (params.page && params.page > 0) {
+    const de = (params.page - 1) * PRODUTOS_POR_PAGINA;
+    query = query.range(de, de + PRODUTOS_POR_PAGINA - 1);
+  }
 
   const { data: products, error } = await query;
   if (error || !products || products.length === 0) {
