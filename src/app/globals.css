@@ -127,6 +127,14 @@
   --leading-tight: 1.15;
   --leading-snug: 1.35;
   --leading-normal: 1.55;
+
+  /* Largura da sidebar do painel — UMA fonte da verdade.
+     Gera `w-sidebar` (a propria sidebar) e `left-sidebar` (as barras fixas que
+     nao podem passar por baixo dela). Antes a sidebar dizia 232px e as barras
+     diziam `left-64` (256px): sobrava um vao de 24px entre as duas, onde a
+     barra parecia mordida no canto esquerdo. Com o mesmo token nos dois lados,
+     mudar a sidebar move as barras junto. */
+  --spacing-sidebar: 232px;
 }
 
 @theme inline {

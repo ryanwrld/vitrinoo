@@ -734,8 +734,8 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
       {/*
         BARRA DE AÇÕES — só existe com algo selecionado, e some quando a seleção esvazia.
 
-        Mesma barra da grade do acervo, inclusive o `md:left-64` que a impede de passar por
-        baixo da sidebar. Fica fixa embaixo porque a lista é longa: uma barra no topo sairia
+        Mesma barra da grade do acervo, inclusive o `md:left-sidebar` que a impede de passar
+        por baixo da sidebar (o token vale a largura real dela, ver globals.css). Fica fixa embaixo porque a lista é longa: uma barra no topo sairia
         da tela justamente quando o lojista está marcando o que está no fim dela.
 
         Fundo OPACO, sem `backdrop-blur`: cortar o card que está atrás é inevitável numa
@@ -744,7 +744,7 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
         renderização. Sem transparência o blur não teria o que borrar, então saiu junto.
       */}
       {marcados.length > 0 && (
-        <div className="animate-slide-up fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white px-4 py-3 md:left-64 dark:border-gray-800 dark:bg-gray-900">
+        <div className="animate-slide-up fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white px-4 py-3 md:left-sidebar dark:border-gray-800 dark:bg-gray-900">
           <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 2xl:max-w-[96rem]">
             <div className="flex items-center gap-3">
               <span className="text-sm font-semibold text-gray-900 dark:text-gray-50">

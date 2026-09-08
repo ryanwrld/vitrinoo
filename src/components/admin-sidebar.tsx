@@ -206,7 +206,7 @@ export function AdminSidebar({
   return (
     <>
       {/* Desktop: sidebar fixa, sempre no DOM, só visível >= md */}
-      <aside className="sticky top-0 hidden h-dvh w-[232px] shrink-0 flex-col gap-4 border-r border-gray-200 bg-white p-3 py-5 md:flex dark:border-gray-800 dark:bg-gray-900">
+      <aside className="sticky top-0 hidden h-dvh w-sidebar shrink-0 flex-col gap-4 border-r border-gray-200 bg-white p-3 py-5 md:flex dark:border-gray-800 dark:bg-gray-900">
         <LogoHeader align="left" />
         <SearchTriggerButton onClick={() => setSearchOpen(true)} />
         <nav className="flex flex-col gap-0.5">
