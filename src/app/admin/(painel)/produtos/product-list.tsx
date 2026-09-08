@@ -771,7 +771,11 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
       */}
       {marcados.length > 0 && (
         <div className="animate-slide-up fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white px-4 py-3 md:left-sidebar dark:border-gray-800 dark:bg-gray-900">
-          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 2xl:max-w-[96rem]">
+          {/* No celular os dois grupos não cabem lado a lado e quebram em duas linhas —
+              com `justify-between` cada linha ficava encostada na esquerda, com um vazio
+              grande à direita. Centrado, o conteúdo fica no eixo do polegar. A partir de
+              `sm:` eles voltam a caber na mesma linha, e aí é `space-between` de novo. */}
+          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-3 sm:justify-between 2xl:max-w-[96rem]">
             <div className="flex items-center gap-3">
               <span className="text-sm font-semibold text-gray-900 dark:text-gray-50">
                 {marcados.length} {marcados.length === 1 ? "selecionado" : "selecionados"}
