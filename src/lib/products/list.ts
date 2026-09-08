@@ -127,6 +127,15 @@ export async function queryProducts(
 
   const sortConfig = SORT_COLUMNS[params.sort ?? "recente"] ?? SORT_COLUMNS.recente;
   query = query.order(sortConfig.column, { ascending: sortConfig.ascending });
+  /*
+    DESEMPATE POR `id` — sem isso a paginação repete e some com produtos.
+    Um catálogo importado do acervo entra INTEIRO na mesma transação: os 990 ficam com o
+    mesmo `created_at`, e "ordenar por mais recente" vira um empate de 990 linhas. O
+    Postgres não promete ordem estável dentro de um empate, então cada página pedia uma
+    fatia de uma ordem diferente — o mesmo modelo aparecia na página 3 e na 7, e outros não
+    apareciam em lugar nenhum. `id` é único, então o empate deixa de existir.
+  */
+  query = query.order("id", { ascending: true });
 
   if (params.page && params.page > 0) {
     const de = (params.page - 1) * PRODUTOS_POR_PAGINA;

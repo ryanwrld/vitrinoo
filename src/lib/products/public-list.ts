@@ -177,6 +177,13 @@ export async function queryPublicProducts(
   if (sortClause.column !== "created_at") {
     query = query.order("created_at", { ascending: false });
   }
+  /*
+    E `id` por último, porque `created_at` NÃO basta: uma loja que importou o acervo tem
+    centenas de produtos com o mesmo instante de criação, e aí o empate volta inteiro. Sem
+    um critério único, o cliente final veria o mesmo modelo duas vezes ao carregar mais — e
+    nunca veria outros.
+  */
+  query = query.order("id", { ascending: true });
   query = query.range(from, to);
 
   const { data: fetchedProducts, error } = await query;

@@ -82,8 +82,12 @@ export async function queryMarketplaceProducts(
   if (params.sole) query = query.eq("sole", params.sole);
   if (params.status) query = query.eq("status", params.status);
 
+  // `id` como último critério: o acervo inteiro foi carregado de uma vez, então qualquer
+  // ordenação empata em massa e a fatia de cada página sairia de uma ordem diferente —
+  // modelo repetido numa página e ausente em todas as outras.
   const { data, count, error } = await query
     .order(ordem.coluna, { ascending: ordem.asc, nullsFirst: false })
+    .order("id", { ascending: true })
     .range(de, ate);
 
   if (error || !data) return { items: [], total: 0 };
