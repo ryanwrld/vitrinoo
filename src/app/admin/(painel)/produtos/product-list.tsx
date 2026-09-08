@@ -410,6 +410,28 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
   const todosMarcados = marcados.length > 0 && marcados.length === idsVisiveis.length;
   const parcial = marcados.length > 0 && !todosMarcados;
 
+  const temSelecao = marcados.length > 0;
+
+  /*
+    O QUE A BARRA MOSTRA enquanto DESCE.
+
+    Ela não sai do DOM (é a classe `.on` que a esconde), então, sem isto, no primeiro quadro
+    da saída o texto viraria "0 selecionados" e o "Selecionar todos" reapareceria — bem no
+    meio da descida. `rotulo` só é atualizado quando existe seleção; quando ela zera, ele
+    fica parado no último valor válido, que é justamente o que faz sentido continuar lendo
+    enquanto a barra sai de cena.
+
+    Ajuste de estado durante o render (padrão do React para "estado derivado de props"),
+    não um efeito: o valor certo precisa estar pronto no MESMO quadro em que a barra sobe.
+  */
+  const [rotulo, setRotulo] = useState({ n: 0, total: 0, todos: false });
+  if (
+    temSelecao &&
+    (rotulo.n !== marcados.length || rotulo.total !== idsVisiveis.length || rotulo.todos !== todosMarcados)
+  ) {
+    setRotulo({ n: marcados.length, total: idsVisiveis.length, todos: todosMarcados });
+  }
+
   function alternar(id: string) {
     setSelecionados((atual) => {
       const novo = new Set(atual);
@@ -753,8 +775,10 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
 
         {/* Espaço reservado embaixo do último card ENQUANTO a barra está no ar: ela é
             `fixed`, então sai do fluxo e cobriria o último produto justamente quando o
-            lojista está marcando o fim da lista. Some junto com a barra. */}
-        {marcados.length > 0 && <div aria-hidden className="h-24 sm:h-20" />}
+            lojista está marcando o fim da lista.
+            Sempre no DOM, só alternando `.on`: montar e desmontar fazia a lista saltar
+            96px de uma vez. A classe anima a altura no mesmo ritmo da barra. */}
+        <div aria-hidden className={`vt-lote-espaco ${temSelecao ? "on" : ""}`} />
       </div>
 
       {/*
@@ -769,68 +793,68 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
         arredondado e campos de preço borrados dentro da barra) — lia como falha de
         renderização. Sem transparência o blur não teria o que borrar, então saiu junto.
       */}
-      {marcados.length > 0 && (
-        <div className="animate-slide-up fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white px-4 py-3 md:left-sidebar dark:border-gray-800 dark:bg-gray-900">
-          {/* No celular os dois grupos não cabem lado a lado e quebram em duas linhas —
-              com `justify-between` cada linha ficava encostada na esquerda, com um vazio
-              grande à direita. Centrado, o conteúdo fica no eixo do polegar. A partir de
-              `sm:` eles voltam a caber na mesma linha, e aí é `space-between` de novo. */}
-          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-3 sm:justify-between 2xl:max-w-[96rem]">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-semibold text-gray-900 dark:text-gray-50">
-                {marcados.length} {marcados.length === 1 ? "selecionado" : "selecionados"}
-              </span>
-              {/* No celular a guia de colunas não existe, então é aqui que mora o
-                  "selecionar todos" — sem ele, marcar 990 seria impossível fora do desktop. */}
-              {!todosMarcados && (
-                <button
-                  type="button"
-                  onClick={alternarTodos}
-                  className="rounded-full px-1 text-sm font-medium text-primary transition-colors duration-150 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 dark:text-blue-400"
-                >
-                  Selecionar todos ({idsVisiveis.length})
-                </button>
-              )}
+      <div
+        className={`vt-lote ${temSelecao ? "on" : ""} fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white px-4 py-3 md:left-sidebar dark:border-gray-800 dark:bg-gray-900`}
+      >
+        {/* No celular os dois grupos não cabem lado a lado e quebram em duas linhas —
+            com `justify-between` cada linha ficava encostada na esquerda, com um vazio
+            grande à direita. Centrado, o conteúdo fica no eixo do polegar. A partir de
+            `sm:` eles voltam a caber na mesma linha, e aí é `space-between` de novo. */}
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-3 sm:justify-between 2xl:max-w-[96rem]">
+          <div className="vt-lote-item flex items-center gap-3">
+            <span className="text-sm font-semibold text-gray-900 dark:text-gray-50">
+              {rotulo.n} {rotulo.n === 1 ? "selecionado" : "selecionados"}
+            </span>
+            {/* No celular a guia de colunas não existe, então é aqui que mora o
+                "selecionar todos" — sem ele, marcar 990 seria impossível fora do desktop. */}
+            {!rotulo.todos && (
               <button
                 type="button"
-                onClick={limpar}
-                className="rounded-full px-1 text-sm font-medium text-gray-500 transition-colors duration-150 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 dark:text-gray-400 dark:hover:text-gray-50"
+                onClick={alternarTodos}
+                className="rounded-full px-1 text-sm font-medium text-primary transition-colors duration-150 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 dark:text-blue-400"
               >
-                Limpar
+                Selecionar todos ({rotulo.total})
               </button>
-            </div>
+            )}
+            <button
+              type="button"
+              onClick={limpar}
+              className="rounded-full px-1 text-sm font-medium text-gray-500 transition-colors duration-150 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 dark:text-gray-400 dark:hover:text-gray-50"
+            >
+              Limpar
+            </button>
+          </div>
 
-            {/* `disabled` durante a ação nos três: é o que impede clique repetido e ação
-                conflitante (publicar e apagar ao mesmo tempo). */}
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                disabled={emAndamento}
-                onClick={() => mudarStatusEmLote("published")}
-                className="min-h-10 rounded-full bg-primary px-4 text-sm font-semibold text-white transition-opacity duration-150 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60"
-              >
-                {acaoEmCurso === "published" ? "Publicando…" : "Publicar"}
-              </button>
-              <button
-                type="button"
-                disabled={emAndamento}
-                onClick={() => mudarStatusEmLote("draft")}
-                className="min-h-10 rounded-full border border-gray-300 px-4 text-sm font-medium text-gray-700 transition-colors duration-150 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-              >
-                {acaoEmCurso === "draft" ? "Rascunhando…" : "Rascunhar"}
-              </button>
-              <button
-                type="button"
-                disabled={emAndamento}
-                onClick={abrirExclusaoEmLote}
-                className="min-h-10 rounded-full border border-error-solid/40 px-4 text-sm font-medium text-error-fg transition-colors duration-150 hover:bg-error-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error-bg focus-visible:ring-offset-2 disabled:opacity-60 dark:hover:bg-error-solid/15"
-              >
-                Apagar
-              </button>
-            </div>
+          {/* `disabled` durante a ação nos três: é o que impede clique repetido e ação
+              conflitante (publicar e apagar ao mesmo tempo). */}
+          <div className="vt-lote-item flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              disabled={emAndamento}
+              onClick={() => mudarStatusEmLote("published")}
+              className="min-h-10 rounded-full bg-primary px-4 text-sm font-semibold text-white transition-opacity duration-150 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60"
+            >
+              {acaoEmCurso === "published" ? "Publicando…" : "Publicar"}
+            </button>
+            <button
+              type="button"
+              disabled={emAndamento}
+              onClick={() => mudarStatusEmLote("draft")}
+              className="min-h-10 rounded-full border border-gray-300 px-4 text-sm font-medium text-gray-700 transition-colors duration-150 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+            >
+              {acaoEmCurso === "draft" ? "Rascunhando…" : "Rascunhar"}
+            </button>
+            <button
+              type="button"
+              disabled={emAndamento}
+              onClick={abrirExclusaoEmLote}
+              className="min-h-10 rounded-full border border-error-solid/40 px-4 text-sm font-medium text-error-fg transition-colors duration-150 hover:bg-error-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error-bg focus-visible:ring-offset-2 disabled:opacity-60 dark:hover:bg-error-solid/15"
+            >
+              Apagar
+            </button>
           </div>
         </div>
-      )}
+      </div>
 
       {/* `m-auto`: o navegador centraliza um <dialog> modal via `margin: auto`
           do user-agent stylesheet, e o preflight do Tailwind zera `margin` em
