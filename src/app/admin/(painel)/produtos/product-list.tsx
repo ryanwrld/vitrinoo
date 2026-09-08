@@ -1039,14 +1039,14 @@ export function ProductList({ products, storeSlug, storeName, pagina, totalPagin
               ? `Excluir ${quantidadeAlvo} ${quantidadeAlvo === 1 ? "produto" : "produtos"}?`
               : `Excluir ${deleteTarget?.name}?`}
           </h2>
-          <p className="mt-2 max-w-sm text-sm text-gray-500 dark:text-gray-400">
+          <p className="mx-auto mt-2 max-w-sm text-center text-sm text-gray-500 dark:text-gray-400">
             {excluirLote
               ? quantidadeAlvo === 1
                 ? "Isso vai remover o produto selecionado e todas as fotos dele da sua vitrine. Essa ação não pode ser desfeita."
                 : `Isso vai remover os ${quantidadeAlvo} produtos selecionados e todas as fotos deles da sua vitrine. Essa ação não pode ser desfeita.`
               : "Isso vai remover o produto e todas as fotos da sua vitrine. Essa ação não pode ser desfeita."}
           </p>
-          <form method="dialog" className="mt-4 flex gap-3">
+          <form method="dialog" className="mt-4 flex justify-center gap-3">
             <button
               type="submit"
               onClick={() => {

@@ -779,11 +779,11 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
           <h2 className="text-center font-display text-xl font-medium text-gray-900 dark:text-gray-50">
             Trocar o link da sua vitrine?
           </h2>
-          <p className="mt-2 max-w-sm text-sm text-gray-500 dark:text-gray-400">
+          <p className="mx-auto mt-2 max-w-sm text-center text-sm text-gray-500 dark:text-gray-400">
             Isso vai quebrar links já compartilhados: quem tiver o link antigo não vai mais
             conseguir acessar sua vitrine. Essa ação não pode ser desfeita.
           </p>
-          <div className="mt-4 flex gap-3">
+          <div className="mt-4 flex justify-center gap-3">
             <button
               type="button"
               onClick={() => confirmSlugDialogRef.current?.close()}

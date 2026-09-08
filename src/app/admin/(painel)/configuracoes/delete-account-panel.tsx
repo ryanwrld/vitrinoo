@@ -76,7 +76,7 @@ export function DeleteAccountPanel() {
             <h2 className="text-center font-display text-xl font-medium text-gray-900 dark:text-gray-50">
               Excluir sua conta para sempre?
             </h2>
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            <p className="mt-2 text-center text-sm text-gray-500 dark:text-gray-400">
               Sua vitrine sai do ar na hora e todo link que você já mandou para clientes deixa de
               funcionar. Produtos, fotos e métricas são apagados junto. Não é possível desfazer nem
               recuperar depois.
@@ -84,7 +84,7 @@ export function DeleteAccountPanel() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label htmlFor="deleteConfirmation" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="deleteConfirmation" className="text-center text-sm font-medium text-gray-700 dark:text-gray-300">
               Digite {DELETE_ACCOUNT_CONFIRMATION} para confirmar
             </label>
             <input
@@ -97,7 +97,7 @@ export function DeleteAccountPanel() {
             />
           </div>
 
-          <form method="dialog" className="flex gap-3">
+          <form method="dialog" className="flex justify-center gap-3">
             <button
               type="submit"
               className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition-all duration-150 hover:bg-gray-100 active:bg-gray-200 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:hover:bg-gray-800 dark:active:bg-gray-700"

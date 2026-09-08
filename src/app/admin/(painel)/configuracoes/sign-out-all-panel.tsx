@@ -60,11 +60,11 @@ export function SignOutAllPanel() {
           <h2 className="text-center font-display text-xl font-medium text-gray-900 dark:text-gray-50">
             Sair de todos os dispositivos?
           </h2>
-          <p className="mt-2 max-w-sm text-sm text-gray-500 dark:text-gray-400">
+          <p className="mx-auto mt-2 max-w-sm text-center text-sm text-gray-500 dark:text-gray-400">
             Você também será desconectado aqui e vai precisar entrar de novo. Sua vitrine
             continua no ar normalmente.
           </p>
-          <div className="mt-4 flex gap-3">
+          <div className="mt-4 flex justify-center gap-3">
             <button
               type="button"
               onClick={() => dialogRef.current?.close()}
