@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { memo, useCallback, useEffect, useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -384,6 +384,225 @@ function Marca({
   );
 }
 
+/**
+ * UMA linha da lista.
+ *
+ * `memo` NÃO é enfeite aqui: sem ele, marcar um produto re-renderizava as 990 linhas do
+ * catálogo importado, e o clique levava 676ms até a barra começar a subir (medido). Como
+ * cada linha só depende do PRÓPRIO estado de seleção, memoizada ela ignora a mudança das
+ * vizinhas — só a que foi clicada re-renderiza.
+ *
+ * Para o memo valer alguma coisa, todo callback que chega aqui precisa ter identidade
+ * estável (`useCallback` sem dependências, no pai) — senão a comparação de props falha
+ * em todas as linhas e voltamos ao ponto de partida.
+ */
+const LinhaProduto = memo(function LinhaProduto({
+  product,
+  index,
+  selecionado,
+  ocupado,
+  storeSlug,
+  storeName,
+  onAlternar,
+  onExcluir,
+}: {
+  product: ProductListItem;
+  index: number;
+  selecionado: boolean;
+  ocupado: boolean;
+  storeSlug: string;
+  storeName: string | null;
+  onAlternar: (id: string) => void;
+  onExcluir: (product: ProductListItem) => void;
+}) {
+  const aoAlternar = useCallback(() => onAlternar(product.id), [onAlternar, product.id]);
+
+      const brandLabel = product.brand === "Outra" && product.brand_other ? product.brand_other : product.brand;
+      const secondaryLine = [brandLabel, product.line].filter(Boolean).join(" · ");
+
+      return (
+        <li
+          key={product.id}
+          className={`relative flex flex-wrap items-center gap-3 border bg-white p-3 shadow-sm transition-[border-color,opacity] duration-150 dark:bg-gray-900 ${
+            index === 0 ? "rounded-[2rem] sm:rounded-b-[2rem] sm:rounded-t-none sm:border-t-0" : "rounded-[2rem]"
+          } ${
+            selecionado
+              ? "border-primary/60 dark:border-primary/60"
+              : "border-gray-200 dark:border-gray-800"
+          } ${ocupado ? "opacity-50" : ""}`}
+        >
+          {/* Estrutura FLAT (sem wrapper `contents` — `sm:contents` não
+              estava gerando regra CSS neste dev server, mesmo bug de
+              cache do `gap-10`/`fill-[...]` mais acima nesta sessão):
+              todo mundo é filho DIRETO do `<li>` (`flex flex-wrap`), e
+              só o grupo de preço força quebra de linha no mobile via
+              `basis-full` — sem espaço sobrando na linha, os grupos
+              seguintes (status/ações) são empurrados pro flex-wrap
+              automaticamente, sem precisar de `basis-full` neles
+              também. */}
+          {/* A marca fica ANTES da foto, em coluna própria: sobreposta à miniatura ela
+              tapava justamente o par de chuteiras que o lojista precisa reconhecer para
+              saber o que está marcando. Ocupa espaço fixo na linha (marcado ou não),
+              então nada pula de lugar ao selecionar.
+              Só a partir de `sm:` — no celular esta coluna custava 32px da largura do
+              nome, que já truncava; lá a marca vive ao lado do menu "⋮" (mais abaixo).
+              O `<span>` em volta é que some/aparece: mexer no `display` por dentro do
+              componente brigaria com o `inline-flex` que ele já aplica. */}
+          <span className="hidden shrink-0 sm:inline-flex">
+            <Marca
+              marcado={selecionado}
+              onMudar={aoAlternar}
+              rotulo={`Selecionar ${product.name}`}
+            />
+          </span>
+
+          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[1.25rem] bg-gray-100 dark:bg-gray-800">
+            {product.coverUrl ? (
+              <Image
+                src={product.coverUrl}
+                alt={product.name}
+                fill
+                sizes="64px"
+                className="object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center">
+                <ImageOff className="h-6 w-6 text-gray-400 dark:text-gray-500" aria-hidden="true" />
+              </div>
+            )}
+          </div>
+
+          {/* `style maxWidth` (não classe `sm:max-w-*` — mesmo bug de
+              cache do Tailwind que já apareceu com `gap-10`/`fill-
+              [...]`/`sm:contents` nesta sessão dev, a classe não gerava
+              regra CSS nenhuma): sem teto, essa coluna cresce até o
+              tamanho do próprio texto (o par preço/promocional, ao
+              lado, não tem largura de conteúdo real — os inputs são
+              absolutos — então "sobra" espaço de mais pro nome, que
+              nunca truncava de verdade). Um nome comprido chegava a
+              poucos px do preço, quase colado. O teto força o "…" e
+              mantém respiro fixo, não importa o tamanho do nome. 320px
+              é generoso o bastante pra nunca apertar o mobile (onde a
+              coluna já é naturalmente mais estreita que isso). */}
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5" style={{ maxWidth: "320px" }}>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <span className="min-w-0 truncate font-display font-medium text-gray-900 dark:text-gray-50">{product.name}</span>
+              {/* Status: versão MOBILE — vive na MESMA linha flex do
+                  nome (não da `<li>` inteira, que tem `items-center`
+                  contra a foto de 64px e empurrava o selo pro topo da
+                  foto em vez de alinhar com o texto). Só aparece
+                  abaixo de `sm:`; a versão desktop (coluna própria,
+                  mais abaixo) é a exibida a partir daí. */}
+              <span
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold sm:hidden ${
+                  product.status === "published" ? "bg-success-bg text-success-fg dark:bg-success-solid/15" : "bg-warning-bg text-warning-solid dark:bg-warning-solid/15"
+                }`}
+              >
+                {product.status === "published" ? "Publicado" : "Rascunho"}
+              </span>
+            </div>
+            {(secondaryLine || !product.disponivel) && (
+              <span className="flex min-w-0 items-center gap-2.5 text-xs">
+                {secondaryLine && <span className="truncate text-gray-500 dark:text-gray-400">{secondaryLine}</span>}
+                {!product.disponivel && (
+                  <span className="flex shrink-0 items-center gap-1 text-error-fg transition-colors duration-150">
+                    <span className="h-1.5 w-1.5 rounded-full bg-error-solid" aria-hidden="true" />
+                    Esgotado
+                  </span>
+                )}
+              </span>
+            )}
+          </div>
+
+          {/* Preço + Promocional: `basis-full` força quebra de linha no
+              mobile (linha própria, full-width, sem o truque de
+              centralização absoluta); a partir de `sm:` volta a ser um
+              item de linha normal (`sm:basis-auto sm:flex-1`), com o
+              par de inputs centralizado na largura TOTAL do card via
+              `absolute` (referência = `<li>` relative, inalterado). */}
+          <div className="flex basis-full items-start justify-between gap-2 sm:basis-auto sm:flex-1 sm:items-center sm:justify-center">
+            <div className="flex gap-2 sm:absolute sm:left-1/2 sm:-translate-x-1/2">
+              {/* Rótulos abaixo do input SÓ no mobile (`sm:hidden`) —
+                  lá não existe a guia de colunas (escondida abaixo de
+                  `sm:`), então sem isso o par de pills não tinha
+                  identificação nenhuma de qual é qual. */}
+              <div className="flex flex-col items-center gap-1">
+                <ProductPriceInput productId={product.id} price={product.price} />
+                <span className="text-[10px] text-gray-500 sm:hidden dark:text-gray-400">Preço</span>
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <ProductPromoPriceInput
+                  productId={product.id}
+                  price={product.price}
+                  promotionalPrice={product.promotional_price}
+                />
+                <span className="text-[10px] text-gray-500 sm:hidden dark:text-gray-400">Promocional</span>
+              </div>
+            </div>
+
+            {/* Gatilho de "mais ações" — SÓ mobile, mesma linha dos
+                inputs (pedido explícito do usuário). No desktop
+                (`sm:hidden` dentro do próprio componente) não renderiza
+                nada visível.
+                A marca de seleção vem colada à esquerda dele: no celular ela sai da
+                frente da foto para não roubar largura do nome, e aqui reaproveita um
+                canto que já era de controle, não de conteúdo. */}
+            <div className="flex shrink-0 items-center gap-2">
+              <Marca
+                marcado={selecionado}
+                onMudar={aoAlternar}
+                rotulo={`Selecionar ${product.name}`}
+                className="sm:hidden"
+              />
+              <ProductMobileActionsMenu
+                product={product}
+                storeSlug={storeSlug}
+                storeName={storeName}
+                onDelete={onExcluir}
+              />
+            </div>
+          </div>
+
+          {/* Status: versão DESKTOP (coluna própria) — oculta no
+              mobile, onde a versão ao lado do nome (acima) já cobre. */}
+          <span
+            className={`hidden shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold sm:inline-flex ${
+              product.status === "published" ? "bg-success-bg text-success-fg dark:bg-success-solid/15" : "bg-warning-bg text-warning-solid dark:bg-warning-solid/15"
+            }`}
+          >
+            {product.status === "published" ? "Publicado" : "Rascunho"}
+          </span>
+
+          <div className="hidden shrink-0 items-center gap-3 sm:flex">
+            <ShareVitrineButton
+              url={buildProductUrl(storeSlug, product.id)}
+              storeName={storeName}
+              label={null}
+              ariaLabel={`Compartilhar ${product.name}`}
+              iconClassName="h-4 w-4"
+              strokeWidth={2}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-700 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-gray-50"
+            />
+            <Link
+              href={`/admin/produtos/${product.id}/editar`}
+              aria-label={`Editar ${product.name}`}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-700 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-gray-50"
+            >
+              <Pencil className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+            </Link>
+            <button
+              type="button"
+              onClick={() => onExcluir(product)}
+              aria-label={`Excluir ${product.name}`}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-700 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-gray-50"
+            >
+              <Trash2 className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+            </button>
+          </div>
+        </li>
+      );
+});
+
 export function ProductList({ products, storeSlug, storeName }: ProductListProps) {
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -432,14 +651,20 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
     setRotulo({ n: marcados.length, total: idsVisiveis.length, todos: todosMarcados });
   }
 
-  function alternar(id: string) {
+  /* `useCallback` sem dependências nos dois callbacks que descem para a linha: é o que
+     mantém a identidade estável entre renders e faz o `memo` de `LinhaProduto` valer.
+     Sem isso, cada render do pai criaria funções novas, a comparação de props falharia em
+     todas as linhas e as 990 re-renderizariam de novo. O updater funcional do
+     `setSelecionados` é o que permite a lista de dependências vazia — ele lê o valor atual
+     do próprio React, não do closure. */
+  const alternar = useCallback((id: string) => {
     setSelecionados((atual) => {
       const novo = new Set(atual);
       if (novo.has(id)) novo.delete(id);
       else novo.add(id);
       return novo;
     });
-  }
+  }, []);
 
   /** Marca ou desmarca TUDO O QUE ESTÁ VISÍVEL — o resultado do filtro atual, nada além. */
   function alternarTodos() {
@@ -489,11 +714,11 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
     });
   }
 
-  function openDeleteDialog(product: ProductListItem) {
+  const openDeleteDialog = useCallback((product: ProductListItem) => {
     setDeleteTarget(product);
     setExcluirLote(false);
     dialogRef.current?.showModal();
-  }
+  }, []);
 
   function abrirExclusaoEmLote() {
     setDeleteTarget(null);
@@ -585,192 +810,19 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
         </div>
 
         <ul className="flex flex-col gap-3">
-        {products.map((product, index) => {
-          const brandLabel = product.brand === "Outra" && product.brand_other ? product.brand_other : product.brand;
-          const secondaryLine = [brandLabel, product.line].filter(Boolean).join(" · ");
-
-          return (
-            <li
-              key={product.id}
-              className={`relative flex flex-wrap items-center gap-3 border bg-white p-3 shadow-sm transition-[border-color,opacity] duration-150 dark:bg-gray-900 ${
-                index === 0 ? "rounded-[2rem] sm:rounded-b-[2rem] sm:rounded-t-none sm:border-t-0" : "rounded-[2rem]"
-              } ${
-                selecionados.has(product.id)
-                  ? "border-primary/60 dark:border-primary/60"
-                  : "border-gray-200 dark:border-gray-800"
-              } ${emAndamento && selecionados.has(product.id) ? "opacity-50" : ""}`}
-            >
-              {/* Estrutura FLAT (sem wrapper `contents` — `sm:contents` não
-                  estava gerando regra CSS neste dev server, mesmo bug de
-                  cache do `gap-10`/`fill-[...]` mais acima nesta sessão):
-                  todo mundo é filho DIRETO do `<li>` (`flex flex-wrap`), e
-                  só o grupo de preço força quebra de linha no mobile via
-                  `basis-full` — sem espaço sobrando na linha, os grupos
-                  seguintes (status/ações) são empurrados pro flex-wrap
-                  automaticamente, sem precisar de `basis-full` neles
-                  também. */}
-              {/* A marca fica ANTES da foto, em coluna própria: sobreposta à miniatura ela
-                  tapava justamente o par de chuteiras que o lojista precisa reconhecer para
-                  saber o que está marcando. Ocupa espaço fixo na linha (marcado ou não),
-                  então nada pula de lugar ao selecionar.
-                  Só a partir de `sm:` — no celular esta coluna custava 32px da largura do
-                  nome, que já truncava; lá a marca vive ao lado do menu "⋮" (mais abaixo).
-                  O `<span>` em volta é que some/aparece: mexer no `display` por dentro do
-                  componente brigaria com o `inline-flex` que ele já aplica. */}
-              <span className="hidden shrink-0 sm:inline-flex">
-                <Marca
-                  marcado={selecionados.has(product.id)}
-                  onMudar={() => alternar(product.id)}
-                  rotulo={`Selecionar ${product.name}`}
-                />
-              </span>
-
-              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[1.25rem] bg-gray-100 dark:bg-gray-800">
-                {product.coverUrl ? (
-                  <Image
-                    src={product.coverUrl}
-                    alt={product.name}
-                    fill
-                    sizes="64px"
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center">
-                    <ImageOff className="h-6 w-6 text-gray-400 dark:text-gray-500" aria-hidden="true" />
-                  </div>
-                )}
-              </div>
-
-              {/* `style maxWidth` (não classe `sm:max-w-*` — mesmo bug de
-                  cache do Tailwind que já apareceu com `gap-10`/`fill-
-                  [...]`/`sm:contents` nesta sessão dev, a classe não gerava
-                  regra CSS nenhuma): sem teto, essa coluna cresce até o
-                  tamanho do próprio texto (o par preço/promocional, ao
-                  lado, não tem largura de conteúdo real — os inputs são
-                  absolutos — então "sobra" espaço de mais pro nome, que
-                  nunca truncava de verdade). Um nome comprido chegava a
-                  poucos px do preço, quase colado. O teto força o "…" e
-                  mantém respiro fixo, não importa o tamanho do nome. 320px
-                  é generoso o bastante pra nunca apertar o mobile (onde a
-                  coluna já é naturalmente mais estreita que isso). */}
-              <div className="flex min-w-0 flex-1 flex-col gap-0.5" style={{ maxWidth: "320px" }}>
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <span className="min-w-0 truncate font-display font-medium text-gray-900 dark:text-gray-50">{product.name}</span>
-                  {/* Status: versão MOBILE — vive na MESMA linha flex do
-                      nome (não da `<li>` inteira, que tem `items-center`
-                      contra a foto de 64px e empurrava o selo pro topo da
-                      foto em vez de alinhar com o texto). Só aparece
-                      abaixo de `sm:`; a versão desktop (coluna própria,
-                      mais abaixo) é a exibida a partir daí. */}
-                  <span
-                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold sm:hidden ${
-                      product.status === "published" ? "bg-success-bg text-success-fg dark:bg-success-solid/15" : "bg-warning-bg text-warning-solid dark:bg-warning-solid/15"
-                    }`}
-                  >
-                    {product.status === "published" ? "Publicado" : "Rascunho"}
-                  </span>
-                </div>
-                {(secondaryLine || !product.disponivel) && (
-                  <span className="flex min-w-0 items-center gap-2.5 text-xs">
-                    {secondaryLine && <span className="truncate text-gray-500 dark:text-gray-400">{secondaryLine}</span>}
-                    {!product.disponivel && (
-                      <span className="flex shrink-0 items-center gap-1 text-error-fg transition-colors duration-150">
-                        <span className="h-1.5 w-1.5 rounded-full bg-error-solid" aria-hidden="true" />
-                        Esgotado
-                      </span>
-                    )}
-                  </span>
-                )}
-              </div>
-
-              {/* Preço + Promocional: `basis-full` força quebra de linha no
-                  mobile (linha própria, full-width, sem o truque de
-                  centralização absoluta); a partir de `sm:` volta a ser um
-                  item de linha normal (`sm:basis-auto sm:flex-1`), com o
-                  par de inputs centralizado na largura TOTAL do card via
-                  `absolute` (referência = `<li>` relative, inalterado). */}
-              <div className="flex basis-full items-start justify-between gap-2 sm:basis-auto sm:flex-1 sm:items-center sm:justify-center">
-                <div className="flex gap-2 sm:absolute sm:left-1/2 sm:-translate-x-1/2">
-                  {/* Rótulos abaixo do input SÓ no mobile (`sm:hidden`) —
-                      lá não existe a guia de colunas (escondida abaixo de
-                      `sm:`), então sem isso o par de pills não tinha
-                      identificação nenhuma de qual é qual. */}
-                  <div className="flex flex-col items-center gap-1">
-                    <ProductPriceInput productId={product.id} price={product.price} />
-                    <span className="text-[10px] text-gray-500 sm:hidden dark:text-gray-400">Preço</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-1">
-                    <ProductPromoPriceInput
-                      productId={product.id}
-                      price={product.price}
-                      promotionalPrice={product.promotional_price}
-                    />
-                    <span className="text-[10px] text-gray-500 sm:hidden dark:text-gray-400">Promocional</span>
-                  </div>
-                </div>
-
-                {/* Gatilho de "mais ações" — SÓ mobile, mesma linha dos
-                    inputs (pedido explícito do usuário). No desktop
-                    (`sm:hidden` dentro do próprio componente) não renderiza
-                    nada visível.
-                    A marca de seleção vem colada à esquerda dele: no celular ela sai da
-                    frente da foto para não roubar largura do nome, e aqui reaproveita um
-                    canto que já era de controle, não de conteúdo. */}
-                <div className="flex shrink-0 items-center gap-2">
-                  <Marca
-                    marcado={selecionados.has(product.id)}
-                    onMudar={() => alternar(product.id)}
-                    rotulo={`Selecionar ${product.name}`}
-                    className="sm:hidden"
-                  />
-                  <ProductMobileActionsMenu
-                    product={product}
-                    storeSlug={storeSlug}
-                    storeName={storeName}
-                    onDelete={openDeleteDialog}
-                  />
-                </div>
-              </div>
-
-              {/* Status: versão DESKTOP (coluna própria) — oculta no
-                  mobile, onde a versão ao lado do nome (acima) já cobre. */}
-              <span
-                className={`hidden shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold sm:inline-flex ${
-                  product.status === "published" ? "bg-success-bg text-success-fg dark:bg-success-solid/15" : "bg-warning-bg text-warning-solid dark:bg-warning-solid/15"
-                }`}
-              >
-                {product.status === "published" ? "Publicado" : "Rascunho"}
-              </span>
-
-              <div className="hidden shrink-0 items-center gap-3 sm:flex">
-                <ShareVitrineButton
-                  url={buildProductUrl(storeSlug, product.id)}
-                  storeName={storeName}
-                  label={null}
-                  ariaLabel={`Compartilhar ${product.name}`}
-                  iconClassName="h-4 w-4"
-                  strokeWidth={2}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-700 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-gray-50"
-                />
-                <Link
-                  href={`/admin/produtos/${product.id}/editar`}
-                  aria-label={`Editar ${product.name}`}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-700 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-gray-50"
-                >
-                  <Pencil className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => openDeleteDialog(product)}
-                  aria-label={`Excluir ${product.name}`}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-700 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-gray-50"
-                >
-                  <Trash2 className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
-                </button>
-              </div>
-            </li>
-          );
-        })}
+        {products.map((product, index) => (
+          <LinhaProduto
+            key={product.id}
+            product={product}
+            index={index}
+            selecionado={selecionados.has(product.id)}
+            ocupado={emAndamento && selecionados.has(product.id)}
+            storeSlug={storeSlug}
+            storeName={storeName}
+            onAlternar={alternar}
+            onExcluir={openDeleteDialog}
+          />
+        ))}
         </ul>
 
         {/* Espaço reservado embaixo do último card ENQUANTO a barra está no ar: ela é
@@ -794,7 +846,7 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
         renderização. Sem transparência o blur não teria o que borrar, então saiu junto.
       */}
       <div
-        className={`vt-lote ${temSelecao ? "on" : ""} fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white px-4 py-3 md:left-sidebar dark:border-gray-800 dark:bg-gray-900`}
+        className={`vt-lote ${temSelecao ? "on" : ""} fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white px-4 py-3 sm:py-4 md:left-sidebar dark:border-gray-800 dark:bg-gray-900`}
       >
         {/* No celular os dois grupos não cabem lado a lado e quebram em duas linhas —
             com `justify-between` cada linha ficava encostada na esquerda, com um vazio
