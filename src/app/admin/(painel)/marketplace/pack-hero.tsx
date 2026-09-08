@@ -172,16 +172,17 @@ export function PackHero({
 
             <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
               {/*
-                Nada a OFERECER para quem já pegou as 10 e não comprou o pacote: some o selo
-                e somem os dois botões. O "Ver chuteiras" logo abaixo fica, porque é
-                navegação para o acervo, não oferta.
+                Esta área NUNCA fica vazia: ou diz que o pacote está liberado, ou oferece a
+                compra. O que some depois de resgatar as 10 é só o "Teste grátis", porque
+                esse já foi usado — a compra continua de pé, que é o caminho de quem gostou
+                da amostra.
               */}
               {temAcesso ? (
                 <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-success-solid px-4 text-sm font-semibold text-white sm:px-5">
                   <Check className="h-4 w-4" strokeWidth={3} aria-hidden="true" />
                   Pacote liberado
                 </span>
-              ) : !jaResgatouTudo ? (
+              ) : (
                 <>
                   {/* Âncora real, nunca window.open — webviews do Instagram e do
                       WhatsApp bloqueiam popup por JS (CLAUDE.md). */}
@@ -195,6 +196,7 @@ export function PackHero({
                     Comprar
                   </a>
 
+                  {!jaResgatouTudo && (
                   <button
                     type="button"
                     onClick={() => setAbrirAmostra(true)}
@@ -203,8 +205,9 @@ export function PackHero({
                     <Gift className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
                     Teste grátis
                   </button>
+                  )}
                 </>
-              ) : null}
+              )}
 
               <Link
                 href="/admin/marketplace/albuns"
