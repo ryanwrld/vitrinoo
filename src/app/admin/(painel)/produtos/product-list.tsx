@@ -1034,7 +1034,7 @@ export function ProductList({ products, storeSlug, storeName, pagina, totalPagin
         {/* UM diálogo para os dois casos. O texto muda; o aviso sobre métricas e o padrão de
             confirmação são os mesmos, porque a consequência é a mesma. */}
         <div>
-          <h2 className="font-display text-xl font-medium text-gray-900 dark:text-gray-50">
+          <h2 className="text-center font-display text-xl font-medium text-gray-900 dark:text-gray-50">
             {excluirLote
               ? `Excluir ${quantidadeAlvo} ${quantidadeAlvo === 1 ? "produto" : "produtos"}?`
               : `Excluir ${deleteTarget?.name}?`}
@@ -1045,19 +1045,6 @@ export function ProductList({ products, storeSlug, storeName, pagina, totalPagin
                 ? "Isso vai remover o produto selecionado e todas as fotos dele da sua vitrine. Essa ação não pode ser desfeita."
                 : `Isso vai remover os ${quantidadeAlvo} produtos selecionados e todas as fotos deles da sua vitrine. Essa ação não pode ser desfeita.`
               : "Isso vai remover o produto e todas as fotos da sua vitrine. Essa ação não pode ser desfeita."}
-          </p>
-          {/* Tranquiliza sem prometer demais: desde a migration 0021 o
-              histórico de cliques/visualizações deste produto SOBREVIVE à
-              exclusão (ON DELETE SET NULL) e continua contando nos números
-              agregados da loja — só o vínculo com este produto específico
-              some. Isso é o que faz "Tamanhos mais pedidos" continuar
-              confiável mesmo depois de limpar o catálogo. Um revendedor sem
-              essa garantia hesita antes de excluir produtos antigos (medo de
-              "perder os dados"), o que é fricção desnecessária — dizer isso
-              de forma explícita reduz essa hesitação. */}
-          <p className="mt-2 max-w-sm text-xs text-gray-400 dark:text-gray-500">
-            As visualizações e os cliques já registrados continuam contando nas suas métricas gerais (ex.: tamanhos mais
-            pedidos) — só deixam de aparecer vinculados a este produto.
           </p>
           <form method="dialog" className="mt-4 flex gap-3">
             <button

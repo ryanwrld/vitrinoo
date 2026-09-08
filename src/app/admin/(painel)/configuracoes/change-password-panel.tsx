@@ -83,7 +83,7 @@ export function ChangePasswordPanel() {
       >
         <div className="flex flex-col gap-4">
           <div>
-            <h2 className="font-display text-xl font-medium text-gray-900 dark:text-gray-50">
+            <h2 className="text-center font-display text-xl font-medium text-gray-900 dark:text-gray-50">
               Alterar sua senha
             </h2>
             <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">

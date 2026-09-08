@@ -776,7 +776,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
         className="dialog-modal m-auto rounded-[2rem] bg-white p-6 text-gray-900 shadow-lg backdrop:bg-black/45 backdrop:backdrop-blur-[2px] dark:bg-gray-900 dark:text-gray-50"
       >
         <div>
-          <h2 className="font-display text-xl font-medium text-gray-900 dark:text-gray-50">
+          <h2 className="text-center font-display text-xl font-medium text-gray-900 dark:text-gray-50">
             Trocar o link da sua vitrine?
           </h2>
           <p className="mt-2 max-w-sm text-sm text-gray-500 dark:text-gray-400">
