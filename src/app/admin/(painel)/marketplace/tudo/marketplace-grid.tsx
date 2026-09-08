@@ -118,9 +118,12 @@ export function MarketplaceGrid({
 
       {/* A barra de seleção não existe para quem não pode escolher — o estado
           `selecionados` fica sempre vazio nesse caso, mas a guarda é explícita
-          para a intenção não depender de um efeito colateral. */}
+          para a intenção não depender de um efeito colateral.
+          Fundo OPACO, sem `backdrop-blur`: a lista rola por baixo, e com a barra
+          translúcida o card que passava atrás aparecia borrado dentro dela — lia
+          como falha de renderização, não como vidro. */}
       {podeEscolher && selecionados.size > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur md:left-64 dark:border-gray-800 dark:bg-gray-900/95">
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white px-4 py-3 md:left-64 dark:border-gray-800 dark:bg-gray-900">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="text-sm font-semibold text-gray-900 dark:text-gray-50">
               {selecionados.size} {selecionados.size === 1 ? "selecionada" : "selecionadas"}
