@@ -590,12 +590,18 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
               {/* A marca fica ANTES da foto, em coluna própria: sobreposta à miniatura ela
                   tapava justamente o par de chuteiras que o lojista precisa reconhecer para
                   saber o que está marcando. Ocupa espaço fixo na linha (marcado ou não),
-                  então nada pula de lugar ao selecionar. */}
-              <Marca
-                marcado={selecionados.has(product.id)}
-                onMudar={() => alternar(product.id)}
-                rotulo={`Selecionar ${product.name}`}
-              />
+                  então nada pula de lugar ao selecionar.
+                  Só a partir de `sm:` — no celular esta coluna custava 32px da largura do
+                  nome, que já truncava; lá a marca vive ao lado do menu "⋮" (mais abaixo).
+                  O `<span>` em volta é que some/aparece: mexer no `display` por dentro do
+                  componente brigaria com o `inline-flex` que ele já aplica. */}
+              <span className="hidden shrink-0 sm:inline-flex">
+                <Marca
+                  marcado={selecionados.has(product.id)}
+                  onMudar={() => alternar(product.id)}
+                  rotulo={`Selecionar ${product.name}`}
+                />
+              </span>
 
               <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[1.25rem] bg-gray-100 dark:bg-gray-800">
                 {product.coverUrl ? (
@@ -684,13 +690,24 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
                 {/* Gatilho de "mais ações" — SÓ mobile, mesma linha dos
                     inputs (pedido explícito do usuário). No desktop
                     (`sm:hidden` dentro do próprio componente) não renderiza
-                    nada visível. */}
-                <ProductMobileActionsMenu
-                  product={product}
-                  storeSlug={storeSlug}
-                  storeName={storeName}
-                  onDelete={openDeleteDialog}
-                />
+                    nada visível.
+                    A marca de seleção vem colada à esquerda dele: no celular ela sai da
+                    frente da foto para não roubar largura do nome, e aqui reaproveita um
+                    canto que já era de controle, não de conteúdo. */}
+                <div className="flex shrink-0 items-center gap-2">
+                  <Marca
+                    marcado={selecionados.has(product.id)}
+                    onMudar={() => alternar(product.id)}
+                    rotulo={`Selecionar ${product.name}`}
+                    className="sm:hidden"
+                  />
+                  <ProductMobileActionsMenu
+                    product={product}
+                    storeSlug={storeSlug}
+                    storeName={storeName}
+                    onDelete={openDeleteDialog}
+                  />
+                </div>
               </div>
 
               {/* Status: versão DESKTOP (coluna própria) — oculta no
