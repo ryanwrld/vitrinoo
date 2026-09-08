@@ -77,9 +77,7 @@ export function DeleteAccountPanel() {
               Excluir sua conta para sempre?
             </h2>
             <p className="mt-2 text-center text-sm text-gray-500 dark:text-gray-400">
-              Sua vitrine sai do ar na hora e todo link que você já mandou para clientes deixa de
-              funcionar. Produtos, fotos e métricas são apagados junto. Não é possível desfazer nem
-              recuperar depois.
+              Sua vitrine sai do ar e produtos, fotos e métricas são apagados. Não dá para desfazer.
             </p>
           </div>
 
