@@ -94,26 +94,49 @@ export async function queryProducts(
 
   const productIds = products.map((product) => product.id);
 
-  const { data: sizeRows } = await supabase
-    .from("product_sizes")
-    .select("product_id, available")
-    .in("product_id", productIds);
+  /*
+    EM BLOCOS, não de uma vez: esta lista NÃO é paginada (a vitrine pública é, ver
+    public-list.ts), então numa loja que importou o pacote inteiro `productIds` chega com
+    990 itens. O PostgREST recebe os ids na query string — a URL passava de 35KB e o
+    gateway devolvia 400, deixando `sizeRows`/`photoRows` vazios: TODO produto aparecia
+    como "Esgotado" e sem foto de capa. Cada bloco também mantém a resposta abaixo do teto
+    de 1000 linhas por requisição (150 produtos = no máximo 750 fotos e ~1200 tamanhos, por
+    isso os tamanhos vão em blocos menores).
+  */
+  const emBlocos = <T,>(itens: T[], tamanho: number): T[][] => {
+    const blocos: T[][] = [];
+    for (let i = 0; i < itens.length; i += tamanho) blocos.push(itens.slice(i, i + tamanho));
+    return blocos;
+  };
 
-  const { data: photoRows } = await supabase
-    .from("product_photos")
-    .select("product_id, storage_path, position, source")
-    .in("product_id", productIds)
-    .order("position", { ascending: true });
+  const sizeRows: { product_id: string; available: boolean }[] = [];
+  for (const bloco of emBlocos(productIds, 80)) {
+    const { data } = await supabase
+      .from("product_sizes")
+      .select("product_id, available")
+      .in("product_id", bloco);
+    if (data) sizeRows.push(...data);
+  }
+
+  const photoRows: { product_id: string; storage_path: string; position: number; source: string | null }[] = [];
+  for (const bloco of emBlocos(productIds, 150)) {
+    const { data } = await supabase
+      .from("product_photos")
+      .select("product_id, storage_path, position, source")
+      .in("product_id", bloco)
+      .order("position", { ascending: true });
+    if (data) photoRows.push(...data);
+  }
 
   const availableProductIds = new Set(
-    (sizeRows ?? []).filter((row) => row.available).map((row) => row.product_id)
+    sizeRows.filter((row) => row.available).map((row) => row.product_id)
   );
 
   // photoRows já vem ordenado por position asc — a primeira ocorrência por
   // product_id encontrada no loop é sempre a de menor position (capa, D-11).
   const coverPathByProductId = new Map<string, string>();
   const coverSourceByProductId = new Map<string, string>();
-  for (const photo of photoRows ?? []) {
+  for (const photo of photoRows) {
     if (!coverPathByProductId.has(photo.product_id)) {
       coverPathByProductId.set(photo.product_id, photo.storage_path);
       coverSourceByProductId.set(photo.product_id, photo.source ?? "own");
