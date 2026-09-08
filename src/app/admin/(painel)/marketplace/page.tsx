@@ -34,11 +34,19 @@ export default async function MarketplacePage() {
   const [pack, headerFeed, { data: importados }, sorteadas] = await Promise.all([
     queryPackPrincipal(supabase),
     queryRecentActivity(supabase, store.id, HEADER_FEED_LIMIT),
+    /*
+      SEM o filtro de "produto ainda existe".
+
+      Apagar um produto zera o vínculo da linha de importação, mas a linha fica (a migration
+      0021 preserva o histórico de propósito). Filtrando por produto vivo, a tela concluía
+      que a vaga do sorteio tinha voltado: quem resgatou as 10 e apagou duas era convidado a
+      resgatar de novo. A pergunta certa não é "quantas ainda estão na loja", é "o que já foi
+      resgatado alguma vez".
+    */
     supabase
       .from("marketplace_imports")
       .select("marketplace_product_id")
-      .eq("store_id", store.id)
-      .not("product_id", "is", null),
+      .eq("store_id", store.id),
     // O sorteio vem do banco (migration 0029) e é gravado na primeira leitura:
     // a mesma loja vê sempre as mesmas 10, e é essa lista que o trigger de quota
     // usa para autorizar a importação. Sortear aqui em JavaScript deixaria a
@@ -47,6 +55,8 @@ export default async function MarketplacePage() {
   ]);
 
   const jaImportados = new Set((importados ?? []).map((i) => i.marketplace_product_id));
+  // As 10 do sorteio já foram todas resgatadas? É o que decide se o cartão ainda oferece algo.
+  const jaResgatouTudo = sorteadas.length > 0 && sorteadas.every((item) => jaImportados.has(item.id));
 
   const amostra = sorteadas.map((item) => ({
     id: item.id,
@@ -115,7 +125,7 @@ export default async function MarketplacePage() {
             capaUrl={urlDe(pack.coverPath)}
             totalProdutos={pack.totalProdutos}
             temAcesso={Boolean(store.marketplace_access)}
-            totalImportados={jaImportados.size}
+            jaResgatouTudo={jaResgatouTudo}
             nomeLoja={store.name}
             storeId={store.id}
             amostra={amostra}

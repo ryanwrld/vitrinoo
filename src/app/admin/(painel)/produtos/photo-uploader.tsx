@@ -601,7 +601,7 @@ function PhotoSlotItem({ slot, isCover, isActive, onRemove, onSelect }: PhotoSlo
         {...attributes}
         {...listeners}
         className="absolute inset-0 z-0 h-full w-full touch-none"
-        aria-label={`Ver foto${isCover ? " (capa)" : ""} — arraste para reordenar`}
+        aria-label={`Ver foto${isCover ? " (capa)" : ""}, arraste para reordenar`}
       >
         {slot.kind === "saved" ? (
           <Image src={slot.url} alt="" fill sizes="20vw" className="object-cover" />

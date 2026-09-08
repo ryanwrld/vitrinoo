@@ -40,7 +40,7 @@ export function PackHero({
   capaUrl,
   totalProdutos,
   temAcesso,
-  totalImportados,
+  jaResgatouTudo,
   nomeLoja,
   storeId,
   amostra,
@@ -52,7 +52,8 @@ export function PackHero({
   capaUrl: string | null;
   totalProdutos: number;
   temAcesso: boolean;
-  totalImportados: number;
+  /** As 10 do sorteio já foram resgatadas alguma vez, mesmo que depois apagadas. */
+  jaResgatouTudo: boolean;
   nomeLoja: string | null;
   storeId: string;
   amostra: ItemAmostra[];
@@ -78,7 +79,7 @@ export function PackHero({
   // Mensagem montada inteira e codificada UMA vez — regra rígida do CLAUDE.md
   // para qualquer link de WhatsApp do projeto.
   const identificacao = nomeLoja ? `Sou da loja ${nomeLoja}` : "Sou um lojista";
-  const valor = preco !== null ? ` — ${brl(preco)}` : "";
+  const valor = preco !== null ? `, ${brl(preco)}` : "";
   const mensagem = `Olá! ${identificacao} e quero adquirir o ${nome} (${totalProdutos} chuteiras${valor}).\n\nComo faço pra liberar?`;
   const hrefComprar = `https://wa.me/${SUPPORT_WHATSAPP_NUMBER}?text=${encodeURIComponent(mensagem)}`;
 
@@ -122,11 +123,9 @@ export function PackHero({
                   <Sparkles className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />
                   Modelos Prontos
                 </span>
-                {/* Mesmos tokens de sucesso do selo "Teste grátis": o
-                    `--color-success-fg` já troca sozinho no escuro pelo escopo
-                    `.dark .admin-scope`, sem precisar de variante `dark:` no
-                    texto — só o fundo alterna aqui. */}
-                <span className="inline-flex items-center rounded-full bg-success-bg px-2.5 py-1 text-xs font-semibold text-success-fg dark:bg-success-solid/15">
+                {/* Mesmas classes do selo ao lado: os dois ficam lado a lado e leem como
+                    um par só quando dividem a mesma cor. */}
+                <span className="inline-flex items-center rounded-full bg-primary-subtle px-2.5 py-1 text-xs font-semibold text-primary dark:bg-blue-400/15 dark:text-blue-300">
                   Novo
                 </span>
               </div>
@@ -171,31 +170,18 @@ export function PackHero({
               </div>
             )}
 
-            {/*
-              A contagem de chuteiras e álbuns saiu daqui a pedido do dono: a
-              descrição já diz "+900", e repetir o número em dois lugares logo
-              abaixo do preço competia com ele. O que sobra é só o que muda por
-              loja — quantas já foram levadas.
-            */}
-            {totalImportados > 0 && (
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
-                {/* Verde inteiro — ícone e texto no mesmo `text-success-fg`, que
-                    já alterna sozinho entre os temas. É confirmação de algo
-                    concluído, e o mesmo verde dos selos amarra a leitura. */}
-                <span className="inline-flex items-center gap-1 font-medium text-success-fg">
-                  <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" />
-                  {totalImportados} modelos já adicionados
-                </span>
-              </div>
-            )}
-
             <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
+              {/*
+                Nada a OFERECER para quem já pegou as 10 e não comprou o pacote: some o selo
+                e somem os dois botões. O "Ver chuteiras" logo abaixo fica, porque é
+                navegação para o acervo, não oferta.
+              */}
               {temAcesso ? (
-                <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary-subtle px-5 text-sm font-semibold text-primary dark:bg-blue-400/15 dark:text-blue-300">
+                <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-success-solid px-5 text-sm font-semibold text-white">
                   <Check className="h-4 w-4" strokeWidth={3} aria-hidden="true" />
                   Pacote liberado
                 </span>
-              ) : (
+              ) : !jaResgatouTudo ? (
                 <>
                   {/* Âncora real, nunca window.open — webviews do Instagram e do
                       WhatsApp bloqueiam popup por JS (CLAUDE.md). */}
@@ -218,7 +204,7 @@ export function PackHero({
                     Teste grátis
                   </button>
                 </>
-              )}
+              ) : null}
 
               <Link
                 href="/admin/marketplace/albuns"

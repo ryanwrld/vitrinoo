@@ -148,7 +148,7 @@ export function OnboardingWizard({ provisionalSlug }: { provisionalSlug: string 
         <div>
           <h1 className="font-display text-2xl font-extrabold text-gray-900">Configure sua vitrine</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Só o essencial para começar — você pode ajustar tudo depois no painel.
+            Só o essencial para começar. Você pode ajustar tudo depois no painel.
           </p>
         </div>
 
@@ -199,7 +199,7 @@ export function OnboardingWizard({ provisionalSlug }: { provisionalSlug: string 
               sem feedback visual imediato" que o próprio produto evita em
               todas as outras telas. */}
           <span className="text-xs text-gray-500">
-            {logoFile ? logoFile.name : "PNG, JPG ou WEBP — obrigatório para continuar"}
+            {logoFile ? logoFile.name : "PNG, JPG ou WEBP, obrigatório para continuar"}
           </span>
         </div>
 

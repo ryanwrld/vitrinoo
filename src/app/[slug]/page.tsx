@@ -108,7 +108,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     ? getProductImagePublicUrl(supabase, coverPhoto.storage_path, coverPhoto.source)
     : null;
   const title = detail.line ? `${detail.name} - ${detail.line}` : detail.name;
-  const description = `${formatBRLPrice(detail.price)} — disponível no Vitrinoo`;
+  const description = `${formatBRLPrice(detail.price)}, disponível no Vitrinoo`;
 
   return {
     title,
@@ -304,7 +304,7 @@ export default async function LojaPublicaPage({ params, searchParams }: PageProp
           <EmptyState
             icon="box"
             title="Essa loja ainda não tem produtos"
-            description="Volte em breve — o vendedor está preparando a vitrine."
+            description="Volte em breve. O vendedor está preparando a vitrine."
           />
         )}
       </div>

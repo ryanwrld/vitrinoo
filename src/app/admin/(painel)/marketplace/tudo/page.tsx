@@ -242,7 +242,7 @@ function AvisoPacote({ jaPegouAmostra }: { jaPegouAmostra: boolean }) {
       </p>
       <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
         Ao liberar o pack, TODAS elas entram na sua loja de uma vez, com o preço que você definir
-        por tipo de solado — prontas para os seus clientes verem e comprarem
+        por tipo de solado, prontas para os seus clientes verem e comprarem
         {jaPegouAmostra
           ? " de você."
           : ". (Você também pode experimentar de graça: 10 modelos sorteados para a sua loja.)"}

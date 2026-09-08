@@ -71,7 +71,7 @@ function SlugPreview({ rawSlug, slug }: { rawSlug: string; slug: string }) {
 
   return (
     <p className="text-xs text-warning-fg">
-      Sem espaço, hífen ou acento — vai salvar como <span className="font-medium">/{slug}</span>
+      Sem espaço, hífen ou acento. Vai salvar como <span className="font-medium">/{slug}</span>
     </p>
   );
 }

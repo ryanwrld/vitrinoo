@@ -92,7 +92,7 @@ export const onboardingSchema = z.object({
   instagram: z
     .string()
     .trim()
-    .max(120, "Instagram muito longo — use só o nome de usuário")
+    .max(120, "Instagram muito longo, use só o nome de usuário")
     .optional()
     .or(z.literal("")),
 });

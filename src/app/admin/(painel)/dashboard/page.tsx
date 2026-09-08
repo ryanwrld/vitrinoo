@@ -364,7 +364,7 @@ function RankingList({
               nota sumir: aí o contraste já se explica sozinho. */}
           {items.every((item) => !item.isNew && item.deltaPct === null) && (
             <li className="px-1 pt-1 text-xs text-gray-500 dark:text-gray-400">
-              Ainda não há {days} dias anteriores pra comparar — a variação aparece conforme sua vitrine acumula histórico.
+              Ainda não há {days} dias anteriores pra comparar. A variação aparece conforme sua vitrine acumula histórico.
             </li>
           )}
         </ul>
@@ -421,7 +421,7 @@ export default async function DashboardPage({
             <span className="font-display font-bold text-gray-900 dark:text-gray-50">Sua loja ainda não tem produtos</span>
             <span className="max-w-sm text-sm text-gray-500 dark:text-gray-400">
               Assim que você cadastrar o primeiro, o placar do dia, o feed de atividade e os rankings de tendência
-              começam a aparecer aqui sozinhos — nada pra configurar.
+              começam a aparecer aqui sozinhos, nada pra configurar.
             </span>
           </div>
           <Link
@@ -509,11 +509,11 @@ export default async function DashboardPage({
         <span className={muted ? "text-sm text-gray-400 dark:text-gray-500" : "text-base text-gray-700 dark:text-gray-300"}>
           {item.type === "click" ? (
             <>
-              Alguém clicou em <b className={boldClass}>&quot;Pedir agora&quot;</b> — {item.productName}
+              Alguém clicou em <b className={boldClass}>&quot;Pedir agora&quot;</b>, {item.productName}
             </>
           ) : (
             <>
-              <b className={boldClass}>{item.count} visualizaç{item.count > 1 ? "ões" : "ão"}</b>{muted ? "" : ` nova${item.count > 1 ? "s" : ""}`} — {item.productName}
+              <b className={boldClass}>{item.count} visualizaç{item.count > 1 ? "ões" : "ão"}</b>{muted ? "" : ` nova${item.count > 1 ? "s" : ""}`}, {item.productName}
             </>
           )}
           <span className={`mt-0.5 block text-gray-400 dark:text-gray-500 ${muted ? "text-xs" : "text-sm"}`}>{formatRelativeTime(item.createdAt)}</span>
@@ -558,12 +558,12 @@ export default async function DashboardPage({
             horizontal e o parágrafo quebra naturalmente, sem precisar de
             <br> nem cap de ch. */}
         <span className="max-w-[50ch] text-sm text-gray-500 lg:hidden dark:text-gray-400">
-          Priorize compartilhar sua vitrine — é a ação
+          Priorize compartilhar sua vitrine, é a ação
           <br />
           que mais gera resultado pra sua loja.
         </span>
         <span className="hidden text-sm text-gray-500 lg:block dark:text-gray-400">
-          Priorize compartilhar sua vitrine — é a ação que mais gera resultado pra sua loja.
+          Priorize compartilhar sua vitrine, é a ação que mais gera resultado pra sua loja.
         </span>
       </div>
       <ShareVitrineButton
@@ -588,7 +588,7 @@ export default async function DashboardPage({
       </span>
       <span className="font-display text-lg font-semibold text-gray-900 dark:text-gray-50">Movimento parado nas últimas 24h?</span>
       <span className="max-w-[50ch] text-sm text-gray-500 dark:text-gray-400">
-        Priorize compartilhar sua vitrine — é a ação
+        Priorize compartilhar sua vitrine, é a ação
         <br />
         que mais gera resultado pra sua loja.
       </span>
@@ -832,7 +832,7 @@ export default async function DashboardPage({
               <>
                 Compartilhe o link da sua vitrine
                 <br className="lg:hidden" />
-                <span className="hidden lg:inline"> — </span>é o que traz gente pra ver seus produtos.
+                <span className="hidden lg:inline">, </span>é o que traz gente pra ver seus produtos.
               </>
             }
           />

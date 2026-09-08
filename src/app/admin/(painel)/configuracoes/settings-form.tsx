@@ -589,7 +589,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
             // válida — ela só ficou fora da faixa em que o cabeçalho ainda
             // deixa o catálogo visível, e vai recortar um pouco.
             <p className="text-xs text-warning-fg">
-              Essa imagem é muito {coverRatio && coverRatio <= 3 ? "alta" : "larga"} para o cabeçalho — ela vai
+              Essa imagem é muito {coverRatio && coverRatio <= 3 ? "alta" : "larga"} para o cabeçalho. Ela vai
               aparecer levemente recortada. Um banner mais alongado (tipo 1600×400) encaixa inteiro.
             </p>
           )}
@@ -600,7 +600,7 @@ export function SettingsForm({ store, settings, currentSlug, publicUrl }: Settin
         {/* Só aparece quando falta logo (contas antigas de antes desta regra
             existir) — é o que trava "Salvar alterações", não narrativa. O
             efeito da cor não precisa mais de frase: a prévia acima já mostra. */}
-        {!hasLogo && <p className="text-xs text-error-fg">Logo obrigatória — escolha uma imagem.</p>}
+        {!hasLogo && <p className="text-xs text-error-fg">Logo obrigatória. Escolha uma imagem.</p>}
       </div>
 
       {/* "Preferências": nome, frase e política de estoque. Separado de

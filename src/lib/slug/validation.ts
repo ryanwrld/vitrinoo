@@ -38,6 +38,6 @@ export const slugSchema = z
   .min(3, "O link precisa ter entre 3 e 30 caracteres")
   .max(30, "O link precisa ter entre 3 e 30 caracteres")
   .regex(SLUG_CHARSET_REGEX, "Use apenas letras e números (3 a 30 caracteres).")
-  .refine((value) => !RESERVED_SLUGS.has(value), "Esse link é reservado — escolha outro.");
+  .refine((value) => !RESERVED_SLUGS.has(value), "Esse link é reservado. Escolha outro.");
 
 export type SlugInput = z.infer<typeof slugSchema>;
