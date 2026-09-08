@@ -91,7 +91,7 @@ export function DeleteAccountPanel() {
               value={confirmation}
               onChange={(event) => setConfirmation(event.target.value)}
               autoComplete="off"
-              className="rounded-xl border border-gray-300 bg-white px-3 h-11 text-base text-gray-900 outline-none transition-colors duration-150 focus:border-error-solid focus:ring-2 focus:ring-error-bg placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:placeholder:text-gray-600"
+              className="mx-auto h-11 w-44 rounded-xl border border-gray-300 bg-white px-3 text-center text-base text-gray-900 outline-none transition-colors duration-150 focus:border-error-solid focus:ring-2 focus:ring-error-bg placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50 dark:placeholder:text-gray-600"
             />
           </div>
 
@@ -108,7 +108,7 @@ export function DeleteAccountPanel() {
               onClick={handleDelete}
               className="rounded-full bg-error-solid px-4 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-error-solid-hover active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error-bg focus-visible:ring-offset-2 disabled:pointer-events-none disabled:bg-gray-100 disabled:text-gray-400 dark:disabled:bg-gray-800 dark:disabled:text-gray-600"
             >
-              {isDeleting ? "Excluindo…" : "Excluir para sempre"}
+              {isDeleting ? "Excluindo…" : "Sim, excluir"}
             </button>
           </form>
         </div>
