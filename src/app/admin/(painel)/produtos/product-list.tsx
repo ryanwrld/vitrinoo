@@ -520,15 +520,19 @@ export function ProductList({ products, storeSlug, storeName }: ProductListProps
             layout empilhado próprio (ver bloco `sm:hidden` em cada `<li>`),
             sem colunas fixas fazendo sentido nenhum numa tela de 375px. */}
         <div className="relative hidden items-center gap-3 rounded-t-[2rem] border border-b-0 border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-800 dark:bg-gray-900/40 sm:flex">
-          {/* Controle geral exatamente acima das marcas das linhas — mesma coluna, mesmo
-              `gap-3`. Depois dele, o espaçador de 64px que reserva a coluna da foto. */}
-          <Marca
-            marcado={todosMarcados}
-            parcial={parcial}
-            onMudar={alternarTodos}
-            rotulo={todosMarcados ? "Desmarcar todos os produtos" : "Selecionar todos os produtos"}
-          />
-          <div className="h-0 w-16 shrink-0" />
+          {/* O controle geral fica onde sempre esteve: centrado na COLUNA DA FOTO. Como as
+              linhas ganharam a coluna do seletor antes da foto, o espaçador de 20px vem
+              primeiro — sem ele, o controle ficaria sobre a borda esquerda da foto, e não
+              no meio dela. Depois, "Produto" cai exatamente sobre o nome do produto. */}
+          <div className="h-0 w-5 shrink-0" />
+          <div className="flex w-16 shrink-0 justify-center">
+            <Marca
+              marcado={todosMarcados}
+              parcial={parcial}
+              onMudar={alternarTodos}
+              rotulo={todosMarcados ? "Desmarcar todos os produtos" : "Selecionar todos os produtos"}
+            />
+          </div>
           <span className="flex-1 text-xs font-semibold text-gray-700 dark:text-gray-300">Produto</span>
           <div className="flex flex-1 items-center">
             {/* Mesma técnica de `absolute left-1/2 -translate-x-1/2` do par
