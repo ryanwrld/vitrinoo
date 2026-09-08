@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { memo, useCallback, useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -405,6 +405,11 @@ function Marca({
  * estável (`useCallback` sem dependências, no pai) — senão a comparação de props falha
  * em todas as linhas e voltamos ao ponto de partida.
  */
+/** O que uma ação em lote muda na tela antes de o servidor responder. */
+type MudancaOtimista =
+  | { tipo: "status"; ids: Set<string>; status: string }
+  | { tipo: "remover"; ids: Set<string> };
+
 const LinhaProduto = memo(function LinhaProduto({
   product,
   index,
@@ -630,7 +635,28 @@ export function ProductList({ products, storeSlug, storeName, pagina, totalPagin
   // Sem isso, clicar em "Rascunhar" acendia o rótulo de espera em "Publicar".
   const [acaoEmCurso, setAcaoEmCurso] = useState<"published" | "draft" | null>(null);
 
-  const idsVisiveis = products.map((p) => p.id);
+  /*
+    O QUE A TELA MOSTRA ENQUANTO A AÇÃO VIAJA.
+
+    Publicar ou rascunhar em lote muda o selo de status de dezenas de linhas. Esperar a
+    resposta do servidor para pintar isso é o que fazia o lojista clicar, olhar, e só depois
+    ver o resultado. `useOptimistic` aplica a mudança no mesmo quadro do clique e, quando a
+    ação termina, descarta o valor otimista em favor do que o servidor devolveu — se falhar,
+    reverte sozinho. É por isso que não há estado paralelo aqui para manter em dia.
+
+    O redutor devolve O MESMO objeto para as linhas não afetadas. Não é detalhe: `LinhaProduto`
+    é memoizada, e recriar todos os objetos faria as 48 redesenharem, desfazendo o ganho que
+    tirou o clique de 676ms para 31ms.
+  */
+  const [produtosNaTela, aplicarOtimista] = useOptimistic(
+    products,
+    (atual: ProductListItem[], mudanca: MudancaOtimista) =>
+      mudanca.tipo === "remover"
+        ? atual.filter((p) => !mudanca.ids.has(p.id))
+        : atual.map((p) => (mudanca.ids.has(p.id) ? { ...p, status: mudanca.status } : p)),
+  );
+
+  const idsVisiveis = produtosNaTela.map((p) => p.id);
   // A seleção pode conter id que saiu da tela (o lojista marcou e trocou o filtro). A conta
   // que a barra mostra e as ações usam é sempre a INTERSEÇÃO com o que está visível — agir
   // sobre o que ele não está mais vendo seria surpresa.
@@ -722,6 +748,8 @@ export function ProductList({ products, storeSlug, storeName, pagina, totalPagin
     const ids = marcados;
     setAcaoEmCurso(status);
     iniciarLote(async () => {
+      // Pinta ANTES de esperar a resposta. Dentro da transição, como o React exige.
+      aplicarOtimista({ tipo: "status", ids: new Set(ids), status });
       const r = modoFiltro
         ? await setProductStatusPorFiltro(filtro, status)
         : await setProductStatusEmLote(ids, status);
@@ -739,20 +767,22 @@ export function ProductList({ products, storeSlug, storeName, pagina, totalPagin
       );
       limpar();
       setAcaoEmCurso(null);
-      router.refresh();
+      // Sem `router.refresh()`: as actions já chamam `revalidatePath("/admin/produtos")`, e a
+      // resposta da própria Server Action traz a árvore atualizada. O refresh seria uma
+      // SEGUNDA ida ao servidor, que é justamente a espera que o otimista veio remover.
     });
   }
 
   function confirmarExclusaoEmLote() {
     const ids = marcados;
     iniciarLote(async () => {
+      aplicarOtimista({ tipo: "remover", ids: new Set(ids) });
       const r = modoFiltro ? await deleteProductsPorFiltro(filtro) : await deleteProductsEmLote(ids);
       if ("error" in r) {
         toast.error(r.error);
       } else {
         toast.success(`${r.afetados} ${r.afetados === 1 ? "produto excluído" : "produtos excluídos"}.`);
         limpar();
-        router.refresh();
       }
       dialogRef.current?.close();
       setExcluirLote(false);
@@ -855,7 +885,7 @@ export function ProductList({ products, storeSlug, storeName, pagina, totalPagin
         </div>
 
         <ul className="flex flex-col gap-3">
-        {products.map((product, index) => (
+        {produtosNaTela.map((product, index) => (
           <LinhaProduto
             key={product.id}
             product={product}
@@ -926,7 +956,7 @@ export function ProductList({ products, storeSlug, storeName, pagina, totalPagin
                 onClick={() => setModoFiltro(true)}
                 className="rounded-full px-1 text-sm font-medium text-primary transition-colors duration-150 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 dark:text-blue-400"
               >
-                Selecionar todos os {rotulo.totalFiltro}
+                Selecionar todos ({rotulo.totalFiltro})
               </button>
             )}
             <button

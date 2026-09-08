@@ -52,7 +52,7 @@ export function Paginacao({ pagina, totalPaginas }: { pagina: number; totalPagin
     "flex h-9 min-w-9 items-center justify-center rounded-full px-2 text-sm font-medium text-gray-700 transition-colors duration-150 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 dark:text-gray-300 dark:hover:bg-gray-800";
 
   return (
-    <nav className="flex items-center justify-center gap-1.5 pt-2" aria-label="Paginação">
+    <nav className="flex items-center justify-center gap-1.5 pt-6" aria-label="Paginação">
       {pagina > 1 ? (
         <Link href={href(pagina - 1)} className={seta} aria-label="Página anterior">
           <ChevronLeft className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
