@@ -20,6 +20,21 @@ import { AbrirFluxoPrecos } from "./abrir-fluxo-precos";
 export const PRECO_ANCORA = 297;
 
 /**
+ * Final da descrição do pacote, encurtado para o celular.
+ *
+ * A descrição VEM DO BANCO, e continua vindo: o que existe aqui é só a troca do
+ * fecho da frase, que no celular ocupa uma linha inteira para dizer o que cabe em
+ * meia. O começo do texto é sempre o que o banco mandou.
+ *
+ * ACOPLAMENTO ASSUMIDO: se alguém reescrever a descrição no banco, esta constante
+ * deixa de casar. Por isso a troca falha em silêncio e para o lado seguro — sem o
+ * trecho, a tela mostra a descrição inteira, que é o comportamento de antes. Nunca
+ * um pedaço faltando.
+ */
+const FECHO_LONGO = "sem precisar cadastrar produto por produto.";
+const FECHO_CURTO = "sem cadastrar um por um.";
+
+/**
  * Etiqueta de preço com um "%" dentro, para o selo de promoção.
  *
  * Desenhada aqui em vez de vir do lucide-react: a `Tag` da biblioteca é uma
@@ -182,7 +197,18 @@ export function PackHero({
               </h2>
               {descricao && (
                 <p className="mt-1.5 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-                  {descricao}
+                  {descricao.endsWith(FECHO_LONGO) ? (
+                    <>
+                      {descricao.slice(0, -FECHO_LONGO.length)}
+                      {/* Só um dos dois existe em cada largura: `display:none` tira o
+                          outro da árvore de acessibilidade, então leitor de tela nunca
+                          ouve a frase terminando duas vezes. */}
+                      <span className="sm:hidden">{FECHO_CURTO}</span>
+                      <span className="hidden sm:inline">{FECHO_LONGO}</span>
+                    </>
+                  ) : (
+                    descricao
+                  )}
                 </p>
               )}
             </div>
