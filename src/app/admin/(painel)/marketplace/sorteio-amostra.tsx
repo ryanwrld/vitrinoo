@@ -267,7 +267,7 @@ export function SorteioAmostra({
       className="animate-fade-in fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-6"
       role="dialog"
       aria-modal="true"
-      aria-label="Teste grátis"
+      aria-label="Amostra grátis"
       onClick={onFechar}
     >
       <div
@@ -305,7 +305,7 @@ export function SorteioAmostra({
               cada uso — que é justamente o que esses tokens existem para evitar.
             */}
             <span className="inline-flex items-center rounded-full bg-success-bg px-2.5 py-1 text-xs font-semibold text-success-fg dark:bg-success-solid/15">
-              Teste grátis
+              Amostra grátis
             </span>
             <h3 className="mt-2 font-display text-lg font-extrabold text-gray-900 dark:text-gray-50">
               {fase === "sorteando" ? "Sorteando suas chuteiras…" : "Modelos para sua loja"}
