@@ -256,7 +256,7 @@ export function PackHero({
             <div className="flex flex-wrap items-center gap-2">
               {/*
                 Esta área NUNCA fica vazia: ou diz que o pacote está liberado, ou oferece a
-                compra. O que some depois de resgatar as 10 é só o "Teste grátis", porque
+                compra. O que some depois de resgatar as 10 é só a "Amostra grátis", porque
                 esse já foi usado — a compra continua de pé, que é o caminho de quem gostou
                 da amostra.
               */}
@@ -286,7 +286,7 @@ export function PackHero({
                     className="inline-flex min-h-11 items-center gap-2 rounded-full border border-gray-300 px-5 text-sm font-semibold text-gray-700 transition-colors duration-150 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
                   >
                     <Gift className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
-                    Teste grátis
+                    Amostra grátis
                   </button>
                   )}
                 </>
