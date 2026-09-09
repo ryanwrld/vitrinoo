@@ -403,37 +403,25 @@ export default async function DashboardPage({
 
   const produtos = await queryProducts(supabase, store.id, {});
 
-  if (produtos.length === 0) {
-    return (
-      <div className="flex w-full flex-col gap-6 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h1 className="font-display text-2xl leading-tight font-extrabold text-gray-900 dark:text-gray-50">Dashboard</h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Visão geral da sua vitrine.</p>
-          </div>
-          <HeaderActions />
-        </div>
-        <div className="flex flex-col items-center gap-3 rounded-[2rem] border border-dashed border-gray-300 px-6 py-16 text-center dark:border-gray-700">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-subtle dark:bg-blue-400/15">
-            <PackagePlus className="h-7 w-7 text-primary dark:text-blue-300" aria-hidden="true" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <span className="font-display font-bold text-gray-900 dark:text-gray-50">Sua loja ainda não tem produtos</span>
-            <span className="max-w-sm text-sm text-gray-500 dark:text-gray-400">
-              Assim que você cadastrar o primeiro, o placar do dia, o feed de atividade e os rankings de tendência
-              começam a aparecer aqui sozinhos, nada pra configurar.
-            </span>
-          </div>
-          <Link
-            href="/admin/produtos/novo"
-            className="mt-2 rounded-full bg-primary px-4 py-2 text-center text-sm font-semibold text-white transition-all duration-150 hover:bg-primary-hover active:bg-primary-active active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
-          >
-            Cadastrar primeiro produto
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  /*
+    SEM DESVIO PARA LOJA VAZIA.
+
+    Existia aqui um `return` que abandonava o dashboard inteiro quando a loja não
+    tinha nenhum produto e devolvia uma tela de boas-vindas. Quem acabava de criar
+    conta nunca via o painel — via uma porta, e só depois de cadastrar algo
+    descobria o que o produto faz. Agora o dashboard aparece de cara, zerado, e a
+    pessoa entende desde o primeiro minuto o que vai preencher.
+
+    O caminho normal aguenta zero produto: as contagens saem de `filter` sobre
+    lista vazia, `maxSizeDemand` já tem piso 1, a conversão já se protege de
+    divisão por zero (metrics.ts) e cada painel tem seu próprio texto de período
+    sem dados.
+
+    O que a loja vazia ainda precisa — o convite para cadastrar o primeiro
+    produto — sobreviveu dentro do card de atividades (ver `semProdutos` abaixo),
+    em vez de tomar a tela toda.
+  */
+  const semProdutos = produtos.length === 0;
 
   // Fuso da própria loja (migration 0013) — define o que "hoje" e a janela
   // de N dias significam para ESTE revendedor. Sem isso, quem é de Roraima
@@ -452,9 +440,10 @@ export default async function DashboardPage({
   // Só produtos PUBLICADOS entram no placar de Disponíveis/Esgotados — a
   // mesma régua que a vitrine pública usa (`status = 'published'`, RLS de
   // 0004). `produtos` acima é intencionalmente TODOS os status (inclui
-  // rascunho), porque é ele que decide o empty state ("Sua loja ainda não
-  // tem produtos") logo acima; um revendedor com só rascunhos em progresso
-  // ainda deve ver o dashboard normal, não a tela de "comece agora".
+  // rascunho), porque é ele que responde "esta loja já tem alguma coisa?" —
+  // hoje isso decide só o convite dentro do card de atividades, e um
+  // revendedor com apenas rascunhos em progresso não deve receber o convite
+  // de quem ainda não começou.
   //
   // Mas um rascunho sem tamanhos marcados nasce automaticamente "esgotado"
   // (é assim que `disponivel` é derivado em `queryProducts` — EXISTS em
@@ -574,6 +563,42 @@ export default async function DashboardPage({
     </div>
   );
 
+  /*
+    CONVITE DA LOJA VAZIA — substitui o CTA de compartilhar quando não há
+    nenhum produto.
+    
+    "Priorize compartilhar sua vitrine" é conselho errado para quem não tem o
+    que mostrar: o link levaria o cliente a uma vitrine vazia, e o primeiro
+    contato com a loja seria uma página em branco. A ação certa nesse estado é
+    outra, então o card diz outra coisa.
+
+    Mesma casca visual do `shareCtaCompact` — borda, fundo, espaçamento e
+    centralização idênticos. Muda o ícone, o texto e o destino, porque o que
+    muda é o conselho, não o lugar dele.
+
+    Só a variante COMPACTA precisa deste par, e isso é garantido, não suposto:
+    o feed de atividade só conta eventos com `product_id` preenchido
+    (metrics.ts), então loja sem produto não tem como ter atividade e sempre
+    cai no ramo de 0 eventos. A variante horizontal é inalcançável aqui.
+  */
+  const primeiroProdutoCta = (
+    <div className="mx-auto flex w-full max-w-2xl flex-col items-center justify-center gap-3 rounded-[2rem] border border-gray-200 bg-primary-subtle/40 px-5 py-8 text-center lg:min-h-40 lg:flex-1 dark:border-gray-800 dark:bg-blue-400/[0.06]">
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-primary dark:bg-blue-400/15 dark:text-blue-300">
+        <PackagePlus className="h-6 w-6" aria-hidden="true" />
+      </span>
+      <span className="font-display text-lg font-semibold text-gray-900 dark:text-gray-50">Sua vitrine ainda está vazia</span>
+      <span className="max-w-[50ch] text-sm text-gray-500 dark:text-gray-400">
+        Cadastre a primeira chuteira para ter o que mostrar.
+      </span>
+      <Link
+        href="/admin/produtos/novo"
+        className="mt-1 inline-flex shrink-0 items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-primary-hover active:bg-primary-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
+      >
+        Cadastrar produto
+      </Link>
+    </div>
+  );
+
   // Versão COMPACTA (0 atividades) — o CTA fica SOZINHO ocupando o card
   // inteiro, sem lista dividindo o espaço. Em vez de um horizontal menor,
   // usa o MESMO design vertical do mobile em qualquer largura de tela
@@ -657,7 +682,9 @@ export default async function DashboardPage({
             // aqui o CTA fica sozinho preenchendo o card inteiro (sem lista
             // dividindo o espaço), então a escala "normal" ficaria
             // desproporcional numa área tão maior — ver renderShareCta.
-            <div className="flex min-h-0 flex-1 flex-col justify-center lg:pt-4">{shareCtaCompact}</div>
+            <div className="flex min-h-0 flex-1 flex-col justify-center lg:pt-4">
+              {semProdutos ? primeiroProdutoCta : shareCtaCompact}
+            </div>
           ) : useCompactLayout ? (
             // 1-4 itens reais: lista no fluxo normal (sem `lg:absolute`, pra o
             // conteúdo empurrar de verdade) + preenchimento do vão. `flex-1` +
