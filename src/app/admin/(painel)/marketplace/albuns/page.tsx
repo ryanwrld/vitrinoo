@@ -89,7 +89,7 @@ export default async function AlbunsPage() {
           />
         ) : (
           <>
-            <div className="flex justify-end">
+            <div className="flex justify-start">
               <Link
                 href="/admin/marketplace/tudo"
                 className="text-sm font-semibold text-primary transition-opacity duration-150 hover:opacity-80 dark:text-blue-300"
