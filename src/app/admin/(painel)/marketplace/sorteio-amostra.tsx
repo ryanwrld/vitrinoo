@@ -329,7 +329,7 @@ export function SorteioAmostra({
             >
               {fase === "sorteando"
                 ? "Isso leva só alguns segundos."
-                : "Uma primeira seleção para conhecer nosso pack:"}
+                : "Uma primeira seleção para conhecer nosso pacote:"}
             </p>
           </div>
           <button
