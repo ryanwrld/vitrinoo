@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Package, ShoppingCart, Sparkles, Check, ChevronRight, Gift } from "lucide-react";
+import { Package, ShoppingCart, Check, ChevronRight, Gift } from "lucide-react";
 import { SUPPORT_WHATSAPP_NUMBER } from "@/lib/support/whatsapp";
 import { SorteioAmostra, type ItemAmostra } from "./sorteio-amostra";
 import { iniciarPrecificacaoAmostra } from "@/lib/marketplace/pricing-actions";
@@ -124,8 +124,7 @@ export function PackHero({
                   lado a lado, e empurrá-los para fora do card seria pior que
                   quebrar a linha. */}
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-subtle px-2.5 py-1 text-xs font-semibold text-primary dark:bg-blue-400/15 dark:text-blue-300">
-                  <Sparkles className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />
+                <span className="inline-flex items-center rounded-full bg-primary-subtle px-2.5 py-1 text-xs font-semibold text-primary dark:bg-blue-400/15 dark:text-blue-300">
                   Modelos Prontos
                 </span>
                 {/* Mesmas classes do selo ao lado: os dois ficam lado a lado e leem como

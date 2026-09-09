@@ -384,7 +384,11 @@ export function SorteioAmostra({
                       />
                     )}
                     {item.jaImportado && (
-                      <span className="absolute right-1.5 top-1.5 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-white">
+                      /* Verde, e não o azul da marca: este selo diz "já é seu", a mesma
+                         coisa que a pílula do rodapé e o "Pacote liberado" do cartão
+                         dizem. Em azul ele lia como categoria; em verde, como estado
+                         concluído — e os três passam a ler como uma família. */
+                      <span className="absolute right-1.5 top-1.5 rounded-full bg-success-solid px-2 py-0.5 text-[10px] font-semibold text-white">
                         na loja
                       </span>
                     )}
