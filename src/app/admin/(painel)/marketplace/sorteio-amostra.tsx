@@ -436,9 +436,28 @@ export function SorteioAmostra({
               `restantes` está sempre vazio aqui e o "Adicionar" nunca aparece.
             */}
             {restantes.length === 0 ? (
-              <span className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-gray-100 px-5 text-sm font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+              <span /*
+                  MESMO VERDE DO "Pacote liberado" (`bg-success-solid` + branco), e não
+                  um tom novo: os dois dizem "isto já é seu", em telas diferentes do
+                  mesmo fluxo, e ler igual é o que os liga. O token já é calibrado para
+                  os dois temas, então não precisa de variante `dark:`.
+
+                  A cor vale nas duas larguras. O que muda com a largura é o rótulo, que
+                  encurta por falta de espaço — cor é significado, não é espaço.
+                */
+                className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-success-solid px-5 text-sm font-semibold text-white">
                 <Check className="h-4 w-4" strokeWidth={3} aria-hidden="true" />
-                Já estão no seu estoque
+                {/*
+                  DOIS RÓTULOS, trocados por CSS. No celular a pílula divide 335px com
+                  o "Quero o pacote completo", e a frase inteira empurrava o link a
+                  encolher até quebrar em três linhas. "Já resgatado" diz o mesmo no
+                  espaço que existe.
+
+                  `display:none` tira o texto escondido da árvore de acessibilidade,
+                  então leitor de tela ouve um rótulo só, nunca os dois.
+                */}
+                <span className="sm:hidden">Já resgatado</span>
+                <span className="hidden sm:inline">Já estão no seu estoque</span>
               </span>
             ) : (
               <button
