@@ -199,11 +199,20 @@ export function PackHero({
                 Sublinhado SEMPRE, e não só no hover: o painel é usado no celular, e
                 toque não tem hover — a afordância que só existe no ponteiro não
                 existe para a maioria.
+
+                `py-3 -my-3` é ALVO DE TOQUE, não espaçamento. Uma linha de texto tem
+                18px de altura, contra os 44px dos outros botões do painel — e 8px
+                abaixo dela está o "Comprar", que abre o WhatsApp. No celular, o dedo
+                que escorregasse um pouco abria uma conversa de compra em vez da lista.
+                O padding leva a caixa a 42px e a margem negativa devolve os mesmos
+                24px ao layout, então nada se move na tela: cresce só a área que
+                responde ao toque. O "Comprar" não perde nada — ele vem depois no
+                documento e ganha a sobreposição de 4px.
               */
               <button
                 type="button"
                 onClick={() => setPopupAmostra("revisao")}
-                className="inline-flex items-center gap-1 self-start rounded-full text-sm font-medium text-success-fg underline underline-offset-2 transition-opacity duration-150 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
+                className="inline-flex items-center gap-1 self-start rounded-full py-3 -my-3 text-sm font-medium text-success-fg underline underline-offset-2 transition-opacity duration-150 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
               >
                 <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" />
                 {amostra.length} Modelos de amostra grátis resgatados
