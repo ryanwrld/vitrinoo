@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Check, X, Sparkles } from "lucide-react";
+import { Check, X } from "lucide-react";
 
 const brl = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 });
@@ -261,7 +261,27 @@ export function SorteioAmostra({
         className="animate-scale-in flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-3xl bg-white sm:rounded-3xl dark:bg-gray-900"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-gray-200 p-5 dark:border-gray-800">
+        {/*
+          CABEÇALHO CENTRADO, com o X FORA DO FLUXO.
+
+          Antes era `flex justify-between` com dois filhos: o texto e o X. Centralizar
+          o texto nesse arranjo o centraliza no espaço que sobra AO LADO do X — o
+          título nascia ~18px à esquerda do centro real do cartão. Com o X em
+          `absolute`, o bloco de texto ocupa a largura inteira e o centro é o centro.
+
+          Não colidem: o selo fica centrado, longe da borda direita, e o título vem
+          na linha de baixo — o X ocupa de 12px a 48px na vertical, o título começa
+          em ~52px.
+
+          A borda inferior fica só na tela do resultado, onde o grid das 10 chuteiras
+          rola por baixo do cabeçalho e a linha marca onde essa área começa. Na tela
+          da espera não há nada rolando, e ela só cortava o pop-up ao meio.
+        */}
+        <div
+          className={`relative p-5 text-center ${
+            fase === "sorteando" ? "" : "border-b border-gray-200 dark:border-gray-800"
+          }`}
+        >
           <div>
             {/*
               Verde de sucesso do próprio design system, e não um tom novo:
@@ -282,7 +302,7 @@ export function SorteioAmostra({
               // de uma e órfã na última. Sem ele, o navegador quebra de forma
               // gulosa: enche cada linha até não caber mais a próxima palavra,
               // e no celular isso deixava um vão visível depois de "Chegam".
-              className="mt-0.5 text-pretty text-sm text-gray-500 dark:text-gray-400"
+              className="mx-auto mt-0.5 max-w-md text-pretty text-sm text-gray-500 dark:text-gray-400"
               aria-live="polite"
             >
               {fase === "sorteando"
@@ -294,7 +314,7 @@ export function SorteioAmostra({
             type="button"
             onClick={onFechar}
             aria-label="Fechar"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-50"
+            className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full text-gray-400 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-50"
           >
             <X className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
           </button>
@@ -459,10 +479,9 @@ function Embaralhando() {
 
       <p
         key={passo}
-        className="animate-fade-in inline-flex items-center gap-2 text-sm font-semibold text-gray-600 dark:text-gray-300"
+        className="animate-fade-in text-center text-sm font-semibold text-gray-600 dark:text-gray-300"
         aria-live="polite"
       >
-        <Sparkles className="h-4 w-4 text-amber-500" strokeWidth={2.5} aria-hidden="true" />
         {MENSAGENS[passo]}
       </p>
     </div>
