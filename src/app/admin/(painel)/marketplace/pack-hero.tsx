@@ -282,7 +282,7 @@ export function PackHero({
                     href={hrefComprar}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-white transition-opacity duration-150 hover:opacity-90"
+                    className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-white transition-opacity duration-150 hover:opacity-90 sm:px-6"
                   >
                     <ShoppingCart className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
                     Comprar
@@ -292,7 +292,7 @@ export function PackHero({
                   <button
                     type="button"
                     onClick={() => setPopupAmostra("sorteio")}
-                    className="inline-flex min-h-11 items-center gap-2 rounded-full border border-gray-300 px-5 text-sm font-semibold text-gray-700 transition-colors duration-150 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                    className="inline-flex min-h-11 items-center gap-2 rounded-full border border-gray-300 px-4 text-sm font-semibold text-gray-700 transition-colors duration-150 hover:bg-gray-100 sm:px-5 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
                   >
                     <Gift className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
                     Amostra grátis
@@ -301,9 +301,25 @@ export function PackHero({
                 </>
               )}
 
+              {/*
+                NO CELULAR O "Ver chuteiras" GANHA A PRÓPRIA LINHA, centrado.
+
+                `w-full` num container `flex-wrap` força a quebra: os dois botões de ação
+                ficam juntos na primeira linha e a navegação desce sozinha. Antes o que
+                quebrava era o "Comprar", porque os três não cabiam e o `flex-wrap`
+                quebrava onde desse — a ação principal ia parar sozinha em cima e as duas
+                de baixo pareciam um par, invertendo a hierarquia.
+
+                Para caberem, os dois cederam padding lateral no celular (`px-5` e `px-4`,
+                contra `px-6` e `px-5` no desktop): com o padding original davam 293px numa
+                coluna de 287px e a linha quebrava mesmo assim.
+
+                No desktop volta a ser um item comum da linha (`sm:w-auto`), que é como
+                está hoje.
+              */}
               <Link
                 href="/admin/marketplace/albuns"
-                className="inline-flex min-h-11 items-center gap-1 px-2 text-sm font-semibold text-primary transition-opacity duration-150 hover:opacity-80 dark:text-blue-300"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-1 px-2 text-sm font-semibold text-primary transition-opacity duration-150 hover:opacity-80 sm:w-auto sm:justify-start dark:text-blue-300"
               >
                 Ver chuteiras
                 <ChevronRight className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
