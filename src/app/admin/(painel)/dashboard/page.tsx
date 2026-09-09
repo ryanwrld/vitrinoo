@@ -587,8 +587,21 @@ export default async function DashboardPage({
         <PackagePlus className="h-6 w-6" aria-hidden="true" />
       </span>
       <span className="font-display text-lg font-semibold text-gray-900 dark:text-gray-50">Sua vitrine ainda está vazia</span>
+      {/*
+        O subtítulo conta o CICLO, não repete o título.
+
+        A primeira versão dizia "Cadastre a primeira chuteira para ter o que
+        mostrar" — e "para ter o que mostrar" só reafirmava o que o título logo
+        acima já tinha dito. Explicar duas vezes a mesma coisa, em tom de
+        conselho, soa como ensinar ao lojista que vitrine vazia não mostra nada.
+
+        Esta versão acrescenta: liga cadastrar → compartilhar → os números
+        aparecerem, que é justamente a pergunta que um painel todo zerado
+        provoca em quem chegou agora ("e quando isso aqui vai ter alguma
+        coisa?").
+      */}
       <span className="max-w-[50ch] text-sm text-gray-500 dark:text-gray-400">
-        Cadastre a primeira chuteira para ter o que mostrar.
+        Cadastre o seu primeiro produto, compartilhe, e tudo começará a ser registrado aqui.
       </span>
       <Link
         href="/admin/produtos/novo"
