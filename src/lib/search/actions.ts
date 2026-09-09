@@ -55,6 +55,19 @@ const VAZIO: GlobalSearchResult = { meusProdutos: [], noPacote: [], albuns: [] }
 const LIMITE_PRODUTOS = 5;
 const LIMITE_PACOTE = 5;
 const LIMITE_ALBUNS = 4;
+/**
+ * Janela lida do pacote para extrair os nomes distintos.
+ *
+ * COBRE O PACOTE INTEIRO de propósito. Com 200 o resultado saía enviesado: como
+ * o mesmo modelo se repete dezenas de vezes e a ordem é alfabética, as 200
+ * primeiras linhas de "nike" eram só os quatro nomes do começo do alfabeto — um
+ * "Nike Zoom" nunca apareceria, existindo ou não. Lendo tudo, os nomes distintos
+ * são os reais.
+ *
+ * O custo fica no servidor, não no lojista: são só `id` e `name`, e essa lista
+ * nunca chega ao navegador — só as cinco linhas escolhidas viajam.
+ */
+const JANELA_PACOTE = 1000;
 
 /**
  * Coluna contra a qual o termo é comparado.
@@ -167,26 +180,63 @@ async function buscarMeusProdutos(
  * Sem filtro de status: a RLS da migration 0030 já restringe a leitura a
  * `status = 'published'` — exatamente o que a navegação mostra. A busca não
  * expõe nada que o lojista não veja clicando.
+ *
+ * AGRUPADO POR NOME, e é por isso que são duas idas ao banco.
+ *
+ * O pacote repete o mesmo modelo em várias cores: "Nike Streetgato Futsal (IC)"
+ * existe 18 vezes, com marca, solado e preço idênticos — só a foto muda. Sem
+ * agrupar, buscar "nike" devolvia cinco linhas que eram o mesmo texto três vezes
+ * e outro duas: o lojista lia a mesma coisa repetida e não tinha como escolher.
+ *
+ * Então a primeira consulta traz só `id, name` de uma janela larga, barata, e
+ * daí saem os cinco PRIMEIROS NOMES DISTINTOS. A segunda busca a foto apenas
+ * desses cinco. Trazer foto de tudo para descartar quase tudo seria o caro.
+ *
+ * A linha não anuncia quantas cores existem: a contagem dentro da janela não é a
+ * contagem real, e um número aproximado aqui seria pior que nenhum. Quem clica
+ * cai na lista filtrada por aquele nome, onde as cores aparecem com foto — que é
+ * onde a escolha realmente acontece.
  */
 async function buscarNoPacote(supabase: Cliente, padrao: string): Promise<PackProductSearchResult[]> {
-  const { data, error } = await supabase
+  const { data: candidatos, error } = await supabase
     .from("marketplace_products")
-    .select("id, name, suggested_price, marketplace_photos(storage_path, position)")
+    .select("id, name, suggested_price")
     .ilike(COLUNA_NOME, padrao)
-    .limit(LIMITE_PACOTE);
+    .order("name", { ascending: true })
+    .limit(JANELA_PACOTE);
 
   if (error) throw new Error(`Busca no pacote falhou: ${error.message}`);
-  if (!data) return [];
+  if (!candidatos || candidatos.length === 0) return [];
 
-  return data.map((item) => {
-    const fotos = (item.marketplace_photos ?? []) as Array<{ storage_path: string; position: number }>;
-    const capa = [...fotos].sort((a, b) => a.position - b.position)[0];
+  const porNome = new Map<string, { id: string; name: string; suggestedPrice: number }>();
+  for (const item of candidatos) {
+    if (porNome.size >= LIMITE_PACOTE) break;
+    if (porNome.has(item.name)) continue;
+    porNome.set(item.name, { id: item.id, name: item.name, suggestedPrice: item.suggested_price });
+  }
+
+  const escolhidos = [...porNome.values()];
+  const { data: fotos } = await supabase
+    .from("marketplace_photos")
+    .select("marketplace_product_id, storage_path, position")
+    .in("marketplace_product_id", escolhidos.map((item) => item.id))
+    .order("position", { ascending: true });
+
+  // Falha só de foto não derruba o resultado: a linha sem miniatura ainda leva
+  // ao destino certo, e o componente já desenha o lugar vazio da imagem.
+  const capaPorProduto = new Map<string, string>();
+  for (const foto of fotos ?? []) {
+    if (!capaPorProduto.has(foto.marketplace_product_id)) {
+      capaPorProduto.set(foto.marketplace_product_id, foto.storage_path);
+    }
+  }
+
+  return escolhidos.map((item) => {
+    const capa = capaPorProduto.get(item.id);
     return {
-      id: item.id,
-      name: item.name,
-      suggestedPrice: item.suggested_price,
+      ...item,
       coverUrl: capa
-        ? supabase.storage.from(BUCKET_POR_ORIGEM.marketplace).getPublicUrl(capa.storage_path).data.publicUrl
+        ? supabase.storage.from(BUCKET_POR_ORIGEM.marketplace).getPublicUrl(capa).data.publicUrl
         : null,
     };
   });
