@@ -421,19 +421,21 @@ export function SorteioAmostra({
               Quero o pacote completo
             </a>
             {/*
-              NA REVISÃO O RODAPÉ NÃO AFIRMA NADA sobre onde o produto está.
+              O MESMO RODAPÉ NOS DOIS MODOS, inclusive na revisão.
 
-              A pílula diria "Já estão no seu estoque", e isso é falso para quem
-              apagou uma das 10: o registro de importação sobrevive à exclusão de
-              propósito (migration 0021, explicada em page.tsx). Sobra o "Quero o
-              pacote completo", que continua de pé porque esta tela só é alcançável
-              por quem ainda não comprou.
+              Uma versão anterior escondia a pílula na revisão, com o argumento de que
+              "Já estão no seu estoque" é falso para quem apagou uma das 10 — o registro
+              de importação sobrevive à exclusão de propósito (migration 0021, explicada
+              em page.tsx). O argumento vale, mas não para a pílula sozinha: os selos
+              "na loja" de cada card leem exatamente o mesmo registro e afirmam o mesmo
+              dez vezes, logo acima. Esconder só o resumo deixava a tela igualmente
+              imprecisa e com um rodapé mais pobre.
 
-              O botão "Adicionar" nunca chegaria aqui de qualquer forma: quem entra
-              na revisão resgatou tudo, e `jaResgatouTudo` e `jaImportado` leem os
-              mesmos registros — então `restantes` está sempre vazio.
+              Sem risco de resgatar duas vezes: quem chega na revisão resgatou tudo, e
+              `jaResgatouTudo` e `jaImportado` leem os mesmos registros — então
+              `restantes` está sempre vazio aqui e o "Adicionar" nunca aparece.
             */}
-            {revisao ? null : restantes.length === 0 ? (
+            {restantes.length === 0 ? (
               <span className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-gray-100 px-5 text-sm font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-400">
                 <Check className="h-4 w-4" strokeWidth={3} aria-hidden="true" />
                 Já estão no seu estoque
