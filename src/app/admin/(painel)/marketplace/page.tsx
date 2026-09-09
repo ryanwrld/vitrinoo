@@ -8,6 +8,7 @@ import { queryAmostraSorteada } from "@/lib/marketplace/amostra";
 import { HeaderActions } from "@/components/header-actions";
 import { EmptyState } from "@/components/empty-state";
 import { PackHero, PRECO_ANCORA } from "./pack-hero";
+import { PacoteEmBreve } from "./pacote-em-breve";
 
 /**
  * Rota `/admin/marketplace` — a vitrine do PACOTE.
@@ -131,6 +132,25 @@ export default async function MarketplacePage() {
             amostra={amostra}
           />
         )}
+
+        {/*
+          DOIS LUGARES RESERVADOS, sem nada por trás no banco.
+
+          Com um pacote só, esta rota parece uma loja de um produto: o lojista
+          decide comprar ou não e nunca mais tem motivo para voltar. Com os
+          próximos marcados ao lado, a mesma tela vira uma prateleira que ainda
+          vai encher — e o motivo de voltar passa a existir.
+
+          São DOIS e não um: um lugar vazio lê como "falta alguma coisa"; dois
+          lêem como sequência, e sequência é o que sugere que isto continua. Eles
+          também estão em tempos diferentes (o próximo, e o depois dele), para não
+          serem dois clones do mesmo aviso.
+
+          Vêm DEPOIS do pacote real de propósito: quem chega tem que encontrar
+          primeiro o que dá para levar hoje. A expectativa é tempero, não prato.
+        */}
+        <PacoteEmBreve titulo="O próximo pacote" descricao="Já está sendo montado." />
+        <PacoteEmBreve titulo="E mais um depois dele" descricao="Ainda é segredo o que vem dentro." distante />
       </div>
     </div>
   );
