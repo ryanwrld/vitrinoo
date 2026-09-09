@@ -383,15 +383,6 @@ export function SorteioAmostra({
                         onError={() => setCarregadas((n) => n + 1)}
                       />
                     )}
-                    {item.jaImportado && (
-                      /* Verde, e não o azul da marca: este selo diz "já é seu", a mesma
-                         coisa que a pílula do rodapé e o "Pacote liberado" do cartão
-                         dizem. Em azul ele lia como categoria; em verde, como estado
-                         concluído — e os três passam a ler como uma família. */
-                      <span className="absolute right-1.5 top-1.5 rounded-full bg-success-solid px-2 py-0.5 text-[10px] font-semibold text-white">
-                        na loja
-                      </span>
-                    )}
                   </div>
                   <p className="mt-1.5 line-clamp-2 text-[12px] font-semibold leading-snug text-gray-900 dark:text-gray-50">
                     {item.name}
@@ -427,13 +418,15 @@ export function SorteioAmostra({
             {/*
               O MESMO RODAPÉ NOS DOIS MODOS, inclusive na revisão.
 
-              Uma versão anterior escondia a pílula na revisão, com o argumento de que
-              "Já estão no seu estoque" é falso para quem apagou uma das 10 — o registro
-              de importação sobrevive à exclusão de propósito (migration 0021, explicada
-              em page.tsx). O argumento vale, mas não para a pílula sozinha: os selos
-              "na loja" de cada card leem exatamente o mesmo registro e afirmam o mesmo
-              dez vezes, logo acima. Esconder só o resumo deixava a tela igualmente
-              imprecisa e com um rodapé mais pobre.
+              A pílula é agora o ÚNICO lugar que diz onde as 10 estão — os selos "na
+              loja" por card foram removidos por decisão do dono, porque repetiam dez
+              vezes o que o rodapé já resume.
+
+              Imprecisão conhecida e aceita: "Já estão no seu estoque" continua sendo
+              afirmado para quem apagou uma das 10, porque o registro de importação
+              sobrevive à exclusão de propósito (migration 0021, explicada em page.tsx).
+              Uma versão anterior escondia a pílula na revisão por causa disso, e o que
+              sobrava era um rodapé mudo sobre o estado — pior troca.
 
               Sem risco de resgatar duas vezes: quem chega na revisão resgatou tudo, e
               `jaResgatouTudo` e `jaImportado` leem os mesmos registros — então
