@@ -115,6 +115,15 @@ export function PackHero({
   const [abrirPrecos, setAbrirPrecos] = useState(false);
   const [aceitando, setAceitando] = useState(false);
 
+  /*
+    HÁ DUAS AÇÕES NA LINHA? É o que decide se o "Ver chuteiras" desce sozinho.
+
+    Só quem ainda não comprou E ainda não resgatou vê os dois botões. Nos outros
+    casos sobra um item só — "Comprar" sozinho, ou o selo "Pacote liberado" — e aí
+    ele e a navegação cabem juntos, sem motivo para quebrar a linha.
+  */
+  const duasAcoes = !temAcesso && !jaResgatouTudo;
+
   // Mensagem montada inteira e codificada UMA vez — regra rígida do CLAUDE.md
   // para qualquer link de WhatsApp do projeto.
   const identificacao = nomeLoja ? `Sou da loja ${nomeLoja}` : "Sou um lojista";
@@ -314,12 +323,18 @@ export function PackHero({
                 contra `px-6` e `px-5` no desktop): com o padding original davam 293px numa
                 coluna de 287px e a linha quebrava mesmo assim.
 
+                SÓ QUANDO HÁ DOIS BOTÕES. Com um item só na linha — "Comprar" sozinho ou o
+                selo "Pacote liberado" — ele e a navegação cabem juntos, e quebrar ali
+                separaria o que não precisava ser separado.
+
                 No desktop volta a ser um item comum da linha (`sm:w-auto`), que é como
                 está hoje.
               */}
               <Link
                 href="/admin/marketplace/albuns"
-                className="inline-flex min-h-11 w-full items-center justify-center gap-1 px-2 text-sm font-semibold text-primary transition-opacity duration-150 hover:opacity-80 sm:w-auto sm:justify-start dark:text-blue-300"
+                className={`inline-flex min-h-11 items-center gap-1 px-2 text-sm font-semibold text-primary transition-opacity duration-150 hover:opacity-80 dark:text-blue-300 ${
+                  duasAcoes ? "w-full justify-center sm:w-auto sm:justify-start" : ""
+                }`}
               >
                 Ver chuteiras
                 <ChevronRight className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
