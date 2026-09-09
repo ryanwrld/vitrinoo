@@ -19,6 +19,40 @@ import { AbrirFluxoPrecos } from "./abrir-fluxo-precos";
  */
 export const PRECO_ANCORA = 297;
 
+/**
+ * Etiqueta de preço com um "%" dentro, para o selo de promoção.
+ *
+ * Desenhada aqui em vez de vir do lucide-react: a `Tag` da biblioteca é uma
+ * etiqueta genérica, que diz "categoria" tanto quanto diz "oferta", e o `Percent`
+ * sozinho é um símbolo de matemática. A ideia de promoção precisa das duas coisas
+ * na mesma marca — o objeto que carrega preço, e o desconto escrito nele.
+ *
+ * Desenhada para 14px, que é o tamanho real de uso, e não reduzida a partir de um
+ * traço maior: os dois pontos do "%" são círculos cheios em vez de anéis, porque
+ * anel de 1px vira borrão nesse tamanho, e a barra é mais inclinada que num "%"
+ * de texto para ganhar comprimento dentro da etiqueta.
+ */
+function IconePromocao({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" className={className} aria-hidden="true">
+      <path
+        d="M1.5 4.2A1.7 1.7 0 0 1 3.2 2.5h6.6c.45 0 .88.18 1.2.5l3.5 3.5a1.7 1.7 0 0 1 0 2.4l-3.5 3.5c-.32.32-.75.5-1.2.5H3.2a1.7 1.7 0 0 1-1.7-1.7z"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9.2 5.4 4.9 10.6"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinecap="round"
+      />
+      <circle cx="5.1" cy="5.9" r="0.9" fill="currentColor" />
+      <circle cx="9" cy="10.1" r="0.9" fill="currentColor" />
+    </svg>
+  );
+}
+
 const brl = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 });
 
@@ -124,8 +158,9 @@ export function PackHero({
                   lado a lado, e empurrá-los para fora do card seria pior que
                   quebrar a linha. */}
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center rounded-full bg-primary-subtle px-2.5 py-1 text-xs font-semibold text-primary dark:bg-blue-400/15 dark:text-blue-300">
-                  Modelos Prontos
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-subtle px-2.5 py-1 text-xs font-semibold text-primary dark:bg-blue-400/15 dark:text-blue-300">
+                  <IconePromocao className="h-3.5 w-3.5" />
+                  Promoção
                 </span>
                 {/* Mesmas classes do selo ao lado: os dois ficam lado a lado e leem como
                     um par só quando dividem a mesma cor. */}
