@@ -461,7 +461,19 @@ export function SorteioAmostra({
                 type="button"
                 onClick={onPrecificar}
                 disabled={aceitando}
-                className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-primary px-5 text-[13px] font-semibold text-white transition-opacity duration-150 hover:opacity-90 disabled:opacity-60"
+                /*
+                  LARGURA FIXA NO DESKTOP, os mesmos 192px do botão que abre o
+                  fluxo de preços (fluxo-precos.tsx). Este clique leva direto
+                  para lá, então os dois são a mesma ação em dois quadros — com
+                  tamanhos diferentes eles liam como botões de peso diferente.
+
+                  Só a partir do `sm:`: no celular o botão divide 335px com o
+                  "Quero o pacote completo", e 192px o tirariam da linha.
+
+                  De quebra, largura fixa impede o salto quando o rótulo troca
+                  para "Preparando…" no meio do clique.
+                */
+                className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-primary px-5 text-[13px] font-semibold text-white transition-opacity duration-150 hover:opacity-90 disabled:opacity-60 sm:w-[192px]"
               >
                 {aceitando ? "Preparando…" : "Adicionar"}
               </button>
