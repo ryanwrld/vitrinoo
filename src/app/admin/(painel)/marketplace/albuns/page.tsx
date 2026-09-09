@@ -44,16 +44,28 @@ export default async function AlbunsPage() {
     <div className="flex w-full flex-col gap-6 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <Link
-            href="/admin/marketplace"
-            className="mb-1 inline-flex items-center gap-1 text-sm font-medium text-gray-500 transition-colors duration-150 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
-          >
-            <ChevronLeft className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
-            Voltar ao pacote
-          </Link>
-          <h1 className="font-display text-2xl font-extrabold text-gray-900 dark:text-gray-50">
-            Álbuns
-          </h1>
+          {/*
+            O VOLTAR FICA AO LADO DO TÍTULO, não acima dele. Empilhado, ele era a
+            primeira coisa lida na página e empurrava o título para baixo — a
+            navegação ganhava a posição de destaque que pertence ao assunto da tela.
+            Na mesma linha, o título abre a página e o voltar vira o que sempre foi:
+            uma saída, disponível sem disputar a atenção.
+
+            `flex-wrap` porque numa tela estreita os dois podem não caber; nesse caso
+            o voltar desce, em vez de espremer o título.
+          */}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <h1 className="font-display text-2xl font-extrabold text-gray-900 dark:text-gray-50">
+              Álbuns
+            </h1>
+            <Link
+              href="/admin/marketplace"
+              className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-gray-500 transition-colors duration-150 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
+            >
+              <ChevronLeft className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+              Voltar
+            </Link>
+          </div>
           {/* Texto fixo, não contador: o total já aparece card a card logo abaixo,
               e repetido no topo ele só competia com as fotos. Mesma remoção feita
               no cabeçalho de /admin/marketplace.
