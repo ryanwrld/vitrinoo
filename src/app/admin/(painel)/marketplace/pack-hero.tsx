@@ -242,11 +242,20 @@ export function PackHero({
                 24px ao layout, então nada se move na tela: cresce só a área que
                 responde ao toque. O "Comprar" não perde nada — ele vem depois no
                 documento e ganha a sobreposição de 4px.
+
+                `relative -top-1.5` sobe a frase 6px SEM MEXER NO LAYOUT. Ela nascia
+                colada nos botões: 21px de respiro acima e 9px abaixo, medidos. Subindo
+                6px fica 15/15, centrada entre o preço e a linha de ações.
+
+                Deslocamento, e não margem negativa: aqui dentro é um `flex flex-col`, e
+                encurtar a caixa da frase puxaria a linha dos botões junto. Com
+                `relative`, o que anda é só a pintura desta frase — e o alvo de toque vai
+                junto com ela, que é o certo.
               */
               <button
                 type="button"
                 onClick={() => setPopupAmostra("revisao")}
-                className="inline-flex items-center gap-1 self-start rounded-full py-3 -my-3 text-sm font-medium text-success-fg underline underline-offset-2 transition-opacity duration-150 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
+                className="relative -top-1.5 inline-flex items-center gap-1 self-start rounded-full py-3 -my-3 text-sm font-medium text-success-fg underline underline-offset-2 transition-opacity duration-150 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
               >
                 <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" />
                 {amostra.length} Modelos de amostra grátis resgatados
