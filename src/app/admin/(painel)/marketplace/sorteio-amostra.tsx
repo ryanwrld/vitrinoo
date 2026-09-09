@@ -126,6 +126,7 @@ export function SorteioAmostra({
   onFechar,
   onPrecificar,
   aceitando,
+  revisao = false,
 }: {
   itens: ItemAmostra[];
   hrefComprar: string;
@@ -142,6 +143,14 @@ export function SorteioAmostra({
   onPrecificar: () => void;
   /** Enquanto a pendência é gravada no banco e o painel assume o fluxo. */
   aceitando: boolean;
+  /**
+   * MODO REVISÃO: quem já resgatou abriu isto para VER as 10, não para ganhá-las.
+   *
+   * Entra direto na revelação e o rodapé não oferece ação. As 10 estão espalhadas
+   * em /admin/produtos no meio do que o lojista cadastrou sozinho — esta tela é o
+   * único lugar onde elas voltam a aparecer juntas.
+   */
+  revisao?: boolean;
 }) {
 
   /**
@@ -158,6 +167,10 @@ export function SorteioAmostra({
    * reintroduziria o travamento de ~900 ms que o pré-carregamento resolveu.
    */
   const [entrarDireto] = useState(() => {
+    // Na revisão o baralho não é opção: quem clicou pediu a lista, não a encenação.
+    // Sem isto, abrir em outro aparelho — onde a marca do localStorage não existe —
+    // devolveria 4,2 s de animação para uma pessoa que só quer conferir o que pegou.
+    if (revisao) return true;
     if (typeof window === "undefined") return false;
     let jaViu = false;
     try {
@@ -407,7 +420,20 @@ export function SorteioAmostra({
             >
               Quero o pacote completo
             </a>
-            {restantes.length === 0 ? (
+            {/*
+              NA REVISÃO O RODAPÉ NÃO AFIRMA NADA sobre onde o produto está.
+
+              A pílula diria "Já estão no seu estoque", e isso é falso para quem
+              apagou uma das 10: o registro de importação sobrevive à exclusão de
+              propósito (migration 0021, explicada em page.tsx). Sobra o "Quero o
+              pacote completo", que continua de pé porque esta tela só é alcançável
+              por quem ainda não comprou.
+
+              O botão "Adicionar" nunca chegaria aqui de qualquer forma: quem entra
+              na revisão resgatou tudo, e `jaResgatouTudo` e `jaImportado` leem os
+              mesmos registros — então `restantes` está sempre vazio.
+            */}
+            {revisao ? null : restantes.length === 0 ? (
               <span className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-gray-100 px-5 text-sm font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-400">
                 <Check className="h-4 w-4" strokeWidth={3} aria-hidden="true" />
                 Já estão no seu estoque

@@ -72,7 +72,12 @@ export function PackHero({
     servidor, e nada revalida durante o fluxo. Quando revalida — na conclusão — a pendência
     já foi quitada.
   */
-  const [abrirAmostra, setAbrirAmostra] = useState(false);
+  /*
+    UM ESTADO PARA OS DOIS MODOS do pop-up, e não dois booleanos: "sortear" e
+    "revisar" são mutuamente exclusivos por definição, e dois booleanos permitiriam
+    o estado impossível em que os dois estão ligados.
+  */
+  const [popupAmostra, setPopupAmostra] = useState<"sorteio" | "revisao" | null>(null);
   const [abrirPrecos, setAbrirPrecos] = useState(false);
   const [aceitando, setAceitando] = useState(false);
 
@@ -180,10 +185,29 @@ export function PackHero({
             */}
             <div className="mt-auto flex flex-col gap-2 pt-1">
             {!temAcesso && jaResgatouTudo && (
-              <span className="inline-flex items-center gap-1 text-sm font-medium text-success-fg">
+              /*
+                CLICÁVEL: é a única porta para rever QUAIS eram as 10. Depois do
+                resgate elas vão para /admin/produtos e se misturam com o que o
+                lojista cadastrou sozinho — sem esta frase não existe lugar nenhum
+                onde a amostra volte a aparecer junta.
+
+                `self-start` não é enfeite: o pai é um `flex flex-col`, então o
+                filho estica por padrão. Medido antes da mudança — a frase ocupava
+                301px, a largura inteira da coluna, com o texto bem mais estreito.
+                Como botão, isso deixaria a área clicável muito além do que se lê.
+
+                Sublinhado SEMPRE, e não só no hover: o painel é usado no celular, e
+                toque não tem hover — a afordância que só existe no ponteiro não
+                existe para a maioria.
+              */
+              <button
+                type="button"
+                onClick={() => setPopupAmostra("revisao")}
+                className="inline-flex items-center gap-1 self-start rounded-full text-sm font-medium text-success-fg underline underline-offset-2 transition-opacity duration-150 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
+              >
                 <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" />
-                {amostra.length} modelos da amostra grátis resgatados
-              </span>
+                {amostra.length} Modelos de amostra grátis resgatados
+              </button>
             )}
 
             <div className="flex flex-wrap items-center gap-2">
@@ -215,7 +239,7 @@ export function PackHero({
                   {!jaResgatouTudo && (
                   <button
                     type="button"
-                    onClick={() => setAbrirAmostra(true)}
+                    onClick={() => setPopupAmostra("sorteio")}
                     className="inline-flex min-h-11 items-center gap-2 rounded-full border border-gray-300 px-5 text-sm font-semibold text-gray-700 transition-colors duration-150 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
                   >
                     <Gift className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
@@ -241,12 +265,13 @@ export function PackHero({
       {/* Sem `onConcluido`: quem abriu aqui sai pela navegação do "Ver meus produtos". */}
       {abrirPrecos && <AbrirFluxoPrecos origem="amostra" />}
 
-      {abrirAmostra && (
+      {popupAmostra && (
         <SorteioAmostra
           itens={amostra}
           hrefComprar={hrefComprar}
           storeId={storeId}
-          onFechar={() => setAbrirAmostra(false)}
+          revisao={popupAmostra === "revisao"}
+          onFechar={() => setPopupAmostra(null)}
           /*
             GRAVA A PENDÊNCIA ANTES DE ABRIR, e com `await`: se o lojista fechar a aba
             durante a precificação, é este carimbo que traz o fluxo de volta na próxima
@@ -257,7 +282,7 @@ export function PackHero({
           onPrecificar={async () => {
             setAceitando(true);
             await iniciarPrecificacaoAmostra();
-            setAbrirAmostra(false);
+            setPopupAmostra(null);
             setAbrirPrecos(true);
           }}
         />
