@@ -478,10 +478,15 @@ function SearchPalette({
 
           {/* SEÇÃO SEPARADA, e não misturada com "Meus produtos": são coisas de
               natureza diferente. O de cima já é da loja e abre para editar; o de
-              baixo ainda está no pacote e precisa ser importado. Numa lista só,
-              o lojista clicaria esperando editar e cairia noutro lugar. */}
+              baixo ainda está no Marketplace e precisa ser importado. Numa lista
+              só, o lojista clicaria esperando editar e cairia noutro lugar.
+
+              "Em Marketplace", e não "No pacote": quem chegou agora não sabe que
+              pacote é esse, e a pergunta que o rótulo provoca ("que pacote?") é
+              exatamente a que ele não deveria ter. Marketplace é o nome que está
+              no menu ao lado, então liga sozinho. */}
           {noPacote.length > 0 && (
-            <Section title="No pacote">
+            <Section title="Em Marketplace">
               {noPacote.map((product, index) => (
                 <RowButton
                   key={product.id}
@@ -492,9 +497,17 @@ function SearchPalette({
                   <Miniatura url={product.coverUrl} alt={product.name} />
                   <div className="flex min-w-0 flex-1 flex-col">
                     <span className="truncate text-left text-sm font-medium text-gray-900 dark:text-gray-50">{product.name}</span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {formatBRLPrice(product.suggestedPrice)} sugerido
-                    </span>
+                    {/* "encontrados" é a mesma palavra que a tela de destino usa
+                        ("18 resultados"), então o número da busca e o da lista
+                        lêem como a mesma contagem — que é o que são.
+
+                        Só quando há mais de um: "1 encontrado" numa linha que É
+                        o único resultado não informa nada. */}
+                    {product.opcoes > 1 && (
+                      <span className="text-left text-xs text-gray-500 dark:text-gray-400">
+                        {product.opcoes} encontrados
+                      </span>
+                    )}
                   </div>
                 </RowButton>
               ))}

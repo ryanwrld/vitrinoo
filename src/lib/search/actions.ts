@@ -33,8 +33,21 @@ export type ProductSearchResult = {
 export type PackProductSearchResult = {
   id: string;
   name: string;
-  suggestedPrice: number;
   coverUrl: string | null;
+  /**
+   * Quantas linhas do pacote têm exatamente este nome.
+   *
+   * SEM PREÇO no lugar disto, de propósito: `suggested_price` é o preço da
+   * curadoria, não o que o lojista vai cobrar — o fluxo de precificação existe
+   * justamente porque quem define é ele. Mostrar aquele número num resultado de
+   * busca planta na cabeça dele um preço que não é o dele e que ele nunca vai
+   * usar. E preço não é o que se decide aqui: a pergunta desta tela é "é esta
+   * chuteira?", que a foto e o nome respondem.
+   *
+   * A contagem responde algo que o preço não respondia: por que esta linha
+   * representa várias. É exata, porque a janela cobre o pacote inteiro.
+   */
+  opcoes: number;
 };
 
 export type AlbumSearchResult = {
@@ -192,15 +205,15 @@ async function buscarMeusProdutos(
  * daí saem os cinco PRIMEIROS NOMES DISTINTOS. A segunda busca a foto apenas
  * desses cinco. Trazer foto de tudo para descartar quase tudo seria o caro.
  *
- * A linha não anuncia quantas cores existem: a contagem dentro da janela não é a
- * contagem real, e um número aproximado aqui seria pior que nenhum. Quem clica
- * cai na lista filtrada por aquele nome, onde as cores aparecem com foto — que é
- * onde a escolha realmente acontece.
+ * A linha anuncia quantas opções existem daquele nome, e o número é EXATO
+ * porque a janela cobre o pacote inteiro. É o que explica por que uma linha só
+ * representa dezoito: quem clica cai na lista filtrada por aquele nome, onde as
+ * variações aparecem com foto — que é onde a escolha realmente acontece.
  */
 async function buscarNoPacote(supabase: Cliente, padrao: string): Promise<PackProductSearchResult[]> {
   const { data: candidatos, error } = await supabase
     .from("marketplace_products")
-    .select("id, name, suggested_price")
+    .select("id, name")
     .ilike(COLUNA_NOME, padrao)
     .order("name", { ascending: true })
     .limit(JANELA_PACOTE);
@@ -208,11 +221,22 @@ async function buscarNoPacote(supabase: Cliente, padrao: string): Promise<PackPr
   if (error) throw new Error(`Busca no pacote falhou: ${error.message}`);
   if (!candidatos || candidatos.length === 0) return [];
 
-  const porNome = new Map<string, { id: string; name: string; suggestedPrice: number }>();
+  // Conta ANTES de cortar: o corte é de linhas mostradas, não de linhas
+  // contadas. Contar depois faria "18 opções" virar "5 opções".
+  const totalPorNome = new Map<string, number>();
+  for (const item of candidatos) {
+    totalPorNome.set(item.name, (totalPorNome.get(item.name) ?? 0) + 1);
+  }
+
+  const porNome = new Map<string, { id: string; name: string; opcoes: number }>();
   for (const item of candidatos) {
     if (porNome.size >= LIMITE_PACOTE) break;
     if (porNome.has(item.name)) continue;
-    porNome.set(item.name, { id: item.id, name: item.name, suggestedPrice: item.suggested_price });
+    porNome.set(item.name, {
+      id: item.id,
+      name: item.name,
+      opcoes: totalPorNome.get(item.name) ?? 1,
+    });
   }
 
   const escolhidos = [...porNome.values()];
