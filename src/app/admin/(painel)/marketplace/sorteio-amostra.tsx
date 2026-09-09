@@ -291,7 +291,7 @@ export function SorteioAmostra({
           da espera não há nada rolando, e ela só cortava o pop-up ao meio.
         */}
         <div
-          className={`relative p-5 text-center ${
+          className={`relative p-5 sm:p-8 text-center ${
             fase === "sorteando" ? "" : "border-b border-gray-200 dark:border-gray-800"
           }`}
         >
@@ -333,7 +333,7 @@ export function SorteioAmostra({
           </button>
         </div>
 
-        <div className="relative flex-1 overflow-y-auto p-5">
+        <div className="relative flex-1 overflow-y-auto p-5 sm:p-8">
           {fase === "sorteando" && <Embaralhando />}
 
           {/*
@@ -350,7 +350,7 @@ export function SorteioAmostra({
           <div
             className={
               fase === "sorteando"
-                ? "pointer-events-none absolute inset-0 -z-10 overflow-hidden p-5 opacity-0"
+                ? "pointer-events-none absolute inset-0 -z-10 overflow-hidden p-5 opacity-0 sm:p-8"
                 : ""
             }
             aria-hidden={fase === "sorteando"}
@@ -406,7 +406,7 @@ export function SorteioAmostra({
              soma bate exatamente nos 335px. Sem poder encolher, a linha quebraria;
              com `min-w-0` quem cede é o link, que vai a 106px e duas linhas. O
              `shrink-0` na ação garante que quem cede seja sempre o link. */
-          <div className="animate-slide-up flex items-center justify-between gap-3 border-t border-gray-200 p-5 dark:border-gray-800">
+          <div className="animate-slide-up flex items-center justify-between gap-3 border-t border-gray-200 p-5 sm:p-8 dark:border-gray-800">
             <a
               href={hrefComprar}
               target="_blank"
