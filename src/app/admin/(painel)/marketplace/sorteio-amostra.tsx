@@ -389,17 +389,26 @@ export function SorteioAmostra({
         </div>
 
         {fase === "revelando" && (
-          <div className="animate-slide-up flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 p-5 dark:border-gray-800">
+          /* SEM `flex-wrap`: era ele que empilhava os dois no celular. Medido a 375px,
+             com o rótulo curto: 158px do link + 12px de gap + 100px do botão, em 335px
+             úteis. Sobram 65px, e o link fica em uma linha.
+
+             O `min-w-0` no link existe pelo OUTRO ramo: quando as 10 já foram
+             importadas, o botão vira a pílula "Já estão no seu estoque" (217px) e a
+             soma bate exatamente nos 335px. Sem poder encolher, a linha quebraria;
+             com `min-w-0` quem cede é o link, que vai a 106px e duas linhas. O
+             `shrink-0` na ação garante que quem cede seja sempre o link. */
+          <div className="animate-slide-up flex items-center justify-between gap-3 border-t border-gray-200 p-5 dark:border-gray-800">
             <a
               href={hrefComprar}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm font-semibold text-primary transition-opacity duration-150 hover:opacity-80 dark:text-blue-300"
+              className="min-w-0 text-sm font-semibold text-primary transition-opacity duration-150 hover:opacity-80 dark:text-blue-300"
             >
               Quero o pacote completo
             </a>
             {restantes.length === 0 ? (
-              <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-gray-100 px-5 text-sm font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+              <span className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-gray-100 px-5 text-sm font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-400">
                 <Check className="h-4 w-4" strokeWidth={3} aria-hidden="true" />
                 Já estão no seu estoque
               </span>
@@ -408,9 +417,9 @@ export function SorteioAmostra({
                 type="button"
                 onClick={onPrecificar}
                 disabled={aceitando}
-                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary px-5 text-[13px] font-semibold text-white transition-opacity duration-150 hover:opacity-90 disabled:opacity-60"
+                className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-primary px-5 text-[13px] font-semibold text-white transition-opacity duration-150 hover:opacity-90 disabled:opacity-60"
               >
-                {aceitando ? "Preparando…" : "Adicionar ao meu estoque"}
+                {aceitando ? "Preparando…" : "Adicionar"}
               </button>
             )}
           </div>
