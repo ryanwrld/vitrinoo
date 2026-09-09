@@ -295,7 +295,29 @@ export function SorteioAmostra({
               Teste grátis
             </span>
             <h3 className="mt-2 font-display text-lg font-extrabold text-gray-900 dark:text-gray-50">
-              {fase === "sorteando" ? "Sorteando suas chuteiras…" : "Tá na mão"}
+              {fase === "sorteando" ? (
+                "Sorteando suas chuteiras…"
+              ) : (
+                /*
+                  DOIS TÍTULOS PARA A MESMA TELA, trocados por CSS e não por
+                  JavaScript. Ler a largura em JS exigiria um efeito que só roda
+                  depois da hidratação: o servidor não sabe o tamanho da tela, então
+                  o primeiro quadro sairia com um dos dois e trocaria na frente do
+                  usuário. Com `sm:hidden`/`hidden sm:inline` o HTML já nasce certo
+                  nas duas larguras.
+
+                  Só um dos dois existe para leitor de tela em cada largura —
+                  `display:none` tira o elemento da árvore de acessibilidade, então
+                  ninguém ouve o título duas vezes.
+
+                  O corte é o `sm:` (640px), o mesmo que este pop-up já usa para
+                  deixar de ser folha presa embaixo e virar cartão centrado.
+                */
+                <>
+                  <span className="sm:hidden">Tá na mão</span>
+                  <span className="hidden sm:inline">Modelos para sua loja</span>
+                </>
+              )}
             </h3>
             <p
               // `text-pretty` distribui as linhas evitando sobra grande no fim
@@ -307,7 +329,7 @@ export function SorteioAmostra({
             >
               {fase === "sorteando"
                 ? "Isso leva só alguns segundos."
-                : `${itens.length} modelos reservados para a sua loja. Prontos para você começar a vender.`}
+                : "Uma primeira seleção para conhecer nosso pack:"}
             </p>
           </div>
           <button
