@@ -132,6 +132,19 @@ export default async function MarketplacePage({
   const totalPaginas = Math.max(1, Math.ceil(total / MARKETPLACE_PAGE_SIZE));
   const temFiltro = Boolean(params.q || params.brand || params.sole || params.status);
 
+  /*
+    O VOLTAR SEGUE DE ONDE A PESSOA VEIO, e esta rota tem duas entradas.
+
+    Abrir um álbum só é possível a partir de /albuns — clicando num card de marca.
+    Mandar essa pessoa para o Marketplace a fazia pular a tela intermediária e
+    refazer o caminho inteiro para ver o álbum vizinho.
+
+    Sem álbum, a lista é o destino da busca do Marketplace, e é para lá que o voltar
+    aponta. Não dá para adivinhar melhor que isso no servidor sem ler o histórico do
+    navegador, o que exigiria virar client component e quebraria em link direto.
+  */
+  const hrefVoltar = params.album ? "/admin/marketplace/albuns" : "/admin/marketplace";
+
   return (
     <div className="flex w-full flex-col gap-6 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
       <div className="flex items-center justify-between gap-3">
@@ -151,7 +164,7 @@ export default async function MarketplacePage({
               {nomeAlbum ?? "Todas as chuteiras"}
             </h1>
             <Link
-              href="/admin/marketplace"
+              href={hrefVoltar}
               className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-gray-500 transition-colors duration-150 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
             >
               <ChevronLeft className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
