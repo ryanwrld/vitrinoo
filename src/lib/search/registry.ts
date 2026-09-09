@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
-import { Home, Bell, List, PackagePlus, Settings, Store, ExternalLink, Headset } from "lucide-react";
+import { Home, Bell, List, PackagePlus, Settings, Store, LayoutGrid, ExternalLink, Headset } from "lucide-react";
 import { buildSupportWhatsAppHref } from "@/lib/support/whatsapp";
+import { normalizeSearch } from "@/lib/search/ilike";
 
 /**
  * Registro estático de destinos pesquisáveis do painel — rotas internas,
@@ -35,12 +36,8 @@ export type SearchEntry = {
 /** IDs mostrados como acesso rápido quando a busca está vazia. */
 export const PRIMARY_NAV_IDS = ["dashboard", "produtos", "novo-produto", "configuracoes"] as const;
 
-export function normalizeSearch(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-}
+// Reexportado: a definição vive em search/ilike.ts, que o servidor também usa.
+export { normalizeSearch };
 
 type RegistryContext = {
   storeName: string | null;
@@ -53,8 +50,27 @@ export function buildSearchRegistry({ storeName, storeSlug }: RegistryContext): 
     { id: "notificacoes", label: "Notificações", keywords: ["atividade", "avisos", "sino", "alertas"], Icon: Bell, kind: "route", href: "/admin/dashboard/notificacoes" },
     { id: "produtos", label: "Produtos", keywords: ["catalogo", "chuteiras", "itens", "estoque"], Icon: List, kind: "route", href: "/admin/produtos" },
     { id: "novo-produto", label: "Novo produto", keywords: ["cadastrar", "adicionar", "criar", "novo"], Icon: PackagePlus, kind: "route", href: "/admin/produtos/novo" },
-    { id: "configuracoes", label: "Configurações", keywords: ["ajustes", "preferencias", "conta", "tema", "senha"], Icon: Settings, kind: "route", href: "/admin/configuracoes" },
-    { id: "configuracoes-loja", label: "Configurações da loja", keywords: ["identidade", "whatsapp", "link", "slug", "logo", "vitrine"], Icon: Store, kind: "route", href: "/admin/configuracoes/loja" },
+    /*
+      As palavras de identidade da loja vivem AQUI, e não numa entrada própria.
+
+      Existia uma segunda entrada, "Configurações da loja", apontando para
+      /admin/configuracoes/loja — rota que NÃO EXISTE e responde 404. Quem
+      buscava "whatsapp", "slug" ou "logo" era mandado para uma página quebrada.
+      Essas coisas são editadas dentro de /admin/configuracoes mesmo, então as
+      palavras vieram para cá em vez de sumir junto com a entrada morta.
+    */
+    { id: "configuracoes", label: "Configurações", keywords: ["ajustes", "preferencias", "conta", "tema", "senha", "identidade", "whatsapp", "link", "slug", "logo", "vitrine", "loja"], Icon: Settings, kind: "route", href: "/admin/configuracoes" },
+
+    /*
+      MARKETPLACE — as três rotas existiam desde antes desta busca ser escrita e
+      nunca entraram aqui: buscar "marketplace" não podia achar nada, por
+      construção. As palavras cobrem como o lojista chama a coisa ("pacote",
+      "pack") e o que ele procura lá dentro (marcas), porque é assim que ele
+      digita, não pelo nome da rota.
+    */
+    { id: "marketplace", label: "Marketplace", keywords: ["pacote", "pack", "comprar", "chuteiras prontas", "recursos", "oferta", "promocao"], Icon: Store, kind: "route", href: "/admin/marketplace" },
+    { id: "marketplace-albuns", label: "Álbuns", keywords: ["marcas", "nike", "adidas", "puma", "mizuno", "joma", "new balance", "asics", "retro", "estilo", "colecoes", "pacote"], Icon: LayoutGrid, kind: "route", href: "/admin/marketplace/albuns" },
+    { id: "marketplace-tudo", label: "Todas as chuteiras", keywords: ["pacote", "pack", "catalogo", "modelos", "procurar chuteira", "importar"], Icon: List, kind: "route", href: "/admin/marketplace/tudo" },
   ];
 
   // "Ver minha vitrine" só faz sentido quando já existe slug configurado.

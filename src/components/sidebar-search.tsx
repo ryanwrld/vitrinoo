@@ -4,9 +4,14 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Search, ImageOff, CornerDownLeft, X } from "lucide-react";
+import { Search, ImageOff, CornerDownLeft, X, LayoutGrid, AlertCircle } from "lucide-react";
 import { buildSearchRegistry, filterRegistry, PRIMARY_NAV_IDS, type SearchEntry } from "@/lib/search/registry";
-import { searchProducts, type ProductSearchResult } from "@/lib/search/actions";
+import {
+  searchGlobal,
+  type ProductSearchResult,
+  type PackProductSearchResult,
+  type AlbumSearchResult,
+} from "@/lib/search/actions";
 import { getRecentSearches, addRecentSearch, removeRecentSearch, clearRecentSearches } from "@/lib/search/recent-searches";
 import { formatBRLPrice } from "@/lib/currency/brl";
 import { lockScroll } from "@/lib/ui/scroll-lock";
@@ -31,10 +36,18 @@ import { lockScroll } from "@/lib/ui/scroll-lock";
  * do clique num resultado registrar.
  */
 
+/**
+ * Uma linha selecionável do painel, de qualquer seção.
+ *
+ * A ORDEM DESTA UNIÃO NÃO IMPORTA; a ordem de `items` sim — é ela que o teclado
+ * percorre e é dela que cada seção tira o índice das suas linhas.
+ */
 type Selectable =
   | { type: "recent"; term: string }
   | { type: "nav"; entry: SearchEntry }
-  | { type: "product"; product: ProductSearchResult };
+  | { type: "album"; album: AlbumSearchResult }
+  | { type: "product"; product: ProductSearchResult }
+  | { type: "pacote"; product: PackProductSearchResult };
 
 /**
  * Detecta Mac no client pra mostrar o atalho certo na plaquinha (⌘ no Mac,
@@ -98,8 +111,12 @@ function SearchPalette({
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [products, setProducts] = useState<ProductSearchResult[]>([]);
+  const [meusProdutos, setMeusProdutos] = useState<ProductSearchResult[]>([]);
+  const [noPacote, setNoPacote] = useState<PackProductSearchResult[]>([]);
+  const [albuns, setAlbuns] = useState<AlbumSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
+  /** Falha da busca. Sem isto, erro e "ainda carregando" ficam indistinguíveis. */
+  const [erro, setErro] = useState(false);
   const [recent, setRecent] = useState<string[]>(() => getRecentSearches());
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -114,7 +131,9 @@ function SearchPalette({
     return filterRegistry(registry, trimmed);
   }, [registry, trimmed, isEmpty]);
 
-  // Lista plana pra navegação por teclado + destaque. Ordem = ordem visual.
+  // Lista plana pra navegação por teclado + destaque. ORDEM = ORDEM VISUAL, e é
+  // esta a fonte única: as seções não recontam índice, elas perguntam a `items`
+  // onde o primeiro item do seu tipo caiu (ver `inicioDaSecao`).
   const items = useMemo<Selectable[]>(() => {
     if (isEmpty) {
       return [
@@ -124,9 +143,29 @@ function SearchPalette({
     }
     return [
       ...navMatches.map((entry): Selectable => ({ type: "nav", entry })),
-      ...products.map((product): Selectable => ({ type: "product", product })),
+      ...albuns.map((album): Selectable => ({ type: "album", album })),
+      ...meusProdutos.map((product): Selectable => ({ type: "product", product })),
+      ...noPacote.map((product): Selectable => ({ type: "pacote", product })),
     ];
-  }, [isEmpty, recent, navMatches, products]);
+  }, [isEmpty, recent, navMatches, albuns, meusProdutos, noPacote]);
+
+  /**
+   * Onde cada seção começa dentro de `items`.
+   *
+   * DERIVADO, nunca recontado. A versão anterior calculava o índice global à mão
+   * dentro de cada seção do render (`navMatches.length + index`), com o offset
+   * das recentes repetido em outro lugar. Com duas seções a mais essa conta
+   * quebra em silêncio: a seta desce e o destaque acende na linha errada, sem
+   * erro nenhum no console. Perguntando ao próprio array, não há o que
+   * dessincronizar.
+   */
+  const inicioDaSecao = useMemo(() => {
+    const inicio = new Map<Selectable["type"], number>();
+    items.forEach((item, index) => {
+      if (!inicio.has(item.type)) inicio.set(item.type, index);
+    });
+    return inicio;
+  }, [items]);
 
   // Toda mudança de texto passa por aqui (input e clique em busca recente) —
   // reseta destaque e ajusta loading/products fora de qualquer efeito, pra o
@@ -134,8 +173,11 @@ function SearchPalette({
   const updateQuery = useCallback((value: string) => {
     setQuery(value);
     setActiveIndex(0);
+    setErro(false);
     if (value.trim().length < 2) {
-      setProducts([]);
+      setMeusProdutos([]);
+      setNoPacote([]);
+      setAlbuns([]);
       setLoading(false);
     } else {
       setLoading(true);
@@ -160,18 +202,45 @@ function SearchPalette({
     }
   }, [registry, router]);
 
-  // Busca de produtos debounced (≥ 2 chars). O corpo do efeito não chama
-  // setState (só mexe no ref e agenda o timer) — o loading/clear pra < 2 chars
-  // já foi tratado em updateQuery. requestId descarta respostas obsoletas.
+  // Busca debounced (≥ 2 chars). O corpo do efeito não chama setState (só mexe
+  // no ref e agenda o timer) — o loading/clear pra < 2 chars já foi tratado em
+  // updateQuery. requestId descarta respostas obsoletas.
   const requestIdRef = useRef(0);
   useEffect(() => {
     const requestId = ++requestIdRef.current;
     if (trimmed.length < 2) return;
     const timer = setTimeout(async () => {
-      const results = await searchProducts(trimmed);
-      if (requestIdRef.current !== requestId) return; // resposta obsoleta
-      setProducts(results);
-      setLoading(false);
+      /*
+        O `finally` É O CONSERTO DO TRAVAMENTO.
+
+        Antes isto era um `await` cru. Se a ação falhasse — rede caindo, servidor
+        recusando, qualquer coisa — a promise rejeitava, o `setLoading(false)`
+        nunca rodava e a busca ficava em esqueleto para sempre. Como o estado
+        vazio depende de `!loading`, nem o "Nenhum resultado" aparecia: a tela
+        não tinha como sair daquele quadro. Era isso que se via ao buscar
+        "marketplace".
+
+        Agora `loading` desliga em qualquer desfecho, e a falha vira uma
+        mensagem em vez de um carregamento eterno.
+      */
+      try {
+        const resultado = await searchGlobal(trimmed);
+        if (requestIdRef.current !== requestId) return; // resposta obsoleta
+        setMeusProdutos(resultado.meusProdutos);
+        setNoPacote(resultado.noPacote);
+        setAlbuns(resultado.albuns);
+        setErro(false);
+      } catch {
+        if (requestIdRef.current !== requestId) return;
+        setErro(true);
+        setMeusProdutos([]);
+        setNoPacote([]);
+        setAlbuns([]);
+      } finally {
+        // Só a requisição mais recente desliga o carregamento: uma resposta
+        // obsoleta chegando atrasada não pode apagar o esqueleto da busca atual.
+        if (requestIdRef.current === requestId) setLoading(false);
+      }
     }, 250);
     return () => clearTimeout(timer);
   }, [trimmed]);
@@ -206,7 +275,23 @@ function SearchPalette({
         onClose();
         return;
       }
-      // produto
+      if (item.type === "album") {
+        addRecentSearch(trimmed || item.album.name);
+        router.push(`/admin/marketplace/tudo?album=${item.album.id}`);
+        onClose();
+        return;
+      }
+      if (item.type === "pacote") {
+        // Leva para a lista do pacote JÁ FILTRADA pelo nome, e não para uma
+        // página do produto: dentro do pacote a chuteira ainda não é da loja,
+        // então não existe tela dela para abrir. Chegando com o filtro aplicado,
+        // ela é o primeiro resultado e o botão de importar está ali do lado.
+        addRecentSearch(trimmed || item.product.name);
+        router.push(`/admin/marketplace/tudo?q=${encodeURIComponent(item.product.name)}`);
+        onClose();
+        return;
+      }
+      // produto da própria loja
       addRecentSearch(trimmed || item.product.name);
       router.push(`/admin/produtos/${item.product.id}/editar`);
       onClose();
@@ -234,7 +319,10 @@ function SearchPalette({
   }
 
   const showRecent = isEmpty && recent.length > 0;
-  const showEmptyState = !isEmpty && !loading && items.length === 0;
+  const showEmptyState = !isEmpty && !loading && !erro && items.length === 0;
+  // Um só: as três fontes vêm na mesma resposta, então ou está tudo carregando
+  // ou nada está. Dois esqueletos bastam para dizer "estou indo buscar".
+  const showSkeleton = !isEmpty && loading && items.length === navMatches.length;
 
   // Portalizado pro <body>: o <aside> da sidebar é `position: sticky`, que cria
   // um stacking context — sem o portal, o modal (fixed z-60) ficaria PRESO nele
@@ -289,7 +377,9 @@ function SearchPalette({
                 <div
                   key={`recent-${term}`}
                   className={`flex min-h-11 w-full items-center rounded-lg text-sm transition-colors duration-100 ${
-                    activeIndex === index ? "bg-primary-subtle dark:bg-blue-400/15" : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                    activeIndex === (inicioDaSecao.get("recent") ?? 0) + index
+                      ? "bg-primary-subtle dark:bg-blue-400/15"
+                      : "hover:bg-gray-100 dark:hover:bg-gray-800"
                   }`}
                 >
                   {/* Botão principal ocupa o resto da linha; o "X" é irmão, não filho
@@ -325,7 +415,7 @@ function SearchPalette({
           {navMatches.length > 0 && (
             <Section title={isEmpty ? "Ir para" : "Navegação"}>
               {navMatches.map((entry, index) => {
-                const globalIndex = (showRecent ? recent.length : 0) + index;
+                const globalIndex = (inicioDaSecao.get("nav") ?? 0) + index;
                 const Icon = entry.Icon;
                 return (
                   <RowButton key={entry.id} active={activeIndex === globalIndex} onSelect={() => handleSelect({ type: "nav", entry })}>
@@ -338,48 +428,116 @@ function SearchPalette({
             </Section>
           )}
 
-          {!isEmpty && (loading || products.length > 0) && (
-            <Section title="Produtos">
-              {loading && products.length === 0
-                ? [0, 1].map((key) => <ProductSkeleton key={`skeleton-${key}`} />)
-                : products.map((product, index) => {
-                    const globalIndex = navMatches.length + index;
-                    return (
-                      <RowButton key={product.id} active={activeIndex === globalIndex} onSelect={() => handleSelect({ type: "product", product })} padded>
-                        <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-[1.25rem] bg-gray-100 dark:bg-gray-800">
-                          {product.coverUrl ? (
-                            <Image src={product.coverUrl} alt={product.name} fill sizes="44px" className="object-cover" />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center">
-                              <ImageOff className="h-4 w-4 text-gray-400 dark:text-gray-500" aria-hidden="true" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex min-w-0 flex-1 flex-col">
-                          <span className="truncate text-left text-sm font-medium text-gray-900 dark:text-gray-50">{product.name}</span>
-                          <span className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                            {formatBRLPrice(product.price)}
-                            <span
-                              className={`rounded-full px-1.5 py-px text-[10px] font-bold ${
-                                product.disponivel
-                                  ? "bg-success-bg text-success-fg dark:bg-success-solid/15"
-                                  : "bg-error-bg text-error-badge-fg dark:bg-error-solid/15"
-                              }`}
-                            >
-                              {product.disponivel ? "Disponível" : "Esgotado"}
-                            </span>
-                          </span>
-                        </div>
-                      </RowButton>
-                    );
-                  })}
+          {albuns.length > 0 && (
+            <Section title="Álbuns do pacote">
+              {albuns.map((album, index) => (
+                <RowButton
+                  key={album.id}
+                  active={activeIndex === (inicioDaSecao.get("album") ?? 0) + index}
+                  onSelect={() => handleSelect({ type: "album", album })}
+                >
+                  <LayoutGrid className="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+                  <span className="flex-1 truncate text-left text-gray-700 dark:text-gray-300">{album.name}</span>
+                  <span className="shrink-0 text-[11px] text-gray-400 dark:text-gray-500">
+                    {album.total} {album.total === 1 ? "chuteira" : "chuteiras"}
+                  </span>
+                </RowButton>
+              ))}
             </Section>
           )}
 
-          {showEmptyState && (
+          {meusProdutos.length > 0 && (
+            <Section title="Meus produtos">
+              {meusProdutos.map((product, index) => (
+                <RowButton
+                  key={product.id}
+                  active={activeIndex === (inicioDaSecao.get("product") ?? 0) + index}
+                  onSelect={() => handleSelect({ type: "product", product })}
+                  padded
+                >
+                  <Miniatura url={product.coverUrl} alt={product.name} />
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate text-left text-sm font-medium text-gray-900 dark:text-gray-50">{product.name}</span>
+                    <span className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                      {formatBRLPrice(product.price)}
+                      <span
+                        className={`rounded-full px-1.5 py-px text-[10px] font-bold ${
+                          product.disponivel
+                            ? "bg-success-bg text-success-fg dark:bg-success-solid/15"
+                            : "bg-error-bg text-error-badge-fg dark:bg-error-solid/15"
+                        }`}
+                      >
+                        {product.disponivel ? "Disponível" : "Esgotado"}
+                      </span>
+                    </span>
+                  </div>
+                </RowButton>
+              ))}
+            </Section>
+          )}
+
+          {/* SEÇÃO SEPARADA, e não misturada com "Meus produtos": são coisas de
+              natureza diferente. O de cima já é da loja e abre para editar; o de
+              baixo ainda está no pacote e precisa ser importado. Numa lista só,
+              o lojista clicaria esperando editar e cairia noutro lugar. */}
+          {noPacote.length > 0 && (
+            <Section title="No pacote">
+              {noPacote.map((product, index) => (
+                <RowButton
+                  key={product.id}
+                  active={activeIndex === (inicioDaSecao.get("pacote") ?? 0) + index}
+                  onSelect={() => handleSelect({ type: "pacote", product })}
+                  padded
+                >
+                  <Miniatura url={product.coverUrl} alt={product.name} />
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate text-left text-sm font-medium text-gray-900 dark:text-gray-50">{product.name}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {formatBRLPrice(product.suggestedPrice)} sugerido
+                    </span>
+                  </div>
+                </RowButton>
+              ))}
+            </Section>
+          )}
+
+          {showSkeleton && (
+            <Section title="Buscando">
+              {[0, 1].map((key) => (
+                <ProductSkeleton key={`skeleton-${key}`} />
+              ))}
+            </Section>
+          )}
+
+          {erro && (
             <div className="flex flex-col items-center gap-1 px-4 py-10 text-center">
-              <span className="font-medium text-gray-900 dark:text-gray-50">Nenhum resultado</span>
-              <span className="text-sm text-gray-500 dark:text-gray-400">Tente o nome do modelo ou de uma página do painel.</span>
+              <AlertCircle className="mb-1 h-5 w-5 text-gray-400 dark:text-gray-500" aria-hidden="true" />
+              <span className="font-medium text-gray-900 dark:text-gray-50">Não foi possível buscar agora</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">Confira sua conexão e digite de novo.</span>
+            </div>
+          )}
+
+          {showEmptyState && (
+            /* O estado vazio OFERECE SAÍDA em vez de só constatar o fracasso: são
+               990 chuteiras no pacote, e a busca aqui mostra no máximo cinco de
+               cada fonte. Mandar o termo para a lista completa é o passo que a
+               pessoa ia dar de qualquer jeito. */
+            <div className="flex flex-col items-center gap-1 px-4 py-10 text-center">
+              <span className="font-medium text-gray-900 dark:text-gray-50">Nenhum resultado para “{trimmed}”</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                Tente o nome do modelo, de uma marca ou de uma página do painel.
+              </span>
+              <button
+                type="button"
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  router.push(`/admin/marketplace/tudo?q=${encodeURIComponent(trimmed)}`);
+                  onClose();
+                }}
+                className="mt-3 inline-flex min-h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-white transition-opacity duration-150 hover:opacity-90"
+              >
+                Procurar no pacote
+              </button>
             </div>
           )}
         </div>
@@ -436,6 +594,22 @@ function RowButton({
     >
       {children}
     </button>
+  );
+}
+
+/** Capa do resultado. Extraída porque "Meus produtos" e "No pacote" desenham a
+ *  mesma miniatura — e a versão duplicada divergiria no primeiro ajuste. */
+function Miniatura({ url, alt }: { url: string | null; alt: string }) {
+  return (
+    <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-[1.25rem] bg-gray-100 dark:bg-gray-800">
+      {url ? (
+        <Image src={url} alt={alt} fill sizes="44px" className="object-cover" />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center">
+          <ImageOff className="h-4 w-4 text-gray-400 dark:text-gray-500" aria-hidden="true" />
+        </div>
+      )}
+    </div>
   );
 }
 

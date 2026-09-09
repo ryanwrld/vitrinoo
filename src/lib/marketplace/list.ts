@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { escaparCurringasIlike } from "@/lib/search/ilike";
 
 /**
  * Leitura do marketplace — o acervo de chuteiras pré-cadastradas que o Vitrinoo
@@ -66,11 +67,11 @@ export async function queryMarketplaceProducts(
       { count: "exact" },
     );
 
-  // `ilike` com escape do `%` e `_`: sem isso, um `%` digitado na busca vira
-  // curinga e devolve o acervo inteiro como se fosse resultado da pesquisa.
+  // Escape do `%` e `_` em `lib/search/ilike.ts` — a busca global repetia este
+  // mesmo bug, então a regra virou fonte única em vez de ficar só aqui.
   if (params.q?.trim()) {
-    const termo = params.q.trim().replace(/[%_]/g, (c) => `\\${c}`);
-    query = query.ilike("name", `%${termo}%`);
+    const termo = escaparCurringasIlike(params.q);
+    if (termo) query = query.ilike("name", `%${termo}%`);
   }
   // Lista vazia significa "álbum sem nenhuma chuteira", não "sem filtro". Sem
   // este caso explícito, um álbum vazio devolveria o acervo inteiro.
