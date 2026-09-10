@@ -360,7 +360,17 @@ function Card({
                     else toast.error(r.erro);
                   })
                 }
-                className="flex min-h-9 w-full items-center justify-center gap-1.5 rounded-full border border-primary px-3 text-xs font-semibold text-primary transition-colors duration-150 hover:bg-primary-subtle disabled:opacity-60 dark:border-blue-400/40 dark:text-blue-300 dark:hover:bg-blue-400/10"
+                /*
+                  Verde cheio com texto branco, no mesmo `--color-success-solid`
+                  do "Pacote liberado" e do "Já resgatado". Uma versão anterior era
+                  contorno azul: distinguia ação de estado, mas o azul cheio já é o
+                  "Na sua loja" do card ao lado, e dois azuis no mesmo rodapé
+                  disputavam leitura.
+
+                  Sem variante `dark:`: o token já é calibrado para os dois temas,
+                  e branco sobre ele tem contraste nos dois.
+                */
+                className="flex min-h-9 w-full items-center justify-center gap-1.5 rounded-full bg-success-solid px-3 text-xs font-semibold text-white transition-colors duration-150 hover:bg-success-solid-hover disabled:opacity-60"
               >
                 <RotateCcw className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />
                 {pendente ? "Trazendo…" : "Trazer de volta"}
