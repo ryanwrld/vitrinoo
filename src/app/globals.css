@@ -859,7 +859,12 @@ input:autofill {
   mask-composite: exclude;
   pointer-events: none;
 }
-.dark .admin-scope .notification-glow-border::before {
+/* `:has(.admin-scope)` e não `.dark .admin-scope ...`: o seletor antigo exigia o
+   escopo como ANCESTRAL, e o toast do sonner é portalizado para fora dele — no
+   tema escuro ele acabava usando a borda do tema claro (anel branco a 65% em vez
+   dos 16% discretos). Mesma armadilha da cor do texto, logo abaixo. Os outros
+   usos desta classe estão dentro do escopo e seguem iguais. */
+.dark:has(.admin-scope) .notification-glow-border::before {
   background:
     radial-gradient(65% 60% at 50% -18%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 60%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.02) 30%, rgba(255, 255, 255, 0.05) 100%);
@@ -907,6 +912,37 @@ input:autofill {
  * nossa regra base. Sem o `!`, o tema claro perdia para o `inherit` dele. Mesmo
  * motivo das cores de ícone logo acima.
  */
+/*
+ * SUPERFÍCIE DO TOAST — a tinta que faltava no vidro.
+ *
+ * O card vinha com `bg-transparent` + `backdrop-blur`: ele BORRAVA o que estava
+ * atrás e não punha nada por cima. Sem superfície própria, o que aparece atrás do
+ * texto é a página, embaçada — e como a cor do texto é fixa por tema, bastava uma
+ * foto clara passar por baixo no tema escuro para o texto branco sumir. Foi
+ * fotografado na grade do pacote: toast por cima de uma chuteira branca,
+ * ilegível. O mesmo valia para o véu `bg-black/60` dos popups no tema claro.
+ *
+ * Vidro de verdade (o material do iOS/macOS) é blur MAIS uma camada de tinta. Só
+ * o blur não é vidro, é lente. Com a tinta, as duas cores fixas de texto passam a
+ * estar certas sobre QUALQUER coisa — foto clara, foto escura, véu, gradiente —
+ * em vez de dependerem de adivinhar o que está atrás.
+ *
+ * Aqui e não em Tailwind pelo mesmo motivo da cor do texto logo abaixo: o sonner
+ * portaliza o toast no `<body>`, fora do `.admin-scope`, onde a variante `dark:`
+ * do projeto é inerte.
+ *
+ * Alpha maior no escuro (90% x 85%) porque o pior caso de lá é o mais violento:
+ * foto branca sob texto branco. No claro, o pior caso é foto preta sob texto
+ * escuro — menos comum e menos severo, já que o blur puxa a mancha para o cinza.
+ *
+ * `color-mix` sobre os tokens que o painel já usa de fundo (gray-50 no claro,
+ * gray-925 no escuro, ver o bloco do rubber-band lá em cima) — o card fica sendo
+ * a própria superfície do app com um véu, não um cinza novo inventado aqui.
+ */
+[data-sonner-toast] {
+  background: color-mix(in srgb, var(--color-gray-50) 85%, transparent) !important;
+}
+
 [data-sonner-toast] [data-title] { color: var(--color-gray-900) !important; }
 [data-sonner-toast] [data-description] { color: var(--color-gray-600) !important; }
 
@@ -916,6 +952,7 @@ input:autofill {
 /* Sombra mais funda no escuro: a do tema claro é quase invisível sobre o fundo
    grafite do painel, e sem ela o card de vidro perde a separação do conteúdo. */
 .dark:has(.admin-scope) [data-sonner-toast] {
+  background: color-mix(in srgb, var(--color-gray-925) 90%, transparent) !important;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.55) !important;
 }
 

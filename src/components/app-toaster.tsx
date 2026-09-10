@@ -51,8 +51,11 @@ export function AppToaster() {
           // não define `left`/`right`/margem nenhuma para a posição
           // "center" (só para os gatilhos `left`/`right`), então não há
           // nada pra vencer — `!important` aqui seria só ruído.
+          // SEM `!bg-transparent` aqui: o fundo do card é decidido em
+          // `globals.css`, junto da cor do texto, pelo mesmo motivo dela
+          // (o toast é portalizado fora do `.admin-scope`, ver lá).
           toast:
-            "notification-glow-border !w-max !max-w-[90vw] left-0 right-0 mx-auto !rounded-3xl !border-0 !bg-transparent !shadow-[0_25px_50px_-12px_rgba(3,8,33,0.16),0_0_0_1px_rgba(3,8,33,0.06)] backdrop-blur-xl backdrop-saturate-75",
+            "notification-glow-border !w-max !max-w-[90vw] left-0 right-0 mx-auto !rounded-3xl !border-0 !shadow-[0_25px_50px_-12px_rgba(3,8,33,0.16),0_0_0_1px_rgba(3,8,33,0.06)] backdrop-blur-xl backdrop-saturate-75",
           title: "!whitespace-nowrap",
           description: "!whitespace-nowrap",
         },
