@@ -355,9 +355,26 @@ function Card({
                 disabled={pendente}
                 onClick={() =>
                   iniciar(async () => {
+                    /*
+                      SEM TOAST DE SUCESSO, e o motivo não é economia.
+
+                      A ação responde em ~1s, mas a transição só solta o `pendente`
+                      quando a grade inteira re-renderiza pelo `revalidatePath` —
+                      ~3,5s numa página de 990 produtos com facetas. Um
+                      `toast.success` aqui aparecia nesse meio: a tela dizia
+                      "pronto" enquanto o botão ainda dizia "Trazendo…", por dois
+                      segundos e meio.
+
+                      E o sucesso já está visível no lugar certo: o botão vira a
+                      pílula "Na sua loja", no mesmo card, sob o olho de quem
+                      clicou. O aviso flutuante só repetia isso — e chegava antes
+                      da mudança que anunciava.
+
+                      O ERRO CONTINUA COM TOAST, por assimetria real: quando falha,
+                      nada muda na tela, e sem palavra o clique some no vazio.
+                    */
                     const r = await trazerDeVolta(item.id);
-                    if (r.ok) toast.success("De volta na sua loja.");
-                    else toast.error(r.erro);
+                    if (!r.ok) toast.error(r.erro);
                   })
                 }
                 /*
