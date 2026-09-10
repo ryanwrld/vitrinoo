@@ -192,6 +192,22 @@ function Card({
   onSelecionar: () => void;
 }) {
   const [pendente, iniciar] = useTransition();
+  /*
+    O CARD VIRA QUANDO A AÇÃO CONFIRMA, não quando a página termina de renderizar.
+
+    Sem isto, o botão ficava em "Trazendo…" por ~3,5s: a ação responde em ~1s, mas
+    o `pendente` do `useTransition` só cai quando a resposta INTEIRA chega, e essa
+    resposta carrega a grade de 990 produtos re-renderizada pelo `revalidatePath`.
+    Os 2,5s de sobra não eram "trazendo" coisa nenhuma — a chuteira já estava na
+    loja, e o botão mentia sobre isso.
+
+    Com este estado local, o rodapé passa a "Na sua loja" no instante em que o
+    servidor confirma. A re-renderização continua acontecendo por baixo e só
+    ratifica o que a tela já mostra.
+  */
+  const [voltou, setVoltou] = useState(false);
+  /** Só o tempo da ação no servidor. Não inclui a revalidação da página. */
+  const [trazendo, setTrazendo] = useState(false);
   const [editando, setEditando] = useState(false);
   const [nome, setNome] = useState(item.name);
   const [preco, setPreco] = useState(String(item.suggestedPrice));
@@ -330,7 +346,7 @@ function Card({
 
         {!editando && (
           <div className="mt-auto pt-2">
-            {item.jaImportado ? (
+            {item.jaImportado || voltou ? (
               /* Azul cheio, texto branco: é o único estado POSITIVO do rodapé, e
                  no cinza ele empatava visualmente com "Bloqueado" — numa página
                  de dezenas de cards, o que o lojista quer achar de relance é o
@@ -352,31 +368,32 @@ function Card({
                  990 teria que comprar tudo de novo por causa de um item. */
               <button
                 type="button"
-                disabled={pendente}
-                onClick={() =>
-                  iniciar(async () => {
-                    /*
-                      SEM TOAST DE SUCESSO, e o motivo não é economia.
+                disabled={trazendo}
+                onClick={async () => {
+                  /*
+                    FORA DO `useTransition`, de propósito.
 
-                      A ação responde em ~1s, mas a transição só solta o `pendente`
-                      quando a grade inteira re-renderiza pelo `revalidatePath` —
-                      ~3,5s numa página de 990 produtos com facetas. Um
-                      `toast.success` aqui aparecia nesse meio: a tela dizia
-                      "pronto" enquanto o botão ainda dizia "Trazendo…", por dois
-                      segundos e meio.
+                    A versão anterior chamava a ação dentro de `iniciar(...)` e o
+                    botão ficava em "Trazendo…" por ~3s — medido. Duas coisas se
+                    somavam: o `pendente` da transição só cai quando a resposta
+                    INTEIRA chega (e ela carrega a grade de 990 produtos
+                    re-renderizada pelo `revalidatePath`), e o `setVoltou` de dentro
+                    da transição era ADIADO junto com ela. Ou seja, nem marcar o
+                    card como resolvido escapava da espera.
 
-                      E o sucesso já está visível no lugar certo: o botão vira a
-                      pílula "Na sua loja", no mesmo card, sob o olho de quem
-                      clicou. O aviso flutuante só repetia isso — e chegava antes
-                      da mudança que anunciava.
+                    Nada disso era "trazendo": a chuteira entra na loja em ~1s. O
+                    resto é a página se atualizando, e o botão mentia sobre isso.
 
-                      O ERRO CONTINUA COM TOAST, por assimetria real: quando falha,
-                      nada muda na tela, e sem palavra o clique some no vazio.
-                    */
-                    const r = await trazerDeVolta(item.id);
-                    if (!r.ok) toast.error(r.erro);
-                  })
-                }
+                    Com a ação solta, `trazendo` cobre só o trabalho de verdade e o
+                    card vira assim que o servidor confirma. A revalidação continua
+                    acontecendo por baixo e apenas ratifica o que a tela já mostra.
+                  */
+                  setTrazendo(true);
+                  const r = await trazerDeVolta(item.id);
+                  setTrazendo(false);
+                  if (r.ok) setVoltou(true);
+                  else toast.error(r.erro);
+                }}
                 /*
                   Verde cheio com texto branco, no mesmo `--color-success-solid`
                   do "Pacote liberado" e do "Já resgatado". Uma versão anterior era
@@ -390,7 +407,7 @@ function Card({
                 className="flex min-h-9 w-full items-center justify-center gap-1.5 rounded-full bg-success-solid px-3 text-xs font-semibold text-white transition-colors duration-150 hover:bg-success-solid-hover disabled:opacity-60"
               >
                 <RotateCcw className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />
-                {pendente ? "Trazendo…" : "Trazer de volta"}
+                {trazendo ? "Trazendo…" : "Trazer de volta"}
               </button>
             ) : (
               /* ESTADO, NÃO AÇÃO — `span`, nunca `button`. Não existe nada para clicar
