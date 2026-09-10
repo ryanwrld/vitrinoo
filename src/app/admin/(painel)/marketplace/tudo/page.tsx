@@ -86,14 +86,25 @@ export default async function MarketplacePage({
       ])
     : [null, null];
 
-  // O que esta loja já importou — alimenta o estado "já está na sua loja" no card.
-  // Só os rastros ATIVOS (com produto vivo): se o lojista excluiu o produto, o
-  // card volta a oferecer a importação.
+  /*
+    O que esta loja já importou — alimenta DOIS estados do card, não um.
+
+    Vem sem filtro de propósito, e a separação acontece em memória logo abaixo:
+
+      - rastro com produto vivo  → "Na sua loja"
+      - rastro com `product_id` NULL → foi importada e APAGADA, e é o único caso
+        em que o card oferece "Trazer de volta"
+
+    O NULL é o que a exclusão deixa para trás: a linha de importação sobrevive de
+    propósito (migration 0021) com o vínculo zerado. Antes esta consulta descartava
+    essas linhas com um `.not(...)`, e o comentário aqui dizia que o card "volta a
+    oferecer a importação" — só que o card nunca ofereceu importação a ninguém, e o
+    filtro não fazia nada. Agora a informação é usada.
+  */
   const importadosPromise = supabase
     .from("marketplace_imports")
     .select("marketplace_product_id, product_id")
-    .eq("store_id", store.id)
-    .not("product_id", "is", null);
+    .eq("store_id", store.id);
 
   const [{ items, total }, facetas, headerFeed, { data: importados }] = await Promise.all([
     queryMarketplaceProducts(supabase, {
@@ -118,11 +129,36 @@ export default async function MarketplacePage({
     .from("marketplace_products")
     .select("id", { count: "exact", head: true });
 
-  const jaImportados = new Set((importados ?? []).map((i) => i.marketplace_product_id));
+  /*
+    DOIS CONJUNTOS, porque são DUAS perguntas diferentes.
+
+    "Está na loja agora?" e "esta loja já teve isto alguma vez?" davam a mesma
+    resposta enquanto ninguém apagava nada — e passam a divergir no instante em que
+    alguém apaga. Misturá-las é o que produz o bug de contar uma chuteira apagada
+    como se ainda estivesse na vitrine.
+  */
+  const naLoja = new Set(
+    (importados ?? []).filter((i) => i.product_id !== null).map((i) => i.marketplace_product_id),
+  );
+  const apagados = new Set(
+    (importados ?? []).filter((i) => i.product_id === null).map((i) => i.marketplace_product_id),
+  );
+
+  /*
+    "Já pegou a amostra alguma vez" conta os DOIS conjuntos.
+
+    Quem resgatou as 10 e apagou todas continua tendo pegado a amostra — a vaga foi
+    usada e não volta. Perguntar só pelos vivos faria o aviso tratar essa pessoa
+    como quem nunca resgatou, que é exatamente o bug que o cartão do Marketplace já
+    teve e foi corrigido: a pergunta certa é "o que já foi resgatado alguma vez".
+  */
+  const jaPegouAmostra = naLoja.size + apagados.size > 0;
 
   const comUrl = items.map((item) => ({
     ...item,
-    jaImportado: jaImportados.has(item.id),
+    jaImportado: naLoja.has(item.id),
+    // Só quem já foi da loja e saiu. Nunca uma chuteira que a loja nunca teve.
+    podeTrazerDeVolta: apagados.has(item.id),
     photoUrls: item.photoPaths.map(
       (p) => supabase.storage.from("marketplace-assets").getPublicUrl(p).data.publicUrl,
     ),
@@ -183,14 +219,14 @@ export default async function MarketplacePage({
                 : /* O número é o argumento, não contagem decorativa: ver que são
                      990 é o que produz o "estou perdendo muita coisa". */
                   `${totalAcervo ?? 0} chuteiras no pacote`}
-            {jaImportados.size > 0 && ` · ${jaImportados.size} na sua loja`}
+            {naLoja.size > 0 && ` · ${naLoja.size} na sua loja`}
           </p>
         </div>
         <HeaderActions activityFeed={headerFeed.items} />
       </div>
 
       <div className="flex w-full flex-col gap-5 2xl:max-w-[96rem]">
-        {!temAcesso && !ehAdmin && <AvisoPacote jaPegouAmostra={jaImportados.size > 0} />}
+        {!temAcesso && !ehAdmin && <AvisoPacote jaPegouAmostra={jaPegouAmostra} />}
 
         <MarketplaceToolbar
           marcas={facetas.marcas}

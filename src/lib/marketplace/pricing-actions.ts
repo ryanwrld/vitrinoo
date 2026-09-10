@@ -284,3 +284,91 @@ export async function iniciarPrecificacaoAmostra(): Promise<{ ok: boolean }> {
 
   return { ok: !error };
 }
+
+/**
+ * Traz de volta uma chuteira do pacote que a loja importou e depois APAGOU.
+ *
+ * O PROBLEMA QUE ISTO RESOLVE: apagar um produto era irreversível. Quem apagava
+ * uma das 10 da amostra só recuperava comprando o pacote inteiro; quem tinha
+ * comprado as 990 e apagava uma tinha que comprar tudo de novo por causa de um
+ * item. Em nenhum dos dois casos isso era regra — era interface faltando.
+ *
+ * O BANCO SEMPRE PERMITIU. O trigger de quota (migration 0029) tem cláusula
+ * explícita para reimportação — "um item que a loja já conheceu não consome vaga
+ * nova" — e quem tem `marketplace_access` nem chega nela. E `tudo/page.tsx` já
+ * dizia, em comentário, que o card deveria voltar a oferecer a importação depois
+ * da exclusão. Faltava só quem chamasse.
+ *
+ * NÃO É ESCOLHER ITEM A ITEM. A grade continua sem carrinho: a chuteira entra
+ * pelo pacote ou pela amostra sorteada. Isto desfaz um acidente sobre algo que já
+ * foi da loja, que é a mesma distinção que o trigger faz.
+ *
+ * O ID NÃO É CONFIÁVEL, mesmo vindo da nossa tela: a chave `authenticated` é
+ * pública. Por isso a existência do rastro apagado é conferida aqui no servidor
+ * antes de qualquer escrita, e o trigger continua sendo a última palavra.
+ */
+export async function trazerDeVolta(
+  marketplaceProductId: string,
+): Promise<{ ok: boolean; erro?: string }> {
+  const supabase = await createClient();
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return { ok: false, erro: "Sessão expirada. Entre novamente." };
+
+  const { data: store } = await supabase
+    .from("stores")
+    .select("id")
+    .eq("owner_id", userData.user.id)
+    .single();
+  if (!store) return { ok: false, erro: "Loja não encontrada." };
+
+  /*
+    O RASTRO APAGADO é a autorização.
+
+    `product_id is null` é o que a exclusão deixa para trás: a linha de importação
+    sobrevive de propósito (migration 0021) com o vínculo zerado. É exatamente
+    "esta loja já teve esta chuteira e não tem mais" — a única condição que
+    justifica trazê-la de volta sem passar pelas regras de aquisição.
+  */
+  const { data: rastro } = await supabase
+    .from("marketplace_imports")
+    .select("marketplace_product_id")
+    .eq("store_id", store.id)
+    .eq("marketplace_product_id", marketplaceProductId)
+    .is("product_id", null)
+    .maybeSingle();
+
+  if (!rastro) {
+    return { ok: false, erro: "Esta chuteira não estava na sua loja." };
+  }
+
+  /*
+    O preço vem da REGRA SALVA da loja, não de um preço antigo: o produto foi
+    apagado e o preço dele foi junto. A regra por tipo de solado é a que o lojista
+    definiu no fluxo de preços — a mesma que criou o produto original — e é a única
+    fonte que continua existindo.
+
+    Sem regra não dá para adivinhar um número, e chutar seria pior que recusar:
+    voltaria um produto na vitrine com preço que ninguém escolheu.
+  */
+  const regra = await queryRegraDaLoja(supabase, store.id);
+  if (!regra) {
+    return { ok: false, erro: "Defina seus preços no Marketplace antes de trazer de volta." };
+  }
+
+  // A RPC do lote aceita array de qualquer tamanho — um id é só o caso de um.
+  const { data, error } = await supabase.rpc("importar_marketplace_em_lote", {
+    p_ids: [marketplaceProductId],
+    p_precos: regra.precosPorSolado,
+    p_adicional: regra.adicionalLancamento,
+  });
+
+  if (error) return { ok: false, erro: error.message };
+
+  const r = (data ?? {}) as { ok?: boolean; erro?: string; importados?: number };
+  if (r.ok === false) return { ok: false, erro: r.erro ?? "Não foi possível trazer de volta." };
+  if (!r.importados) return { ok: false, erro: "Não foi possível trazer de volta." };
+
+  revalidatePath("/admin/marketplace/tudo");
+  revalidatePath("/admin/produtos");
+  return { ok: true };
+}

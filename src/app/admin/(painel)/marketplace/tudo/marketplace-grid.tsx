@@ -5,7 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams, usePathname } from "next/navigation";
 import { toast } from "sonner";
-import { Eye, EyeOff, Star, Archive, ChevronLeft, ChevronRight, Pencil, Check, Lock } from "lucide-react";
+import { Eye, EyeOff, Star, Archive, ChevronLeft, ChevronRight, Pencil, Check, Lock, RotateCcw } from "lucide-react";
+import { trazerDeVolta } from "@/lib/marketplace/pricing-actions";
 import { SOLE_LABELS, type SOLES } from "@/lib/products/constants";
 import {
   setMarketplaceStatus,
@@ -27,6 +28,13 @@ type Item = {
   preview: boolean;
   sourceAlbumId: string;
   jaImportado: boolean;
+  /**
+   * Já foi desta loja e foi APAGADA — o único caso em que o card oferece ação.
+   *
+   * Vem de um rastro de importação com `product_id` nulo (migration 0021). Nunca é
+   * verdadeiro para uma chuteira que a loja jamais teve.
+   */
+  podeTrazerDeVolta: boolean;
   photoUrls: string[];
 };
 
@@ -331,11 +339,37 @@ function Card({
                 <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" />
                 Na sua loja
               </span>
+            ) : item.podeTrazerDeVolta ? (
+              /* A ÚNICA AÇÃO DESTE RODAPÉ, e ela não contradiz a regra abaixo.
+
+                 "Não se escolhe uma a uma" é sobre ADQUIRIR. Esta chuteira já foi
+                 desta loja e saiu: trazer de volta é desfazer um acidente, não montar
+                 carrinho. É a mesma distinção que o trigger de quota do banco faz —
+                 reimportar o que a loja já conheceu não consome vaga nova.
+
+                 Sem isto, apagar um produto era irreversível: quem apagava uma das 10
+                 da amostra só recuperava comprando o pacote, e quem tinha comprado as
+                 990 teria que comprar tudo de novo por causa de um item. */
+              <button
+                type="button"
+                disabled={pendente}
+                onClick={() =>
+                  iniciar(async () => {
+                    const r = await trazerDeVolta(item.id);
+                    if (r.ok) toast.success("De volta na sua loja.");
+                    else toast.error(r.erro);
+                  })
+                }
+                className="flex min-h-9 w-full items-center justify-center gap-1.5 rounded-full border border-primary px-3 text-xs font-semibold text-primary transition-colors duration-150 hover:bg-primary-subtle disabled:opacity-60 dark:border-blue-400/40 dark:text-blue-300 dark:hover:bg-blue-400/10"
+              >
+                <RotateCcw className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />
+                {pendente ? "Trazendo…" : "Trazer de volta"}
+              </button>
             ) : (
-              /* ESTADO, NÃO AÇÃO — `span`, nunca `button`. Não existe mais nada para
-                 clicar aqui: a chuteira entra na loja pelo pacote (as 990 de uma vez) ou
-                 pela amostra sorteada, nunca escolhida uma a uma nesta grade. O rótulo
-                 diz o que é verdade — "essa não é sua ainda" —, não "acabaram suas vagas".
+              /* ESTADO, NÃO AÇÃO — `span`, nunca `button`. Não existe nada para clicar
+                 aqui: a chuteira entra na loja pelo pacote (as 990 de uma vez) ou pela
+                 amostra sorteada, nunca escolhida uma a uma nesta grade. O rótulo diz o
+                 que é verdade — "essa não é sua ainda" —, não "acabaram suas vagas".
 
                  Some do card quando não há nada aqui? Não: o rodapé de altura fixa é o
                  que mantém as linhas da grade alinhadas. */
