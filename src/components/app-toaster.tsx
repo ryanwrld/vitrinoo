@@ -1,26 +1,26 @@
 "use client";
 
-import { useTheme } from "next-themes";
-import { usePathname } from "next/navigation";
 import { Toaster } from "sonner";
 
 /**
- * Wrapper client do `<Toaster>` — necessário porque o dark mode deste
- * projeto só tem efeito dentro de `.admin-scope` (ver `@custom-variant dark`
- * em globals.css, só presente em `(painel)/layout.tsx`). O sonner monta seu
- * portal fora dessa árvore (direto no `<body>`, via `layout.tsx` raiz), então
- * qualquer classe `dark:` nas cores do toast fica inerte — precisa decidir a
- * cor em JS (tema resolvido + rota atual), não via variante CSS.
+ * Wrapper client do `<Toaster>`. Cuida só de LAYOUT — cor nenhuma se decide aqui.
+ *
+ * Uma versão anterior escolhia a cor do texto em JavaScript, comparando a rota
+ * atual contra uma lista de caminhos do painel. O Marketplace nasceu depois e
+ * nunca entrou nessa lista: lá o componente concluía "não é painel", assumia
+ * visual claro e pintava o título de escuro sobre uma página escura, com o card
+ * em `bg-transparent`. O texto sumia — e qualquer rota criada no futuro herdaria
+ * o mesmo bug.
+ *
+ * Agora as cores vivem em `globals.css`, decididas por `.dark:has(.admin-scope)`
+ * — a condição real do tema, não uma lista que envelhece. Ver o bloco
+ * `[data-sonner-toast]` lá, ao lado das cores de ícone que já moravam ali.
+ *
+ * O motivo de a cor não ser Tailwind continua valendo: o sonner portaliza o toast
+ * direto no `<body>`, fora de `.admin-scope`, então as variantes `dark:` deste
+ * projeto — que exigem esse ancestral — ficam inertes no toast.
  */
 export function AppToaster() {
-  const { resolvedTheme } = useTheme();
-  const pathname = usePathname();
-  // Mesmo escopo do dark mode real: só as rotas do painel (dashboard/
-  // produtos/configurações, dentro de `(painel)`) — login/cadastro/
-  // onboarding e a vitrine pública ficam sempre no visual claro.
-  const isPainelRoute = pathname.startsWith("/admin/dashboard") || pathname.startsWith("/admin/produtos") || pathname.startsWith("/admin/configuracoes");
-  const isDark = isPainelRoute && resolvedTheme === "dark";
-
   return (
     <Toaster
       position="top-center"
@@ -52,14 +52,9 @@ export function AppToaster() {
           // "center" (só para os gatilhos `left`/`right`), então não há
           // nada pra vencer — `!important` aqui seria só ruído.
           toast:
-            "notification-glow-border !w-max !max-w-[90vw] left-0 right-0 mx-auto !rounded-3xl !border-0 !bg-transparent !shadow-[0_25px_50px_-12px_rgba(3,8,33,0.16),0_0_0_1px_rgba(3,8,33,0.06)] backdrop-blur-xl backdrop-saturate-75" +
-            (isDark ? " !shadow-[0_25px_50px_-12px_rgba(0,0,0,0.55)]" : ""),
-          title: (isDark ? "!text-gray-50" : "!text-gray-900") + " !whitespace-nowrap",
-          description: (isDark ? "!text-gray-400" : "!text-gray-600") + " !whitespace-nowrap",
-          // Cor do ícone por tipo (verde/vermelho/âmbar/azul vívidos, iguais
-          // aos badges do resto do app) vem de CSS puro em globals.css — ver
-          // comentário lá. Sem `richColors`, o sonner deixaria o ícone na cor
-          // neutra (`--normal-text`), sem sinalização nenhuma.
+            "notification-glow-border !w-max !max-w-[90vw] left-0 right-0 mx-auto !rounded-3xl !border-0 !bg-transparent !shadow-[0_25px_50px_-12px_rgba(3,8,33,0.16),0_0_0_1px_rgba(3,8,33,0.06)] backdrop-blur-xl backdrop-saturate-75",
+          title: "!whitespace-nowrap",
+          description: "!whitespace-nowrap",
         },
       }}
     />

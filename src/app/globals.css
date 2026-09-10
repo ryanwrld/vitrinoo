@@ -880,6 +880,45 @@ input:autofill {
 [data-sonner-toast][data-type="warning"] [data-icon] svg { color: var(--color-warning-solid) !important; }
 [data-sonner-toast][data-type="info"] [data-icon] svg { color: var(--color-primary) !important; }
 
+/*
+ * TEXTO DOS TOASTS — cor decidida aqui, não em JavaScript.
+ *
+ * O `app-toaster.tsx` decidia isso comparando a rota atual contra uma lista
+ * ("/admin/dashboard", "/admin/produtos", "/admin/configuracoes"). O Marketplace
+ * nasceu depois e nunca entrou nessa lista, então lá o toast concluía "não é
+ * painel", assumia visual claro e pintava o título de `text-gray-900` — sobre uma
+ * página escura, com o card em `bg-transparent`. O texto sumia.
+ *
+ * A pergunta certa não é "qual rota é esta?", é "esta página está no tema
+ * escuro?". `:has(.admin-scope)` responde isso lendo o que de fato define o tema:
+ * `.admin-scope` está no layout de (painel), logo em TODA rota do painel,
+ * inclusive as que ainda não existem. É o mesmo padrão que o fundo da página já
+ * usa mais acima neste arquivo.
+ *
+ * CSS e não Tailwind pelo mesmo motivo das cores de ícone logo acima: o sonner
+ * portaliza o toast direto no `<body>`, fora de `.admin-scope`, então as variantes
+ * `dark:` do projeto — que exigem esse ancestral — ficam inertes ali.
+ *
+ * O padrão é o tema CLARO: as páginas de auth e a vitrine pública não têm
+ * `.admin-scope` e devem seguir claras mesmo com o sistema em modo escuro.
+ *
+ * `!important` porque o sonner traz `[data-sonner-toast][data-styled="true"]
+ * [data-title] { color: inherit }` — três classes de especificidade, mais que a
+ * nossa regra base. Sem o `!`, o tema claro perdia para o `inherit` dele. Mesmo
+ * motivo das cores de ícone logo acima.
+ */
+[data-sonner-toast] [data-title] { color: var(--color-gray-900) !important; }
+[data-sonner-toast] [data-description] { color: var(--color-gray-600) !important; }
+
+.dark:has(.admin-scope) [data-sonner-toast] [data-title] { color: var(--color-gray-50) !important; }
+.dark:has(.admin-scope) [data-sonner-toast] [data-description] { color: var(--color-gray-400) !important; }
+
+/* Sombra mais funda no escuro: a do tema claro é quase invisível sobre o fundo
+   grafite do painel, e sem ela o card de vidro perde a separação do conteúdo. */
+.dark:has(.admin-scope) [data-sonner-toast] {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.55) !important;
+}
+
 /* Reduced motion — respeita preferência do sistema operacional */
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in,
