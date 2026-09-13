@@ -226,9 +226,16 @@ export function StoreHero({
           A SUBIDA E IGUAL AO RAIO, e isso e geometria, nao gosto: o azul so
           existe atras do painel na faixa em que ele invade a capa. Com subida
           menor que o raio, a parte de baixo da curva cairia fora da capa, com
-          branco atras, e o arredondamento apareceria cortado. Entao 40px e
-          40px no celular, 56px e 56px de 640px para cima — se um dia o raio
+          branco atras, e o arredondamento apareceria cortado. Entao 28px e
+          28px no celular, 56px e 56px de 640px para cima — se um dia o raio
           crescer, a subida cresce com ele, nunca um sem o outro.
+
+          O CELULAR TEM RAIO MENOR QUE O DESKTOP de proposito, e o motivo nao e
+          estetico: la a faixa da capa tem 128px FIXOS, e tudo que o painel
+          sobe sai da arte. Com 40px o rodape do banner (logo, botao, assinatura
+          — o que o lojista costuma por embaixo) ficava escondido. 28px deixam
+          100px dos 128px visiveis. No desktop a faixa e mais que o dobro, entao
+          56px cabem sem comer o que importa.
 
           O `pt-4`/`pt-5` do filho e o respiro que faltava: sem ele o avatar e
           os botoes nasciam colados na borda de cima e o bloco lia como se
@@ -245,7 +252,7 @@ export function StoreHero({
           A margem negativa do avatar (abaixo) fica intocada: o painel e o
           avatar sobem juntos, entao o quanto do avatar atravessa a borda
           branca continua identico ao de antes. */}
-      <div className="relative -mt-10 rounded-t-[2.5rem] bg-white @min-[640px]:-mt-14 @min-[640px]:rounded-t-[3.5rem]">
+      <div className="relative -mt-7 rounded-t-[1.75rem] bg-white @min-[640px]:-mt-14 @min-[640px]:rounded-t-[3.5rem]">
         <div className="mx-auto w-full max-w-[100rem] px-4 pb-6 pt-4 @min-[640px]:px-6 @min-[640px]:pb-7 @min-[640px]:pt-5 @min-[768px]:px-12 @min-[1024px]:px-20 @min-[1280px]:px-24 @min-[1536px]:px-28">
           {/* Avatar e ações na MESMA linha, alinhados pela BASE (`items-end`).
               Antes as ações flutuavam no topo do bloco sem se alinhar a
