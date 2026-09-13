@@ -109,19 +109,8 @@ export function NotificationBell({ items }: { items: ActivityFeedItem[] }) {
       </button>
 
       {open && (
-        /*
-          `bg-gray-50/85` / `dark:bg-gray-925/90`: a TINTA do vidro, os mesmos
-          valores do toast (ver o bloco `[data-sonner-toast]` em globals.css).
-
-          Este popup abriu por muito tempo sem fundo nenhum — só `backdrop-blur`.
-          Blur sem tinta é lente, não vidro: ele borra o que está atrás e não põe
-          nada por cima, então o texto ficava direto sobre a página. E o que está
-          atrás aqui é a primeira dobra do conteúdo, que em /admin/produtos e
-          /admin/marketplace é foto de chuteira — foto clara sob texto claro no
-          tema escuro some, exatamente como acontecia no toast.
-        */
         <div
-          className="notification-glow-border animate-scale-in absolute right-0 top-full z-50 mt-3 flex max-h-[70vh] w-96 max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-3xl bg-gray-50/85 shadow-[0_25px_50px_-12px_rgba(3,8,33,0.16),0_0_0_1px_rgba(3,8,33,0.06)] backdrop-blur-xl backdrop-saturate-75 dark:bg-gray-925/90 dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.55)]"
+          className="notification-glow-border animate-scale-in absolute right-0 top-full z-50 mt-3 flex max-h-[70vh] w-96 max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-3xl shadow-[0_25px_50px_-12px_rgba(3,8,33,0.16),0_0_0_1px_rgba(3,8,33,0.06)] backdrop-blur-xl backdrop-saturate-75 dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.55)]"
           style={{ transformOrigin: "top right" }}
         >
           <div className="flex items-center justify-between px-4 pb-3 pt-4">

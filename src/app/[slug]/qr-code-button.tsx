@@ -292,23 +292,10 @@ function QrCodeDialog({
       role="presentation"
     >
       {/* MESMA SUPERFÍCIE DO POP-UP DE NOTIFICAÇÕES (`notification-bell.tsx`):
-          vidro com tinta (`bg-gray-900/80`) sobre `backdrop-blur-lg` +
-          `backdrop-saturate-75`, o anel de 1px com o brilho vindo do topo
-          (`.notification-glow-border` em globals.css), as mesmas `rounded-3xl`
-          e sombra. A entrada não é a `animate-scale-in` do sino, é a expansão a
-          partir do botão.
-
-          A TINTA É ESCURA e não clara como a do painel: aqui o conteúdo é
-          branco (`text-white/60` na frase e no "X"), então a superfície tem que
-          ser o oposto dele.
-
-          Ela faltava, e o pop-up era vidro sem vidro: `bg` transparente com só
-          o blur. Blur sem tinta é lente — borra o que está atrás e não põe nada
-          por cima. Como a vitrine é sempre CLARA e o véu é só `bg-black/30`, o
-          resultado atrás do painel era cinza claro: a frase em branco a 60%
-          quase não lia, o "X" desaparecia, e as fotos da grade apareciam
-          ATRAVÉS do painel — lia como defeito, não como vidro. Mesma causa do
-          toast (ver `[data-sonner-toast]` em globals.css).
+          vidro sem cor própria (`backdrop-blur-lg` + `backdrop-saturate-75`),
+          o anel de 1px com o brilho vindo do topo (`.notification-glow-border`
+          em globals.css), as mesmas `rounded-3xl` e sombra. A entrada não é a
+          `animate-scale-in` do sino, é a expansão a partir do botão.
 
           O filtro é DESTE elemento: a área externa nunca é desfocada, só
           escurecida pelo véu. */}
@@ -339,7 +326,7 @@ function QrCodeDialog({
         //
         // Quando o pedido for "alargar o pop-up", o que muda é ESTE respiro,
         // nunca o cartão: a largura do painel é sempre cartão + 2×padding.
-        className="notification-glow-border relative w-full max-w-[17.25rem] overflow-hidden sm:max-w-[20.25rem] rounded-3xl bg-gray-900/80 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.55)] backdrop-blur-lg backdrop-saturate-75 outline-none"
+        className="notification-glow-border relative w-full max-w-[17.25rem] overflow-hidden sm:max-w-[20.25rem] rounded-3xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.55)] backdrop-blur-lg backdrop-saturate-75 outline-none"
       >
         {/* `relative` porque o `::before` da moldura é posicionado e, sem
             isso, pintaria por cima do conteúdo em fluxo. */}
