@@ -205,120 +205,155 @@ export function StoreHero({
         )}
       </div>
 
-      <div className="mx-auto w-full max-w-[100rem] px-4 pb-6 @min-[640px]:px-6 @min-[640px]:pb-7 @min-[768px]:px-12 @min-[1024px]:px-20 @min-[1280px]:px-24 @min-[1536px]:px-28">
-        {/* Avatar e ações na MESMA linha, alinhados pela BASE (`items-end`).
-            Antes as ações flutuavam no topo do bloco sem se alinhar a
-            elemento nenhum — a borda inferior do avatar dá a elas uma linha
-            de apoio real. O negativo aqui é o único do componente: é ele que
-            faz o avatar subir sobre a capa. */}
-        <div className="-mt-10 flex items-end justify-between gap-4 @min-[640px]:-mt-12 @min-[1024px]:-mt-14">
-          {/* Anel branco: separa o avatar da capa sem depender da cor dela —
-              um anel colorido sumiria contra uma capa da mesma família. */}
-          <div className="shrink-0 rounded-full bg-white p-1 shadow-sm">
-            <div className="relative h-20 w-20 overflow-hidden rounded-full bg-gray-100 @min-[640px]:h-24 @min-[640px]:w-24 @min-[1024px]:h-28 @min-[1024px]:w-28">
-              <ImageWithFallback src={store.logoUrl} alt={store.name} />
+      {/* O CORPO BRANCO SOBE SOBRE A CAPA
+          --------------------------------
+          Antes a capa e o corpo se encontravam numa emenda reta, e o branco
+          morava no <header> — pai da capa E do corpo, entao ele pintava ATRAS
+          dela e nao tinha como subir. Agora o corpo tem superficie propria,
+          sangrando na largura inteira (o conteudo segue preso na coluna de
+          `max-w-[100rem]`, no filho abaixo), e ela invade a capa.
+
+          `relative` NAO e enfeite: sem ele o branco nao cobre a capa quando
+          existe imagem enviada. A ordem de pintura do CSS desenha o fundo de
+          todo bloco nao-posicionado ANTES de qualquer elemento inline, e a
+          <img> da capa e inline-level — a foto pintaria por cima deste branco
+          e por cima dos cantos arredondados. `relative` joga o painel para a
+          camada dos posicionados, acima da foto. E a mesma armadilha que o
+          comentario da capa documenta ao contrario ("SEM position: relative
+          aqui"): la o `relative` na capa fazia a capa cobrir o anel do
+          avatar. Aqui e o inverso, e o anel sobe junto — que e o certo.
+
+          A SUBIDA E IGUAL AO RAIO, e isso e geometria, nao gosto: o azul so
+          existe atras do painel na faixa em que ele invade a capa. Com subida
+          menor que o raio, a parte de baixo da curva cairia fora da capa, com
+          branco atras, e o arredondamento apareceria cortado. Entao 24px e
+          24px no celular, 32px e 32px de 640px para cima — raios que a
+          sidebar-search e o cover-editor ja usam, sem inventar valor novo.
+
+          A faixa azul VISIVEL encurta nesses 24/32px. E o que "o branco sobe
+          sobre o azul" significa, e nao se compensa aumentando a altura da
+          capa: aquela altura vem do editor de capa, e enquadramento do
+          lojista, e e justamente a manipulacao que o comentario acima proibe.
+
+          A margem negativa do avatar (abaixo) fica intocada: o painel e o
+          avatar sobem juntos, entao o quanto do avatar atravessa a borda
+          branca continua identico ao de antes. */}
+      <div className="relative -mt-6 rounded-t-3xl bg-white @min-[640px]:-mt-8 @min-[640px]:rounded-t-[2rem]">
+        <div className="mx-auto w-full max-w-[100rem] px-4 pb-6 @min-[640px]:px-6 @min-[640px]:pb-7 @min-[768px]:px-12 @min-[1024px]:px-20 @min-[1280px]:px-24 @min-[1536px]:px-28">
+          {/* Avatar e ações na MESMA linha, alinhados pela BASE (`items-end`).
+              Antes as ações flutuavam no topo do bloco sem se alinhar a
+              elemento nenhum — a borda inferior do avatar dá a elas uma linha
+              de apoio real. O negativo aqui é o único do componente: é ele que
+              faz o avatar subir sobre a capa. */}
+          <div className="-mt-10 flex items-end justify-between gap-4 @min-[640px]:-mt-12 @min-[1024px]:-mt-14">
+            {/* Anel branco: separa o avatar da capa sem depender da cor dela —
+                um anel colorido sumiria contra uma capa da mesma família. */}
+            <div className="shrink-0 rounded-full bg-white p-1 shadow-sm">
+              <div className="relative h-20 w-20 overflow-hidden rounded-full bg-gray-100 @min-[640px]:h-24 @min-[640px]:w-24 @min-[1024px]:h-28 @min-[1024px]:w-28">
+                <ImageWithFallback src={store.logoUrl} alt={store.name} />
+              </div>
+            </div>
+
+            {/* `pb-1` compensa exatamente o `p-1` do anel do avatar, para as
+                duas bases caírem na mesma linha ótica.
+
+                `@max-[768px]:translate-y-2`: no mobile a capa termina a 128px e estes
+                botões começavam a 132px — 4px de folga, que a olho nu lê como
+                se estivessem encostados/vazando no banner escuro. O avatar pode
+                invadir a capa (é o desenho), mas eles não: são controles, não
+                identidade, e sobrepor um controle a um fundo de cor
+                imprevisível (a capa é escolhida pelo revendedor) também custa
+                contraste. Descidos JUNTOS, no wrapper, para não perderem o
+                alinhamento entre si.
+                `translate` e não margem/padding de propósito: transform não
+                reflui o layout, então nada abaixo (nome da loja, @, stats) se
+                desloca por causa deste ajuste. */}
+            <div className="flex shrink-0 items-center gap-2 pb-1 @max-[768px]:translate-y-2">
+              <QrCodeButton
+                url={buildStoreUrl(store.slug)}
+                storeName={store.name}
+                accentColor={accent}
+                className={actionButtonClass}
+              />
+              <ShareVitrineButton
+                url={buildStoreUrl(store.slug)}
+                storeName={store.name}
+                label={null}
+                ariaLabel={`Compartilhar a vitrine de ${store.name}`}
+                className={actionButtonClass}
+              />
             </div>
           </div>
 
-          {/* `pb-1` compensa exatamente o `p-1` do anel do avatar, para as
-              duas bases caírem na mesma linha ótica.
-
-              `@max-[768px]:translate-y-2`: no mobile a capa termina a 128px e estes
-              botões começavam a 132px — 4px de folga, que a olho nu lê como
-              se estivessem encostados/vazando no banner escuro. O avatar pode
-              invadir a capa (é o desenho), mas eles não: são controles, não
-              identidade, e sobrepor um controle a um fundo de cor
-              imprevisível (a capa é escolhida pelo revendedor) também custa
-              contraste. Descidos JUNTOS, no wrapper, para não perderem o
-              alinhamento entre si.
-              `translate` e não margem/padding de propósito: transform não
-              reflui o layout, então nada abaixo (nome da loja, @, stats) se
-              desloca por causa deste ajuste. */}
-          <div className="flex shrink-0 items-center gap-2 pb-1 @max-[768px]:translate-y-2">
-            <QrCodeButton
-              url={buildStoreUrl(store.slug)}
-              storeName={store.name}
-              accentColor={accent}
-              className={actionButtonClass}
-            />
-            <ShareVitrineButton
-              url={buildStoreUrl(store.slug)}
-              storeName={store.name}
-              label={null}
-              ariaLabel={`Compartilhar a vitrine de ${store.name}`}
-              className={actionButtonClass}
-            />
+          <div className="mt-4 flex flex-col gap-1">
+            <h1 className="flex items-center gap-1.5 font-display text-xl font-extrabold tracking-tight text-gray-900 @min-[640px]:text-2xl @min-[1024px]:text-3xl">
+              {store.name}
+              {/* Selo de verificado — vale pra TODA loja publicada (decisão do
+                  usuário), não condicionado a nenhum campo de "verificação"
+                  real no banco; é puramente visual/confiança de marca. */}
+              <BadgeCheck
+                className="relative top-[2px] h-[22px] w-[22px] shrink-0 @min-[640px]:top-[3px] @min-[640px]:h-6 @min-[640px]:w-6 @min-[1024px]:top-1 @min-[1024px]:h-7 @min-[1024px]:w-7"
+                style={{ fill: "#1DA1F2", color: "white" }}
+                aria-label="Loja verificada"
+              />
+            </h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm text-gray-500">@{store.slug}</p>
+              {store.instagram && (
+                <a
+                  href={instagramProfileUrl(store.instagram)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Instagram de ${store.name}`}
+                  className="inline-flex max-w-[180px] items-center gap-1 rounded-full border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-900 transition-colors duration-150 hover:border-gray-400 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
+                >
+                  <InstagramIcon className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{store.instagram}</span>
+                </a>
+              )}
+            </div>
           </div>
+
+          {store.tagline && (
+            // Teto de 2 linhas com reticências. Sem ele uma frase longa empurra
+            // o primeiro produto para fora da dobra no celular — e a frase de
+            // apresentação não vale o catálogo inteiro.
+            <p className="mt-2 line-clamp-2 max-w-2xl text-sm leading-relaxed text-gray-600 @min-[640px]:text-base">
+              {store.tagline}
+            </p>
+          )}
+
+          {statItems.length > 0 && (
+            // `flex-wrap` + `gap-x-8`: em tela estreita os três números quebram
+            // para a linha de baixo em vez de encolher a fonte. O separador é o
+            // espaço, não um traço — traço entre itens que já têm rótulo
+            // próprio é ruído.
+            <dl className="mt-2 flex flex-wrap items-baseline gap-x-8 gap-y-2">
+              {statItems.map((item) => (
+                <div
+                  key={item.label}
+                  className="flex flex-col items-start @min-[640px]:flex-row @min-[640px]:items-baseline @min-[640px]:gap-1.5"
+                >
+                  <dd className="text-sm font-bold text-gray-900 @min-[640px]:text-base">
+                    {censorStats ? (
+                      // Tarja, não asteriscos: mantém a LARGURA do texto real na
+                      // linha, então a prévia mostra o mesmo ritmo de espaçamento
+                      // que a vitrine vai ter de verdade.
+                      <span
+                        aria-label="número oculto na prévia"
+                        className={`inline-block h-4 translate-y-[1px] rounded bg-gray-300 @min-[640px]:h-[18px] ${item.censoredWidth}`}
+                      />
+                    ) : (
+                      item.value
+                    )}
+                  </dd>
+                  <dt className="text-sm text-gray-500">{item.label}</dt>
+                </div>
+              ))}
+            </dl>
+          )}
+
         </div>
-
-        <div className="mt-4 flex flex-col gap-1">
-          <h1 className="flex items-center gap-1.5 font-display text-xl font-extrabold tracking-tight text-gray-900 @min-[640px]:text-2xl @min-[1024px]:text-3xl">
-            {store.name}
-            {/* Selo de verificado — vale pra TODA loja publicada (decisão do
-                usuário), não condicionado a nenhum campo de "verificação"
-                real no banco; é puramente visual/confiança de marca. */}
-            <BadgeCheck
-              className="relative top-[2px] h-[22px] w-[22px] shrink-0 @min-[640px]:top-[3px] @min-[640px]:h-6 @min-[640px]:w-6 @min-[1024px]:top-1 @min-[1024px]:h-7 @min-[1024px]:w-7"
-              style={{ fill: "#1DA1F2", color: "white" }}
-              aria-label="Loja verificada"
-            />
-          </h1>
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm text-gray-500">@{store.slug}</p>
-            {store.instagram && (
-              <a
-                href={instagramProfileUrl(store.instagram)}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={`Instagram de ${store.name}`}
-                className="inline-flex max-w-[180px] items-center gap-1 rounded-full border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-900 transition-colors duration-150 hover:border-gray-400 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
-              >
-                <InstagramIcon className="h-3 w-3 shrink-0" aria-hidden="true" />
-                <span className="truncate">{store.instagram}</span>
-              </a>
-            )}
-          </div>
-        </div>
-
-        {store.tagline && (
-          // Teto de 2 linhas com reticências. Sem ele uma frase longa empurra
-          // o primeiro produto para fora da dobra no celular — e a frase de
-          // apresentação não vale o catálogo inteiro.
-          <p className="mt-2 line-clamp-2 max-w-2xl text-sm leading-relaxed text-gray-600 @min-[640px]:text-base">
-            {store.tagline}
-          </p>
-        )}
-
-        {statItems.length > 0 && (
-          // `flex-wrap` + `gap-x-8`: em tela estreita os três números quebram
-          // para a linha de baixo em vez de encolher a fonte. O separador é o
-          // espaço, não um traço — traço entre itens que já têm rótulo
-          // próprio é ruído.
-          <dl className="mt-2 flex flex-wrap items-baseline gap-x-8 gap-y-2">
-            {statItems.map((item) => (
-              <div
-                key={item.label}
-                className="flex flex-col items-start @min-[640px]:flex-row @min-[640px]:items-baseline @min-[640px]:gap-1.5"
-              >
-                <dd className="text-sm font-bold text-gray-900 @min-[640px]:text-base">
-                  {censorStats ? (
-                    // Tarja, não asteriscos: mantém a LARGURA do texto real na
-                    // linha, então a prévia mostra o mesmo ritmo de espaçamento
-                    // que a vitrine vai ter de verdade.
-                    <span
-                      aria-label="número oculto na prévia"
-                      className={`inline-block h-4 translate-y-[1px] rounded bg-gray-300 @min-[640px]:h-[18px] ${item.censoredWidth}`}
-                    />
-                  ) : (
-                    item.value
-                  )}
-                </dd>
-                <dt className="text-sm text-gray-500">{item.label}</dt>
-              </div>
-            ))}
-          </dl>
-        )}
-
       </div>
     </header>
   );
