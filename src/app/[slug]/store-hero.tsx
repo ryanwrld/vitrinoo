@@ -226,9 +226,16 @@ export function StoreHero({
           A SUBIDA E IGUAL AO RAIO, e isso e geometria, nao gosto: o azul so
           existe atras do painel na faixa em que ele invade a capa. Com subida
           menor que o raio, a parte de baixo da curva cairia fora da capa, com
-          branco atras, e o arredondamento apareceria cortado. Entao 24px e
-          24px no celular, 32px e 32px de 640px para cima — raios que a
-          sidebar-search e o cover-editor ja usam, sem inventar valor novo.
+          branco atras, e o arredondamento apareceria cortado. Entao 40px e
+          40px no celular, 56px e 56px de 640px para cima — se um dia o raio
+          crescer, a subida cresce com ele, nunca um sem o outro.
+
+          O `pt-4`/`pt-5` do filho e o respiro que faltava: sem ele o avatar e
+          os botoes nasciam colados na borda de cima e o bloco lia como se
+          estivesse vazando para fora do branco. Ele desce TODO o conteudo de
+          uma vez, entao o ritmo interno (o `mt-4` entre blocos, o `mt-5` antes
+          da divisoria) continua igual — e o avatar desce junto, passando a
+          atravessar menos a emenda, que era o ponto.
 
           A faixa azul VISIVEL encurta nesses 24/32px. E o que "o branco sobe
           sobre o azul" significa, e nao se compensa aumentando a altura da
@@ -238,8 +245,8 @@ export function StoreHero({
           A margem negativa do avatar (abaixo) fica intocada: o painel e o
           avatar sobem juntos, entao o quanto do avatar atravessa a borda
           branca continua identico ao de antes. */}
-      <div className="relative -mt-6 rounded-t-3xl bg-white @min-[640px]:-mt-8 @min-[640px]:rounded-t-[2rem]">
-        <div className="mx-auto w-full max-w-[100rem] px-4 pb-6 @min-[640px]:px-6 @min-[640px]:pb-7 @min-[768px]:px-12 @min-[1024px]:px-20 @min-[1280px]:px-24 @min-[1536px]:px-28">
+      <div className="relative -mt-10 rounded-t-[2.5rem] bg-white @min-[640px]:-mt-14 @min-[640px]:rounded-t-[3.5rem]">
+        <div className="mx-auto w-full max-w-[100rem] px-4 pb-6 pt-4 @min-[640px]:px-6 @min-[640px]:pb-7 @min-[640px]:pt-5 @min-[768px]:px-12 @min-[1024px]:px-20 @min-[1280px]:px-24 @min-[1536px]:px-28">
           {/* Avatar e ações na MESMA linha, alinhados pela BASE (`items-end`).
               Antes as ações flutuavam no topo do bloco sem se alinhar a
               elemento nenhum — a borda inferior do avatar dá a elas uma linha
